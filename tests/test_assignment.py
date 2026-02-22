@@ -12,10 +12,14 @@ type NumPyObstacleStatesForTimeStep = types.numpy.Obstacle2dPosesForTimeStep
 type NumPyObstacleStates = types.numpy.Obstacle2dPoses
 type NumPyObstacle2dPositionsForTimeStep = types.numpy.Obstacle2dPositionsForTimeStep
 type NumPyObstacle2dPositions = types.numpy.Obstacle2dPositions
+type NumPyObstacleHeadingsForTimeStep = types.numpy.ObstacleHeadingsForTimeStep
+type NumPyObstacleHeadings = types.numpy.ObstacleHeadings
 type JaxObstacleStatesForTimeStep = types.jax.Obstacle2dPosesForTimeStep
 type JaxObstacleStates = types.jax.Obstacle2dPoses
 type JaxObstacle2dPositionsForTimeStep = types.jax.Obstacle2dPositionsForTimeStep
 type JaxObstacle2dPositions = types.jax.Obstacle2dPositions
+type JaxObstacleHeadingsForTimeStep = types.jax.ObstacleHeadingsForTimeStep
+type JaxObstacleHeadings = types.jax.ObstacleHeadings
 
 
 class NumPyObstaclePositionExtractor:
@@ -38,8 +42,28 @@ class JaxObstaclePositionExtractor:
         return states.positions()
 
 
+class NumPyObstacleHeadingExtractor:
+    def of_states_for_time_step(
+        self, states: NumPyObstacleStatesForTimeStep, /
+    ) -> NumPyObstacleHeadingsForTimeStep:
+        return states.headings()
+
+    def of_states(self, states: NumPyObstacleStates, /) -> NumPyObstacleHeadings:
+        return states.headings()
+
+
+class JaxObstacleHeadingExtractor:
+    def of_states_for_time_step(
+        self, states: JaxObstacleStatesForTimeStep, /
+    ) -> JaxObstacleHeadingsForTimeStep:
+        return states.headings()
+
+    def of_states(self, states: JaxObstacleStates, /) -> JaxObstacleHeadings:
+        return states.headings()
+
+
 class test_that_ids_are_assigned_to_obstacles:
-    def cases(id_assignment, position_extractor, data) -> None:
+    def cases(id_assignment, position_extractor, heading_extractor, data) -> None:
         return [
             (  # All new obstacles (no history)
                 assignment := id_assignment.hungarian(
@@ -233,6 +257,154 @@ class test_that_ids_are_assigned_to_obstacles:
                 ids := data.obstacle_ids([3, 7, 9]),  # IDs for A, B, C
                 expected := data.obstacle_ids([3, 7, 1]),  # A->3, B->7, D->NEW
             ),
+            (  # Obstacle disappears next to another obstacle moving in the opposite direction.
+                assignment := id_assignment.hungarian(
+                    position_extractor=position_extractor(),
+                    # In this case, need to compare the heading of the obstacles as well.
+                    orientation_extractor=heading_extractor(),
+                    cutoff=5.0,
+                    orientation_cutoff=np.pi / 2,
+                    start_id=100,
+                ),
+                states := data.obstacle_2d_poses_for_time_step(
+                    x=array([10.0], shape=(K := 1,)),
+                    y=array([3.5], shape=(K,)),
+                    heading=array([np.pi], shape=(K,)),  # Moving left
+                ),
+                history := data.obstacle_2d_poses(
+                    x=array([[10.0]], shape=(1, 1)),
+                    y=array([[0.0]], shape=(1, 1)),
+                    heading=array([[0.0]], shape=(1, 1)),  # Moving right
+                ),
+                ids := data.obstacle_ids([42]),
+                expected := data.obstacle_ids([100]),
+            ),
+            (  # Same position, similar heading ⇒ same obstacle
+                assignment := id_assignment.hungarian(
+                    position_extractor=position_extractor(),
+                    orientation_extractor=heading_extractor(),
+                    cutoff=5.0,
+                    orientation_cutoff=np.pi / 4,
+                    start_id=1,
+                ),
+                states := data.obstacle_2d_poses_for_time_step(
+                    x=array([1.0], shape=(K := 1,)),
+                    y=array([0.0], shape=(K,)),
+                    heading=array([0.1], shape=(K,)),
+                ),
+                history := data.obstacle_2d_poses(
+                    x=array([[1.0]], shape=(1, 1)),
+                    y=array([[0.0]], shape=(1, 1)),
+                    heading=array([[0.0]], shape=(1, 1)),
+                ),
+                ids := data.obstacle_ids([5]),
+                expected := data.obstacle_ids([5]),
+            ),
+            (  # Same position, heading difference just within cutoff ⇒ same obstacle
+                assignment := id_assignment.hungarian(
+                    position_extractor=position_extractor(),
+                    orientation_extractor=heading_extractor(),
+                    cutoff=5.0,
+                    orientation_cutoff=np.pi / 2,
+                    start_id=1,
+                ),
+                states := data.obstacle_2d_poses_for_time_step(
+                    x=array([1.0], shape=(K := 1,)),
+                    y=array([0.0], shape=(K,)),
+                    heading=array([np.pi / 2 - 0.1], shape=(K,)),
+                ),
+                history := data.obstacle_2d_poses(
+                    x=array([[1.0]], shape=(1, 1)),
+                    y=array([[0.0]], shape=(1, 1)),
+                    heading=array([[0.0]], shape=(1, 1)),
+                ),
+                ids := data.obstacle_ids([5]),
+                expected := data.obstacle_ids([5]),
+            ),
+            (  # Same position, heading beyond cutoff ⇒ different obstacle
+                assignment := id_assignment.hungarian(
+                    position_extractor=position_extractor(),
+                    orientation_extractor=heading_extractor(),
+                    cutoff=5.0,
+                    orientation_cutoff=np.pi / 4,
+                    start_id=10,
+                ),
+                states := data.obstacle_2d_poses_for_time_step(
+                    x=array([1.0], shape=(K := 1,)),
+                    y=array([0.0], shape=(K,)),
+                    heading=array([np.pi], shape=(K,)),
+                ),
+                history := data.obstacle_2d_poses(
+                    x=array([[1.0]], shape=(1, 1)),
+                    y=array([[0.0]], shape=(1, 1)),
+                    heading=array([[0.0]], shape=(1, 1)),
+                ),
+                ids := data.obstacle_ids([5]),
+                expected := data.obstacle_ids([10]),
+            ),
+            (  # Heading -π and +π are the same ⇒ same obstacle
+                assignment := id_assignment.hungarian(
+                    position_extractor=position_extractor(),
+                    orientation_extractor=heading_extractor(),
+                    cutoff=5.0,
+                    orientation_cutoff=np.pi / 4,
+                    start_id=1,
+                ),
+                states := data.obstacle_2d_poses_for_time_step(
+                    x=array([1.0], shape=(K := 1,)),
+                    y=array([0.0], shape=(K,)),
+                    heading=array([np.pi - 0.1], shape=(K,)),
+                ),
+                history := data.obstacle_2d_poses(
+                    x=array([[1.0]], shape=(1, 1)),
+                    y=array([[0.0]], shape=(1, 1)),
+                    heading=array([[-np.pi + 0.1]], shape=(1, 1)),
+                ),
+                ids := data.obstacle_ids([5]),
+                expected := data.obstacle_ids([5]),
+            ),
+            (  # Two obstacles, only one has matching heading
+                assignment := id_assignment.hungarian(
+                    position_extractor=position_extractor(),
+                    orientation_extractor=heading_extractor(),
+                    cutoff=5.0,
+                    orientation_cutoff=np.pi / 4,
+                    start_id=20,
+                ),
+                states := data.obstacle_2d_poses_for_time_step(
+                    x=array([1.0, 2.0], shape=(K := 2,)),
+                    y=array([0.0, 0.0], shape=(K,)),
+                    heading=array([0.0, np.pi], shape=(K,)),
+                ),
+                history := data.obstacle_2d_poses(
+                    x=array([[1.0, 2.0]], shape=(1, 2)),
+                    y=array([[0.0, 0.0]], shape=(1, 2)),
+                    heading=array([[0.0, 0.0]], shape=(1, 2)),
+                ),
+                ids := data.obstacle_ids([5, 6]),
+                expected := data.obstacle_ids([5, 20]),
+            ),
+            (  # Two obstacles, padded to three.
+                assignment := id_assignment.hungarian(
+                    position_extractor=position_extractor(),
+                    orientation_extractor=heading_extractor(),
+                    cutoff=5.0,
+                    orientation_cutoff=np.pi / 4,
+                    start_id=20,
+                ),
+                states := data.obstacle_2d_poses_for_time_step(
+                    x=array([1.0, 2.0], shape=(K := 2,)),
+                    y=array([0.0, 0.0], shape=(K,)),
+                    heading=array([0.0, np.pi], shape=(K,)),
+                ),
+                history := data.obstacle_2d_poses(
+                    x=array([[1.0, 2.0, np.nan]], shape=(T := 1, K_h := 3)),
+                    y=array([[0.0, 0.0, np.nan]], shape=(T, K_h)),
+                    heading=array([[0.0, 0.0, np.nan]], shape=(T, K_h)),
+                ),
+                ids := data.obstacle_ids([5, 6]),
+                expected := data.obstacle_ids([5, 20]),
+            ),
         ]
 
     @mark.parametrize(
@@ -241,11 +413,13 @@ class test_that_ids_are_assigned_to_obstacles:
             *cases(
                 id_assignment=obstacles.numpy.id_assignment,
                 position_extractor=NumPyObstaclePositionExtractor,
+                heading_extractor=NumPyObstacleHeadingExtractor,
                 data=data.numpy,
             ),
             *cases(
                 id_assignment=obstacles.jax.id_assignment,
                 position_extractor=JaxObstaclePositionExtractor,
+                heading_extractor=JaxObstacleHeadingExtractor,
                 data=data.jax,
             ),
         ],

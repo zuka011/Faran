@@ -5,6 +5,8 @@ from .basic import (
     NumPyObstacle2dPosesForTimeStep as NumPyObstacle2dPosesForTimeStep,
     NumPyObstacle2dPositions as NumPyObstacle2dPositions,
     NumPyObstacle2dPositionsForTimeStep as NumPyObstacle2dPositionsForTimeStep,
+    NumPyObstacleHeadings as NumPyObstacleHeadings,
+    NumPyObstacleHeadingsForTimeStep as NumPyObstacleHeadingsForTimeStep,
 )
 from .accelerated import (
     JaxSampledObstacle2dPoses as JaxSampledObstacle2dPoses,
@@ -12,6 +14,8 @@ from .accelerated import (
     JaxObstacle2dPosesForTimeStep as JaxObstacle2dPosesForTimeStep,
     JaxObstacle2dPositions as JaxObstacle2dPositions,
     JaxObstacle2dPositionsForTimeStep as JaxObstacle2dPositionsForTimeStep,
+    JaxObstacleHeadings as JaxObstacleHeadings,
+    JaxObstacleHeadingsForTimeStep as JaxObstacleHeadingsForTimeStep,
 )
 from .history import (
     NumPyObstacleIds as NumPyObstacleIds,

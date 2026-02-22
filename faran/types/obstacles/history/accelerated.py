@@ -4,6 +4,9 @@ from faran.types.obstacles.history.common import (
     ObstaclePositionsForTimeStep,
     ObstaclePositions,
     ObstaclePositionExtractor,
+    ObstacleOrientationsForTimeStep,
+    ObstacleOrientations,
+    ObstacleOrientationExtractor,
 )
 
 from jaxtyping import Array as JaxArray, Float
@@ -27,6 +30,24 @@ class JaxObstaclePositions[T: int, D_p: int, K: int](
         ...
 
 
+class JaxObstacleOrientationsForTimeStep[D_o: int, K: int](
+    ObstacleOrientationsForTimeStep[D_o, K], Protocol
+):
+    @property
+    def array(self) -> Float[JaxArray, "D_o K"]:
+        """Returns the obstacle orientations for a single time step as a JAX array."""
+        ...
+
+
+class JaxObstacleOrientations[T: int, D_o: int, K: int](
+    ObstacleOrientations[T, D_o, K], Protocol
+):
+    @property
+    def array(self) -> Float[JaxArray, "T D_o K"]:
+        """Returns the obstacle orientations as a JAX array."""
+        ...
+
+
 class JaxObstaclePositionExtractor[
     ObstacleStatesForTimeStepT,
     ObstacleStatesT,
@@ -35,6 +56,22 @@ class JaxObstaclePositionExtractor[
 ](
     ObstaclePositionExtractor[
         ObstacleStatesForTimeStepT, ObstacleStatesT, PositionsForTimeStepT, PositionsT
+    ],
+    Protocol,
+): ...
+
+
+class JaxObstacleOrientationExtractor[
+    ObstacleStatesForTimeStepT,
+    ObstacleStatesT,
+    OrientationsForTimeStepT,
+    OrientationsT,
+](
+    ObstacleOrientationExtractor[
+        ObstacleStatesForTimeStepT,
+        ObstacleStatesT,
+        OrientationsForTimeStepT,
+        OrientationsT,
     ],
     Protocol,
 ): ...

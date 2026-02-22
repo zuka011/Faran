@@ -155,6 +155,8 @@ from faran.obstacles import (
     NumPyObstacle2dPosesForTimeStep,
     NumPyObstacle2dPositions,
     NumPyObstacle2dPositionsForTimeStep,
+    NumPyObstacleHeadings,
+    NumPyObstacleHeadingsForTimeStep,
     NumPyObstacleStatesRunningHistory,
     JaxObstacleIds,
     JaxSampledObstacle2dPoses,
@@ -162,6 +164,8 @@ from faran.obstacles import (
     JaxObstacle2dPosesForTimeStep,
     JaxObstacle2dPositions,
     JaxObstacle2dPositionsForTimeStep,
+    JaxObstacleHeadings,
+    JaxObstacleHeadingsForTimeStep,
     JaxObstacleStatesRunningHistory,
 )
 from faran.states import (
@@ -344,6 +348,10 @@ class types:
         ]
         type Obstacle2dPositionsForTimeStep[K: int = Any] = (
             NumPyObstacle2dPositionsForTimeStep[K]
+        )
+        type ObstacleHeadings[T: int = Any, K: int = Any] = NumPyObstacleHeadings[T, K]
+        type ObstacleHeadingsForTimeStep[K: int = Any] = (
+            NumPyObstacleHeadingsForTimeStep[K]
         )
         type ObstacleStatesRunningHistory[
             StatesT,
@@ -593,6 +601,10 @@ class types:
         type Obstacle2dPositionsForTimeStep[K: int = Any] = (
             JaxObstacle2dPositionsForTimeStep[K]
         )
+        type ObstacleHeadings[T: int = Any, K: int = Any] = JaxObstacleHeadings[T, K]
+        type ObstacleHeadingsForTimeStep[K: int = Any] = JaxObstacleHeadingsForTimeStep[
+            K
+        ]
         type ObstacleStatesRunningHistory[
             StatesT: JaxObstacleStates,
             StatesForTimeStepT: JaxObstacleStatesForTimeStep,
@@ -822,6 +834,8 @@ class classes:
         Obstacle2dPosesForTimeStep: Final = NumPyObstacle2dPosesForTimeStep
         Obstacle2dPositions: Final = NumPyObstacle2dPositions
         Obstacle2dPositionsForTimeStep: Final = NumPyObstacle2dPositionsForTimeStep
+        ObstacleHeadings: Final = NumPyObstacleHeadings
+        ObstacleHeadingsForTimeStep: Final = NumPyObstacleHeadingsForTimeStep
         ObstacleStatesRunningHistory: Final = NumPyObstacleStatesRunningHistory
         ObstaclePositionExtractor: Final = NumPyObstaclePositionExtractor
         Distance: Final = NumPyDistance
@@ -902,6 +916,8 @@ class classes:
         Obstacle2dPosesForTimeStep: Final = JaxObstacle2dPosesForTimeStep
         Obstacle2dPositions: Final = JaxObstacle2dPositions
         Obstacle2dPositionsForTimeStep: Final = JaxObstacle2dPositionsForTimeStep
+        ObstacleHeadings: Final = JaxObstacleHeadings
+        ObstacleHeadingsForTimeStep: Final = JaxObstacleHeadingsForTimeStep
         ObstacleStatesRunningHistory: Final = JaxObstacleStatesRunningHistory
         ObstaclePositionExtractor: Final = JaxObstaclePositionExtractor
         Distance: Final = JaxDistance

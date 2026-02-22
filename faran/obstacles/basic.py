@@ -13,6 +13,8 @@ from faran.types import (
     NumPyObstacleStatesForTimeStep,
     NumPyObstaclePositions,
     NumPyObstaclePositionsForTimeStep,
+    NumPyObstacleOrientations,
+    NumPyObstacleOrientationsForTimeStep,
 )
 
 from numtypes import Array, Dims, D, shape_of
@@ -166,6 +168,76 @@ class NumPyObstacle2dPositionsForTimeStep[K: int](
 
 
 @dataclass(kw_only=True, frozen=True)
+class NumPyObstacleHeadings[T: int, K: int](NumPyObstacleOrientations[T, D[1], K]):
+    """Obstacle headings with shape (T, 1, K)."""
+
+    _heading: Array[Dims[T, K]]
+
+    @staticmethod
+    def create[T_: int, K_: int](
+        *, heading: Array[Dims[T_, K_]]
+    ) -> "NumPyObstacleHeadings[T_, K_]":
+        return NumPyObstacleHeadings(_heading=heading)
+
+    def __array__(self, dtype: DataType | None = None) -> Array[Dims[T, D[1], K]]:
+        return self.array
+
+    @property
+    def horizon(self) -> T:
+        return self._heading.shape[0]
+
+    @property
+    def dimension(self) -> D[1]:
+        return 1
+
+    @property
+    def count(self) -> K:
+        return self._heading.shape[1]
+
+    @property
+    def array(self) -> Array[Dims[T, D[1], K]]:
+        return self._array
+
+    @cached_property
+    def _array(self) -> Array[Dims[T, D[1], K]]:
+        return self._heading[:, np.newaxis, :]
+
+
+@dataclass(kw_only=True, frozen=True)
+class NumPyObstacleHeadingsForTimeStep[K: int](
+    NumPyObstacleOrientationsForTimeStep[D[1], K]
+):
+    """Obstacle headings for a single time step."""
+
+    _heading: Array[Dims[K]]
+
+    @staticmethod
+    def create[K_: int](
+        *, heading: Array[Dims[K_]]
+    ) -> "NumPyObstacleHeadingsForTimeStep[K_]":
+        return NumPyObstacleHeadingsForTimeStep(_heading=heading)
+
+    def __array__(self, dtype: DataType | None = None) -> Array[Dims[D[1], K]]:
+        return self.array
+
+    @property
+    def dimension(self) -> D[1]:
+        return 1
+
+    @property
+    def count(self) -> K:
+        return self._heading.shape[0]
+
+    @property
+    def array(self) -> Array[Dims[D[1], K]]:
+        return self._array
+
+    @cached_property
+    def _array(self) -> Array[Dims[D[1], K]]:
+        return self._heading[np.newaxis, :]
+
+
+@dataclass(kw_only=True, frozen=True)
 class NumPyObstacle2dPoses[T: int, K: int](
     NumPyObstacleStates[
         T,
@@ -272,6 +344,9 @@ class NumPyObstacle2dPoses[T: int, K: int](
     def positions(self) -> NumPyObstacle2dPositions[T, K]:
         return NumPyObstacle2dPositions.create(x=self._x, y=self._y)
 
+    def headings(self) -> NumPyObstacleHeadings[T, K]:
+        return NumPyObstacleHeadings.create(heading=self._heading)
+
     def covariance(self) -> ObstacleCovarianceArray[T, K] | None:
         return self._covariance
 
@@ -346,6 +421,9 @@ class NumPyObstacle2dPosesForTimeStep[K: int](
 
     def positions(self) -> NumPyObstacle2dPositionsForTimeStep[K]:
         return NumPyObstacle2dPositionsForTimeStep.create(x=self._x, y=self._y)
+
+    def headings(self) -> NumPyObstacleHeadingsForTimeStep[K]:
+        return NumPyObstacleHeadingsForTimeStep.create(heading=self._heading)
 
     def replicate[T: int](self, *, horizon: T) -> NumPyObstacle2dPoses[T, K]:
         return NumPyObstacle2dPoses.create(

@@ -16,6 +16,8 @@ from faran.types import (
     JaxObstacleStatesForTimeStep,
     JaxObstaclePositions,
     JaxObstaclePositionsForTimeStep,
+    JaxObstacleOrientations,
+    JaxObstacleOrientationsForTimeStep,
 )
 from faran.obstacles.basic import NumPyObstacle2dPosesForTimeStep
 
@@ -224,6 +226,87 @@ class JaxObstacle2dPositionsForTimeStep[K: int](
         return np.asarray(self._array)
 
 
+@dataclass(kw_only=True, frozen=True)
+class JaxObstacleHeadings[T: int, K: int](JaxObstacleOrientations[T, D[1], K]):
+    """Obstacle headings with shape (T, 1, K)."""
+
+    _heading: Float[JaxArray, "T K"]
+
+    @staticmethod
+    def create[T_: int, K_: int](
+        *,
+        heading: Float[JaxArray, "T K"],
+        horizon: T_ | None = None,
+        obstacle_count: K_ | None = None,
+    ) -> "JaxObstacleHeadings[T_, K_]":
+        return JaxObstacleHeadings(_heading=heading)
+
+    def __array__(self, dtype: DataType | None = None) -> Array[Dims[T, D[1], K]]:
+        return self._numpy_array
+
+    @property
+    def horizon(self) -> T:
+        return cast(T, self._heading.shape[0])
+
+    @property
+    def dimension(self) -> D[1]:
+        return 1
+
+    @property
+    def count(self) -> K:
+        return cast(K, self._heading.shape[1])
+
+    @property
+    def array(self) -> Float[JaxArray, "T 1 K"]:
+        return self._array
+
+    @cached_property
+    def _array(self) -> Float[JaxArray, "T 1 K"]:
+        return self._heading[:, jnp.newaxis, :]
+
+    @cached_property
+    def _numpy_array(self) -> Array[Dims[T, D[1], K]]:
+        return np.asarray(self._array)
+
+
+@dataclass(kw_only=True, frozen=True)
+class JaxObstacleHeadingsForTimeStep[K: int](
+    JaxObstacleOrientationsForTimeStep[D[1], K]
+):
+    """Obstacle headings for a single time step with shape (1, K)."""
+
+    _heading: Float[JaxArray, "K"]
+
+    @staticmethod
+    def create[K_: int](
+        *, heading: Float[JaxArray, "K"], obstacle_count: K_ | None = None
+    ) -> "JaxObstacleHeadingsForTimeStep[K_]":
+        return JaxObstacleHeadingsForTimeStep(_heading=heading)
+
+    def __array__(self, dtype: DataType | None = None) -> Array[Dims[D[1], K]]:
+        return self._numpy_array
+
+    @property
+    def dimension(self) -> D[1]:
+        return 1
+
+    @property
+    def count(self) -> K:
+        return cast(K, self._heading.shape[0])
+
+    @property
+    def array(self) -> Float[JaxArray, "1 K"]:
+        return self._jax_array
+
+    @cached_property
+    def _jax_array(self) -> Float[JaxArray, "1 K"]:
+        return self._heading[jnp.newaxis, :]
+
+    @cached_property
+    def _numpy_array(self) -> Array[Dims[D[1], K]]:
+        return np.asarray(self._jax_array)
+
+
 @jaxtyped
 @dataclass(kw_only=True, frozen=True)
 class JaxObstacle2dPoses[T: int, K: int](
@@ -374,6 +457,9 @@ class JaxObstacle2dPoses[T: int, K: int](
     def positions(self) -> "JaxObstacle2dPositions[T, K]":
         return JaxObstacle2dPositions.create(x=self._x, y=self._y)
 
+    def headings(self) -> "JaxObstacleHeadings[T, K]":
+        return JaxObstacleHeadings.create(heading=self._heading)
+
     def single(self) -> JaxSampledObstacle2dPoses[T, K, D[1]]:
         return JaxSampledObstacle2dPoses.create(
             x=self._x[..., jnp.newaxis],
@@ -482,6 +568,9 @@ class JaxObstacle2dPosesForTimeStep[K: int](
 
     def positions(self) -> JaxObstacle2dPositionsForTimeStep[K]:
         return JaxObstacle2dPositionsForTimeStep.create(x=self._x, y=self._y)
+
+    def headings(self) -> JaxObstacleHeadingsForTimeStep[K]:
+        return JaxObstacleHeadingsForTimeStep.create(heading=self._heading)
 
     def replicate[T: int](self, *, horizon: T) -> JaxObstacle2dPoses[T, K]:
         return JaxObstacle2dPoses.create(
