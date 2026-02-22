@@ -104,16 +104,20 @@ class JaxUnscentedKalmanFilter(NamedTuple):
         mean_weights, covariance_weights = self._compute_weights(state_dimension)
 
         def should_skip(
+            *,
+            mean: Float[JaxArray, "D_x K"],
             covariance: Float[JaxArray, "D_x D_x K"],
         ) -> Float[JaxArray, "K"]:
-            return jnp.any(jnp.isnan(covariance), axis=(0, 1))
+            return jnp.any(jnp.isnan(covariance), axis=(0, 1)) | jnp.any(
+                jnp.isnan(mean), axis=0
+            )
 
         def substitute_missing_values(
             *,
             mean: Float[JaxArray, "D_x K"],
             covariance: Float[JaxArray, "D_x D_x K"],
         ) -> tuple[Float[JaxArray, "D_x K"], Float[JaxArray, "D_x D_x K"]]:
-            covariance_is_nan = should_skip(covariance)
+            covariance_is_nan = should_skip(mean=mean, covariance=covariance)
 
             return (
                 jnp.where(jnp.isnan(mean), 0.0, mean),
@@ -163,7 +167,7 @@ class JaxUnscentedKalmanFilter(NamedTuple):
                 ),
             )
 
-        skip_mask = should_skip(sigma)
+        skip_mask = should_skip(mean=mu, covariance=sigma)
         safe_mu, safe_sigma = substitute_missing_values(mean=mu, covariance=sigma)
 
         predicted_means, predicted_covariances = jax.vmap(

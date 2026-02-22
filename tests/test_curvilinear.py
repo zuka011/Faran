@@ -1,10 +1,10 @@
 from typing import Sequence
 
 from faran import (
-    model,
-    predictor as create_predictor,
     ObstacleStates,
     ObstacleMotionPredictor,
+    model,
+    predictor as create_predictor,
 )
 
 from numtypes import array
@@ -1729,4 +1729,70 @@ class test_that_higher_initial_state_covariance_leads_to_higher_prediction_covar
         ), (
             f"Expected higher initial covariance to produce higher prediction "
             f"variance, but got {high:.4f} (high initial cov.) <= {low:.4f} (low initial cov.)."
+        )
+
+
+class test_that_prediction_is_not_created_for_obstacle_when_obstacle_history_is_missing:
+    @staticmethod
+    def cases(create_predictor, model, prediction_creator, data) -> Sequence[tuple]:
+        return [
+            (
+                predictor := create_predictor.curvilinear(
+                    horizon=(T_p := 3),
+                    model=model.bicycle.obstacle(
+                        time_step_size=(dt := 0.1),
+                        wheelbase=(L := 1.0),
+                        process_noise_covariance=0.0,
+                    ),
+                    estimator=model.bicycle.estimator.finite_difference(
+                        time_step_size=dt, wheelbase=L
+                    ),
+                    prediction=prediction_creator.bicycle(),
+                ),
+                history := data.obstacle_2d_poses(
+                    x=array(
+                        [[1.0, np.nan], [2.0, np.nan]],
+                        shape=(T_h := 2, K := 2),
+                    ),
+                    y=array(
+                        [[0.0, np.nan], [0.0, np.nan]],
+                        shape=(T_h, K),
+                    ),
+                    heading=array(
+                        [[0.0, np.nan], [0.0, np.nan]],
+                        shape=(T_h, K),
+                    ),
+                ),
+                missing_obstacle_index := 1,
+            ),
+        ]
+
+    @mark.parametrize(
+        ["predictor", "history", "missing_obstacle_index"],
+        [
+            *cases(
+                create_predictor=create_predictor.numpy,
+                model=model.numpy,
+                prediction_creator=prediction_creator.numpy,
+                data=data.numpy,
+            ),
+            *cases(
+                create_predictor=create_predictor.jax,
+                model=model.jax,
+                prediction_creator=prediction_creator.jax,
+                data=data.jax,
+            ),
+        ],
+    )
+    def test[HistoryT, PredictionT: ObstacleStates](
+        self,
+        predictor: ObstacleMotionPredictor[HistoryT, PredictionT],
+        history: HistoryT,
+        missing_obstacle_index: int,
+    ) -> None:
+        prediction = np.asarray(predictor.predict(history=history))
+
+        assert np.all(np.isnan(prediction[..., missing_obstacle_index])), (
+            f"Expected no prediction for obstacle with missing history, "
+            f"but got {prediction[..., missing_obstacle_index]}"
         )

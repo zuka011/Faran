@@ -4,9 +4,6 @@ from faran import types
 
 import tests.dsl.mppi as data
 
-import jax.numpy as jnp
-import numpy as np
-
 
 class NumPyIntegratorPredictionCreator:
     def __call__(
@@ -20,11 +17,7 @@ class NumPyIntegratorPredictionCreator:
         )
 
     def empty(self, *, horizon: int) -> types.numpy.Obstacle2dPoses:
-        return data.numpy.obstacle_2d_poses(
-            x=np.empty((horizon, 0)),
-            y=np.empty((horizon, 0)),
-            heading=np.empty((horizon, 0)),
-        )
+        return types.numpy.obstacle_2d_poses.empty(horizon=horizon)
 
 
 class NumPyBicyclePredictionCreator:
@@ -34,11 +27,7 @@ class NumPyBicyclePredictionCreator:
         return states.pose()
 
     def empty(self, *, horizon: int) -> types.numpy.Obstacle2dPoses:
-        return data.numpy.obstacle_2d_poses(
-            x=np.empty((horizon, 0)),
-            y=np.empty((horizon, 0)),
-            heading=np.empty((horizon, 0)),
-        )
+        return types.numpy.obstacle_2d_poses.empty(horizon=horizon)
 
 
 class NumPyUnicyclePredictionCreator:
@@ -48,11 +37,7 @@ class NumPyUnicyclePredictionCreator:
         return states.pose()
 
     def empty(self, *, horizon: int) -> types.numpy.Obstacle2dPoses:
-        return data.numpy.obstacle_2d_poses(
-            x=np.empty((horizon, 0)),
-            y=np.empty((horizon, 0)),
-            heading=np.empty((horizon, 0)),
-        )
+        return types.numpy.obstacle_2d_poses.empty(horizon=horizon)
 
 
 class JaxIntegratorPredictionCreator:
@@ -67,11 +52,7 @@ class JaxIntegratorPredictionCreator:
         )
 
     def empty(self, *, horizon: int) -> types.jax.Obstacle2dPoses:
-        return data.jax.obstacle_2d_poses(
-            x=jnp.empty((horizon, 0)),
-            y=jnp.empty((horizon, 0)),
-            heading=jnp.empty((horizon, 0)),
-        )
+        return types.jax.obstacle_2d_poses.empty(horizon=horizon)
 
 
 class JaxBicyclePredictionCreator:
@@ -81,11 +62,7 @@ class JaxBicyclePredictionCreator:
         return states.pose()
 
     def empty(self, *, horizon: int) -> types.jax.Obstacle2dPoses:
-        return data.jax.obstacle_2d_poses(
-            x=jnp.empty((horizon, 0)),
-            y=jnp.empty((horizon, 0)),
-            heading=jnp.empty((horizon, 0)),
-        )
+        return types.jax.obstacle_2d_poses.empty(horizon=horizon)
 
 
 class JaxUnicyclePredictionCreator:
@@ -95,11 +72,7 @@ class JaxUnicyclePredictionCreator:
         return states.pose()
 
     def empty(self, *, horizon: int) -> types.jax.Obstacle2dPoses:
-        return data.jax.obstacle_2d_poses(
-            x=jnp.empty((horizon, 0)),
-            y=jnp.empty((horizon, 0)),
-            heading=jnp.empty((horizon, 0)),
-        )
+        return types.jax.obstacle_2d_poses.empty(horizon=horizon)
 
 
 class prediction_creator:
