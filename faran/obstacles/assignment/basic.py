@@ -2,6 +2,8 @@ from typing import Final, NamedTuple, cast
 from dataclasses import dataclass
 
 from faran.types import (
+    jaxtyped,
+    Array,
     DataType,
     ObstacleIdAssignment,
     ObstacleStatesForTimeStep,
@@ -17,7 +19,8 @@ from faran.obstacles.history import NumPyObstacleIds
 
 from scipy.optimize import linear_sum_assignment
 from scipy.spatial.distance import cdist
-from numtypes import Array, IndexArray, BoolArray, Dims, D
+from numtypes import D
+from jaxtyping import Float, Int, Bool
 
 import numpy as np
 
@@ -39,17 +42,16 @@ class WithCutoff[T](NamedTuple):
     cutoff: float
 
 
+@jaxtyped
 @dataclass(frozen=True)
-class NoOrientationsForTimeStep[K: int](NumPyObstacleOrientationsForTimeStep[D[0], K]):
-    _array: Array[Dims[D[0], K]]
+class NoOrientationsForTimeStep(NumPyObstacleOrientationsForTimeStep):
+    _array: Float[Array, "0 K"]
 
     @staticmethod
-    def create[K_: int](*, obstacle_count: K_) -> "NoOrientationsForTimeStep[K_]":
-        return NoOrientationsForTimeStep(
-            cast(Array[Dims[D[0], K_]], np.zeros((0, obstacle_count)))
-        )
+    def create(*, obstacle_count: int) -> "NoOrientationsForTimeStep":
+        return NoOrientationsForTimeStep(np.zeros((0, obstacle_count)))
 
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[D[0], K]]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "0 K"]:
         return self.array
 
     @property
@@ -57,31 +59,28 @@ class NoOrientationsForTimeStep[K: int](NumPyObstacleOrientationsForTimeStep[D[0
         return 0
 
     @property
-    def count(self) -> K:
+    def count(self) -> int:
         return self.array.shape[1]
 
     @property
-    def array(self) -> Array[Dims[D[0], K]]:
+    def array(self) -> Float[Array, "0 K"]:
         return self._array
 
 
+@jaxtyped
 @dataclass(frozen=True)
-class NoOrientations[T: int, K: int](NumPyObstacleOrientations[T, D[0], K]):
-    _array: Array[Dims[T, D[0], K]]
+class NoOrientations(NumPyObstacleOrientations):
+    _array: Float[Array, "T 0 K"]
 
     @staticmethod
-    def create[T_: int, K_: int](
-        *, horizon: T_, obstacle_count: K_
-    ) -> "NoOrientations[T_, K_]":
-        return NoOrientations(
-            cast(Array[Dims[T_, D[0], K_]], np.zeros((horizon, 0, obstacle_count)))
-        )
+    def create(*, horizon: int, obstacle_count: int) -> "NoOrientations":
+        return NoOrientations(np.zeros((horizon, 0, obstacle_count)))
 
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[T, D[0], K]]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "T 0 K"]:
         return self.array
 
     @property
-    def horizon(self) -> T:
+    def horizon(self) -> int:
         return self.array.shape[0]
 
     @property
@@ -89,11 +88,11 @@ class NoOrientations[T: int, K: int](NumPyObstacleOrientations[T, D[0], K]):
         return 0
 
     @property
-    def count(self) -> K:
+    def count(self) -> int:
         return self.array.shape[2]
 
     @property
-    def array(self) -> Array[Dims[T, D[0], K]]:
+    def array(self) -> Float[Array, "T 0 K"]:
         return self._array
 
 
@@ -179,9 +178,9 @@ class NumPyHungarianObstacleIdAssignment[
             )
         )
 
-    def _valid_history_from[D_p: int = int, D_o: int = int, K: int = int](
+    def _valid_history_from(
         self, history: HistoryT, ids: NumPyObstacleIds
-    ) -> tuple[Array[Dims[D_p, K]], Array[Dims[D_o, K]], IndexArray[Dims[K]]]:
+    ) -> tuple[Float[Array, "D_p K"], Float[Array, "D_o K"], Int[Array, " K"]]:
         id_count = ids.count
         positions = self.positions.extractor.of_states(history).array
         orientations = self.orientations.extractor.of_states(history).array
@@ -196,20 +195,14 @@ class NumPyHungarianObstacleIdAssignment[
 
         return last_positions[:, valid], last_orientations[:, valid], ids.array[valid]
 
-    def _matching_for[
-        D_p: int = int,
-        D_o: int = int,
-        K_c: int = int,
-        K_h: int = int,
-        M: int = int,
-    ](
+    def _matching_for(
         self,
         *,
-        current_positions: Array[Dims[D_p, K_c]],
-        last_positions: Array[Dims[D_p, K_h]],
-        current_orientations: Array[Dims[D_o, K_c]],
-        last_orientations: Array[Dims[D_o, K_h]],
-    ) -> tuple[IndexArray[Dims[M]], IndexArray[Dims[M]], BoolArray[Dims[M]]]:
+        current_positions: Float[Array, "D_p K_c"],
+        last_positions: Float[Array, "D_p K_h"],
+        current_orientations: Float[Array, "D_o K_c"],
+        last_orientations: Float[Array, "D_o K_h"],
+    ) -> tuple[Int[Array, " M"], Int[Array, " M"], Bool[Array, " M"]]:
         large_value = max(self.positions.cutoff, self.orientations.cutoff) + 1e9
         position_distances = cdist(current_positions.T, last_positions.T)
         orientation_distances = angular_distance(
@@ -227,33 +220,33 @@ class NumPyHungarianObstacleIdAssignment[
 
         return current_indices, history_indices, matched
 
-    def _assign_ids[K_c: int = int, M: int = int](
+    def _assign_ids(
         self,
         *,
-        current_obstacle_count: K_c,
-        current_indices: IndexArray[Dims[M]],
-        history_indices: IndexArray[Dims[M]],
-        matched: BoolArray[Dims[M]],
-        valid_ids: IndexArray,
-    ) -> IndexArray[Dims[K_c]]:
+        current_obstacle_count: int,
+        current_indices: Int[Array, " M"],
+        history_indices: Int[Array, " M"],
+        matched: Bool[Array, " M"],
+        valid_ids: Int[Array, " N_valid"],
+    ) -> Int[Array, " K_c"]:
         result = np.full(current_obstacle_count, -1, dtype=np.int64)
         result[current_indices[matched]] = valid_ids[history_indices[matched]]
 
         unmatched = result == -1
         result[unmatched] = self._allocate_ids(np.sum(unmatched))
 
-        return cast(IndexArray[Dims[K_c]], result)
+        return result
 
-    def _allocate_ids[K: int = int](self, count: K) -> IndexArray[Dims[K]]:
+    def _allocate_ids(self, count: int) -> Int[Array, " K"]:
         new_ids = np.arange(self.next_id, self.next_id + count)
         self.next_id += count
 
-        return cast(IndexArray[Dims[K]], new_ids)
+        return cast(Int[Array, " K"], new_ids)
 
 
-def angular_distance[D_o: int, K_c: int = int, K_h: int = int](
-    a: Array[Dims[D_o, K_c]], b: Array[Dims[D_o, K_h]]
-) -> Array[Dims[K_c, K_h]]:
+def angular_distance(
+    a: Float[Array, "D_o K_c"], b: Float[Array, "D_o K_h"]
+) -> Float[Array, "K_c K_h"]:
     assert (D_o := a.shape[0]) <= 1, (
         f"Multi-dimensional orientations (D_o={D_o}) are not yet supported."
     )

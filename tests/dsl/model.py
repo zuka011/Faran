@@ -2,51 +2,44 @@ from typing import overload
 
 from faran import types
 
-from numtypes import array, Array, Dims, shape_of
+from numtypes import array, Array, shape_of
+from jaxtyping import Float
 
 import jax.numpy as jnp
 import numpy as np
 
 
 type NumPyBicycleState = types.numpy.bicycle.State
-type NumPyBicycleControlInputBatch[T: int, M: int] = (
-    types.numpy.bicycle.ControlInputBatch[T, M]
-)
+type NumPyBicycleControlInputBatch = types.numpy.bicycle.ControlInputBatch
 type NumPyUnicycleState = types.numpy.unicycle.State
-type NumPyUnicycleControlInputBatch[T: int, M: int] = (
-    types.numpy.unicycle.ControlInputBatch[T, M]
-)
+type NumPyUnicycleControlInputBatch = types.numpy.unicycle.ControlInputBatch
 
 type JaxBicycleState = types.jax.bicycle.State
-type JaxBicycleControlInputBatch[T: int, M: int] = types.jax.bicycle.ControlInputBatch[
-    T, M
-]
+type JaxBicycleControlInputBatch = types.jax.bicycle.ControlInputBatch
 type JaxUnicycleState = types.jax.unicycle.State
-type JaxUnicycleControlInputBatch[T: int, M: int] = (
-    types.jax.unicycle.ControlInputBatch[T, M]
-)
+type JaxUnicycleControlInputBatch = types.jax.unicycle.ControlInputBatch
 
 
 class numpy:
     class bicycle:
         @overload
         @staticmethod
-        def control_input_batch[T: int, M: int](
+        def control_input_batch(
             *,
-            time_horizon: T,
-            rollout_count: M,
+            time_horizon: int,
+            rollout_count: int,
             acceleration: float,
             steering: float,
-        ) -> NumPyBicycleControlInputBatch[T, M]: ...
+        ) -> NumPyBicycleControlInputBatch: ...
 
         @overload
         @staticmethod
-        def control_input_batch[T: int, M: int](
+        def control_input_batch(
             *,
-            rollout_count: M,
-            acceleration: Array[Dims[T]],
-            steering: Array[Dims[T]],
-        ) -> NumPyBicycleControlInputBatch[T, M]: ...
+            rollout_count: int,
+            acceleration: Float[Array, " T"],
+            steering: Float[Array, " T"],
+        ) -> NumPyBicycleControlInputBatch: ...
 
         @staticmethod
         def control_input_batch(
@@ -112,22 +105,22 @@ class numpy:
     class unicycle:
         @overload
         @staticmethod
-        def control_input_batch[T: int, M: int](
+        def control_input_batch(
             *,
-            time_horizon: T,
-            rollout_count: M,
+            time_horizon: int,
+            rollout_count: int,
             linear_velocity: float,
             angular_velocity: float,
-        ) -> NumPyUnicycleControlInputBatch[T, M]: ...
+        ) -> NumPyUnicycleControlInputBatch: ...
 
         @overload
         @staticmethod
-        def control_input_batch[T: int, M: int](
+        def control_input_batch(
             *,
-            rollout_count: M,
-            linear_velocity: Array[Dims[T]],
-            angular_velocity: Array[Dims[T]],
-        ) -> NumPyUnicycleControlInputBatch[T, M]: ...
+            rollout_count: int,
+            linear_velocity: Float[Array, " T"],
+            angular_velocity: Float[Array, " T"],
+        ) -> NumPyUnicycleControlInputBatch: ...
 
         @staticmethod
         def control_input_batch(
@@ -192,22 +185,22 @@ class jax:
     class bicycle:
         @overload
         @staticmethod
-        def control_input_batch[T: int, M: int](
+        def control_input_batch(
             *,
-            time_horizon: T,
-            rollout_count: M,
+            time_horizon: int,
+            rollout_count: int,
             acceleration: float,
             steering: float,
-        ) -> JaxBicycleControlInputBatch[T, M]: ...
+        ) -> JaxBicycleControlInputBatch: ...
 
         @overload
         @staticmethod
-        def control_input_batch[T: int, M: int](
+        def control_input_batch(
             *,
-            rollout_count: M,
-            acceleration: Array[Dims[T]],
-            steering: Array[Dims[T]],
-        ) -> JaxBicycleControlInputBatch[T, M]: ...
+            rollout_count: int,
+            acceleration: Float[Array, " T"],
+            steering: Float[Array, " T"],
+        ) -> JaxBicycleControlInputBatch: ...
 
         @staticmethod
         def control_input_batch(
@@ -239,22 +232,22 @@ class jax:
     class unicycle:
         @overload
         @staticmethod
-        def control_input_batch[T: int, M: int](
+        def control_input_batch(
             *,
-            time_horizon: T,
-            rollout_count: M,
+            time_horizon: int,
+            rollout_count: int,
             linear_velocity: float,
             angular_velocity: float,
-        ) -> JaxUnicycleControlInputBatch[T, M]: ...
+        ) -> JaxUnicycleControlInputBatch: ...
 
         @overload
         @staticmethod
-        def control_input_batch[T: int, M: int](
+        def control_input_batch(
             *,
-            rollout_count: M,
-            linear_velocity: Array[Dims[T]],
-            angular_velocity: Array[Dims[T]],
-        ) -> JaxUnicycleControlInputBatch[T, M]: ...
+            rollout_count: int,
+            linear_velocity: Float[Array, " T"],
+            angular_velocity: Float[Array, " T"],
+        ) -> JaxUnicycleControlInputBatch: ...
 
         @staticmethod
         def control_input_batch(

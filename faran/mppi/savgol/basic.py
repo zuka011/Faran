@@ -1,17 +1,19 @@
 from dataclasses import dataclass
 
+from faran.types import Array, jaxtyped
 from faran.types import NumPyControlInputSequence
 
-from numtypes import Array, Dim1, shape_of
+from jaxtyping import Float
 from scipy.signal import savgol_coeffs
 from scipy.ndimage import convolve1d
 
 
+@jaxtyped
 @dataclass(frozen=True)
 class NumPySavGolFilter:
     """Savitzky-Golay smoothing filter for MPPI control sequences (NumPy)."""
 
-    coefficients: Array[Dim1]
+    coefficients: Float[Array, " W"]
 
     @staticmethod
     def create(*, window_length: int, polynomial_order: int) -> "NumPySavGolFilter":
@@ -22,7 +24,7 @@ class NumPySavGolFilter:
 
         coefficients = savgol_coeffs(window_length, polynomial_order)
 
-        assert shape_of(coefficients, matches=(window_length,))
+        assert coefficients.shape == (window_length,)
 
         return NumPySavGolFilter(coefficients=coefficients)
 
@@ -33,6 +35,6 @@ class NumPySavGolFilter:
             optimal_input.array, weights=self.coefficients, axis=0, mode="nearest"
         )
 
-        assert shape_of(filtered, matches=optimal_input.array.shape)
+        assert filtered.shape == optimal_input.array.shape
 
         return optimal_input.similar(array=filtered)

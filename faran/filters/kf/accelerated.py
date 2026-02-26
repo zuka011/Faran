@@ -1,24 +1,21 @@
 from typing import NamedTuple
 
-from faran.types import jaxtyped
+from faran.types import Array, jaxtyped
 
-from numtypes import Array, Dims
 from jaxtyping import Array as JaxArray, Float, Scalar
 
 import jax
 import jax.numpy as jnp
 
 
-type JaxNoiseCovarianceArrayDescription[D_c: int] = (
-    Array[Dims[D_c, D_c]]
-    | Array[Dims[D_c]]
+type JaxNoiseCovarianceArrayDescription = (
+    Float[Array, "D_c D_c"]
+    | Float[Array, " D_c"]
     | Float[JaxArray, "D_c D_c"]
-    | Float[JaxArray, "D_c"]
+    | Float[JaxArray, " D_c"]
 )
 
-type JaxNoiseCovarianceDescription[D_c: int] = (
-    JaxNoiseCovarianceArrayDescription[D_c] | Scalar | float
-)
+type JaxNoiseCovarianceDescription = JaxNoiseCovarianceArrayDescription | Scalar | float
 
 
 class JaxGaussianBelief(NamedTuple):
@@ -27,8 +24,8 @@ class JaxGaussianBelief(NamedTuple):
 
 
 class ObstaclePartitioning(NamedTuple):
-    should_update: Float[JaxArray, "K"]
-    should_initialize: Float[JaxArray, "K"]
+    should_update: Float[JaxArray, " K"]
+    should_initialize: Float[JaxArray, " K"]
 
 
 class JaxKalmanFilter(NamedTuple):
@@ -315,10 +312,8 @@ class jax_kalman_filter:
         )
 
     @staticmethod
-    def standardize_noise_covariance[D_c: int](
-        covariance: JaxNoiseCovarianceDescription[D_c],
-        *,
-        dimension: D_c,
+    def standardize_noise_covariance(
+        covariance: JaxNoiseCovarianceDescription, *, dimension: int
     ) -> Float[JaxArray, "D_c D_c"]:
         if isinstance(covariance, (int, float)):
             return covariance * jnp.eye(dimension)

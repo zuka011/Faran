@@ -1,15 +1,16 @@
 from typing import Protocol, NamedTuple, runtime_checkable, cast
 
+from faran.types.array import Array
 from faran.filters.kf import NumPyGaussianBelief, numpy_kalman_filter
 
-from numtypes import Dims, Array, IndexArray, shape_of
+from jaxtyping import Float, Int
 
 import numpy as np
 
 
 @runtime_checkable
-class StateTransitionFunction[D_x: int, K: int](Protocol):
-    def __call__(self, state: Array[Dims[D_x, K]]) -> Array[Dims[D_x, K]]:
+class StateTransitionFunction(Protocol):
+    def __call__(self, state: Float[Array, "D_x K"]) -> Float[Array, "D_x K"]:
         """Applies the state transition function to the state."""
         ...
 
@@ -32,16 +33,16 @@ class NumPyUnscentedKalmanFilter(NamedTuple):
         """
         return NumPyUnscentedKalmanFilter(alpha=alpha, beta=beta)
 
-    def filter[T: int, D_x: int, D_z: int, K: int](
+    def filter(
         self,
-        observations: Array[Dims[T, D_z, K]],
+        observations: Float[Array, "T D_z K"],
         *,
-        initial_state_covariance: Array[Dims[D_x, D_x]],
-        state_transition: StateTransitionFunction[D_x, K],
-        process_noise_covariance: Array[Dims[D_x, D_x]],
-        observation_noise_covariance: Array[Dims[D_z, D_z]],
-        observation_matrix: Array[Dims[D_z, D_x]],
-    ) -> NumPyGaussianBelief[D_x, K]:
+        initial_state_covariance: Float[Array, "D_x D_x"],
+        state_transition: StateTransitionFunction,
+        process_noise_covariance: Float[Array, "D_x D_x"],
+        observation_noise_covariance: Float[Array, "D_z D_z"],
+        observation_matrix: Float[Array, "D_z D_x"],
+    ) -> NumPyGaussianBelief:
         """Run the UKF over a sequence of observations.
 
         Args:
@@ -70,15 +71,15 @@ class NumPyUnscentedKalmanFilter(NamedTuple):
                 initial_state_covariance=initial_state_covariance,
             )
 
-        return belief
+        return cast(NumPyGaussianBelief, belief)
 
-    def predict[D_x: int, K: int](
+    def predict(
         self,
         *,
-        belief: NumPyGaussianBelief[D_x, K],
-        state_transition: StateTransitionFunction[D_x, K],
-        process_noise_covariance: Array[Dims[D_x, D_x]],
-    ) -> NumPyGaussianBelief[D_x, K]:
+        belief: NumPyGaussianBelief,
+        state_transition: StateTransitionFunction,
+        process_noise_covariance: Float[Array, "D_x D_x"],
+    ) -> NumPyGaussianBelief:
         """Performs the prediction step of the UKF using the unscented transform.
 
         Args:
@@ -95,16 +96,16 @@ class NumPyUnscentedKalmanFilter(NamedTuple):
 
         mean_weights, covariance_weights = self._compute_weights(n, lambda_)
 
-        def propagate[N_SigmaPoints: int](
-            sigma_points: Array[Dims[K, N_SigmaPoints, D_x]],
-        ) -> Array[Dims[K, N_SigmaPoints, D_x]]:
+        def propagate(
+            sigma_points: Float[Array, "K N_SigmaPoints D_x"],
+        ) -> Float[Array, "K N_SigmaPoints D_x"]:
             all_points = sigma_points.reshape(-1, n).T
             propagated_flat = state_transition(all_points)  # type: ignore
             return propagated_flat.T.reshape(-1, sigma_point_count, n)  # type: ignore
 
-        def reconstruct_belief[N_SigmaPoints: int](
-            propagated: Array[Dims[K, N_SigmaPoints, D_x]],
-        ) -> tuple[Array[Dims[K, D_x]], Array[Dims[K, D_x, D_x]]]:
+        def reconstruct_belief(
+            propagated: Float[Array, "K N_SigmaPoints D_x"],
+        ) -> tuple[Float[Array, "K D_x"], Float[Array, "K D_x D_x"]]:
             means = np.sum(
                 mean_weights[np.newaxis, :, np.newaxis] * propagated,
                 axis=1,
@@ -118,12 +119,12 @@ class NumPyUnscentedKalmanFilter(NamedTuple):
 
             return means, covariances
 
-        def scatter_to_full[K_valid: int](
+        def scatter_to_full(
             *,
-            means: Array[Dims[K_valid, D_x]],
-            covariances: Array[Dims[K_valid, D_x, D_x]],
-            valid_indices: IndexArray[Dims[K_valid]],
-        ) -> NumPyGaussianBelief[D_x, K]:
+            means: Float[Array, "K_valid D_x"],
+            covariances: Float[Array, "K_valid D_x D_x"],
+            valid_indices: Int[Array, " K_valid"],
+        ) -> NumPyGaussianBelief:
             predicted_mean = np.full_like(mu, np.nan)
             predicted_covariance = np.full_like(sigma, np.nan)
             predicted_mean[:, valid_indices] = means.T  # type: ignore
@@ -152,15 +153,15 @@ class NumPyUnscentedKalmanFilter(NamedTuple):
             means=means, covariances=covariances, valid_indices=valid_indices
         )
 
-    def update[D_x: int, D_z: int, K: int](
+    def update(
         self,
-        observation: Array[Dims[D_z, K]],
+        observation: Float[Array, "D_z K"],
         *,
-        prediction: NumPyGaussianBelief[D_x, K],
-        observation_matrix: Array[Dims[D_z, D_x]],
-        observation_noise_covariance: Array[Dims[D_z, D_z]],
-        initial_state_covariance: Array[Dims[D_x, D_x]],
-    ) -> NumPyGaussianBelief[D_x, K]:
+        prediction: NumPyGaussianBelief,
+        observation_matrix: Float[Array, "D_z D_x"],
+        observation_noise_covariance: Float[Array, "D_z D_z"],
+        initial_state_covariance: Float[Array, "D_x D_x"],
+    ) -> NumPyGaussianBelief:
         """Performs the update step of the UKF using a linear observation model.
 
         Args:
@@ -178,12 +179,12 @@ class NumPyUnscentedKalmanFilter(NamedTuple):
             initial_state_covariance=initial_state_covariance,
         )
 
-    def initial_belief_from[T: int, D_x: int, D_z: int, K: int](
+    def initial_belief_from(
         self,
-        observations: Array[Dims[T, D_z, K]],
+        observations: Float[Array, "T D_z K"],
         *,
-        initial_state_covariance: Array[Dims[D_x, D_x]],
-    ) -> NumPyGaussianBelief[D_x, K]:
+        initial_state_covariance: Float[Array, "D_x D_x"],
+    ) -> NumPyGaussianBelief:
         """Initializes the belief state from the first observation using a pseudo-inverse.
 
         Args:
@@ -198,11 +199,11 @@ class NumPyUnscentedKalmanFilter(NamedTuple):
         """Returns the scaling parameter λ = (α² - 1)n for the given state dimension."""
         return (self.alpha**2 - 1) * state_dimension
 
-    def _compute_weights[D_x: int = int, N_SigmaPoints: int = int](
-        self, state_dimension: D_x, lambda_: float
-    ) -> tuple[Array[Dims[N_SigmaPoints]], Array[Dims[N_SigmaPoints]]]:
+    def _compute_weights(
+        self, state_dimension: int, lambda_: float
+    ) -> tuple[Float[Array, " N_SigmaPoints"], Float[Array, " N_SigmaPoints"]]:
         n = state_dimension
-        sigma_point_count = cast(N_SigmaPoints, 2 * n + 1)
+        sigma_point_count = 2 * n + 1
 
         mean_weights = np.zeros(sigma_point_count)
         covariance_weights = np.zeros(sigma_point_count)
@@ -216,20 +217,17 @@ class NumPyUnscentedKalmanFilter(NamedTuple):
         mean_weights[1:] = remaining_weight
         covariance_weights[1:] = remaining_weight
 
-        assert shape_of(mean_weights, matches=(sigma_point_count,))
-        assert shape_of(covariance_weights, matches=(sigma_point_count,))
-
         return mean_weights, covariance_weights
 
-    def _generate_sigma_points_batch[D_x: int, K: int, N_SigmaPoints: int = int](
+    def _generate_sigma_points_batch(
         self,
         *,
-        means: Array[Dims[D_x, K]],
-        covariances: Array[Dims[D_x, D_x, K]],
+        means: Float[Array, "D_x K"],
+        covariances: Float[Array, "D_x D_x K"],
         lambda_: float,
-    ) -> Array[Dims[K, N_SigmaPoints, D_x]]:
+    ) -> Float[Array, "K N_SigmaPoints D_x"]:
         n, obstacle_count = means.shape
-        sigma_point_count = cast(N_SigmaPoints, 2 * n + 1)
+        sigma_point_count = 2 * n + 1
 
         batched_covariance = covariances.transpose(2, 0, 1)
         scaled = (n + lambda_) * batched_covariance
@@ -256,7 +254,5 @@ class NumPyUnscentedKalmanFilter(NamedTuple):
         sigma_points[:, n + 1 :, :] = (
             means_t[:, np.newaxis, :] - sqrt_covariance_columns
         )
-
-        assert shape_of(sigma_points, matches=(obstacle_count, sigma_point_count, n))
 
         return sigma_points

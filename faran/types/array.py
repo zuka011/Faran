@@ -7,13 +7,14 @@ except ImportError:
 
 from typing import Literal, Protocol, runtime_checkable
 
-from numtypes import Array
+from numpy.typing import NDArray
 from jaxtyping import jaxtyped as jaxtyping_jaxtyped, Array as JaxArray
 
 import jax
 import numpy as np
 import jax.numpy as jnp
 
+type Array = NDArray
 type DataType = np.dtype
 type Device = Literal["cpu", "default"]
 

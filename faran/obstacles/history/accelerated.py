@@ -1,9 +1,10 @@
-from typing import Self, Protocol, cast
+from typing import Self, Protocol
 from dataclasses import dataclass
 from functools import cached_property
 
 from faran.types import (
     DataType,
+    Array,
     jaxtyped,
     NumPyObstacleStatesForTimeStep,
     JaxObstacleStates,
@@ -14,7 +15,6 @@ from faran.obstacles.history.basic import (
     NumPyObstacleStatesRunningHistory,
 )
 
-from numtypes import IndexArray, NumberArray, Array, Dims
 from jaxtyping import Array as JaxArray, Float, Int, Num
 
 import numpy as np
@@ -39,9 +39,7 @@ class JaxObstacleStateCreatorAdapter[StatesT]:
 
     _creator: JaxObstacleStateCreator[StatesT]
 
-    def wrap[T: int = int, D_o: int = int, K: int = int](
-        self, states: Array[Dims[T, D_o, K]]
-    ) -> StatesT:
+    def wrap(self, states: Float[Array, "T D_o K"]) -> StatesT:
         return self._creator.wrap(jnp.asarray(states))
 
     def empty(self, *, horizon: int, obstacle_count: int) -> StatesT:
@@ -50,33 +48,31 @@ class JaxObstacleStateCreatorAdapter[StatesT]:
 
 @jaxtyped
 @dataclass(kw_only=True, frozen=True)
-class JaxObstacleIds[K: int]:
+class JaxObstacleIds:
     """JAX container for integer obstacle identifiers."""
 
-    _ids: Int[JaxArray, "K"]
+    _ids: Int[JaxArray, " K"]
 
     @staticmethod
-    def create[K_: int](
-        *, ids: NumberArray[Dims[K_]] | Num[JaxArray, "K"]
-    ) -> "JaxObstacleIds[K_]":
+    def create(*, ids: Num[Array, " K"] | Num[JaxArray, " K"]) -> "JaxObstacleIds":
         return JaxObstacleIds(_ids=jnp.asarray(ids).astype(jnp.int32))
 
-    def __array__(self, dtype: DataType | None = None) -> IndexArray[Dims[K]]:
+    def __array__(self, dtype: DataType | None = None) -> Int[Array, " K"]:
         return self._numpy_array
 
-    def numpy(self) -> NumPyObstacleIds[K]:
+    def numpy(self) -> NumPyObstacleIds:
         return NumPyObstacleIds.create(ids=self._numpy_array)
 
     @property
-    def count(self) -> K:
-        return cast(K, self._ids.shape[0])
+    def count(self) -> int:
+        return self._ids.shape[0]
 
     @property
-    def array(self) -> Int[JaxArray, "K"]:
+    def array(self) -> Int[JaxArray, " K"]:
         return self._ids
 
     @property
-    def _numpy_array(self) -> IndexArray[Dims[K]]:
+    def _numpy_array(self) -> Int[Array, " K"]:
         return np.asarray(self._ids, dtype=np.intp)
 
 

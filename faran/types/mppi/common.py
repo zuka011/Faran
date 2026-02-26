@@ -1,24 +1,24 @@
 from typing import Protocol, Self, Any
 from dataclasses import dataclass
 
-from faran.types.array import DataType
+from faran.types.array import Array, DataType
 
-from numtypes import Array, Dims
+from jaxtyping import Float
 
 
-class State[D_x: int](Protocol):
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[D_x]]:
+class State(Protocol):
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, " D_x"]:
         """Returns the state as a NumPy array."""
         ...
 
     @property
-    def dimension(self) -> D_x:
+    def dimension(self) -> int:
         """Returns the dimension of the state."""
         ...
 
 
-class StateSequence[T: int, D_x: int, StateBatchT = Any](Protocol):
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[T, D_x]]:
+class StateSequence[StateBatchT = Any](Protocol):
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "T D_x"]:
         """Returns the state sequence as a NumPy array."""
         ...
 
@@ -27,70 +27,70 @@ class StateSequence[T: int, D_x: int, StateBatchT = Any](Protocol):
         ...
 
     @property
-    def horizon(self) -> T:
+    def horizon(self) -> int:
         """Time horizon of the state sequence."""
         ...
 
     @property
-    def dimension(self) -> D_x:
+    def dimension(self) -> int:
         """State dimension."""
         ...
 
 
-class StateBatch[T: int, D_x: int, M: int](Protocol):
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[T, D_x, M]]:
+class StateBatch(Protocol):
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "T D_x M"]:
         """Returns the states as a NumPy array."""
         ...
 
     @property
-    def horizon(self) -> T:
+    def horizon(self) -> int:
         """Time horizon of the state batch."""
         ...
 
     @property
-    def dimension(self) -> D_x:
+    def dimension(self) -> int:
         """State dimension."""
         ...
 
     @property
-    def rollout_count(self) -> M:
+    def rollout_count(self) -> int:
         """Number of rollouts in the batch."""
         ...
 
 
-class ControlInputSequence[T: int, D_u: int](Protocol):
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[T, D_u]]:
+class ControlInputSequence(Protocol):
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "T D_u"]:
         """Returns the control input sequence as a NumPy array."""
         ...
 
     @property
-    def horizon(self) -> T:
+    def horizon(self) -> int:
         """Time horizon of the control input sequence."""
         ...
 
     @property
-    def dimension(self) -> D_u:
+    def dimension(self) -> int:
         """Control input dimension."""
         ...
 
 
-class ControlInputBatch[T: int, D_u: int, M: int](Protocol):
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[T, D_u, M]]:
+class ControlInputBatch(Protocol):
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "T D_u M"]:
         """Returns the control inputs as a NumPy array."""
         ...
 
     @property
-    def horizon(self) -> T:
+    def horizon(self) -> int:
         """Time horizon of the control input batch."""
         ...
 
     @property
-    def dimension(self) -> D_u:
+    def dimension(self) -> int:
         """Control input dimension."""
         ...
 
     @property
-    def rollout_count(self) -> M:
+    def rollout_count(self) -> int:
         """Number of rollouts in the batch."""
         ...
 
@@ -119,8 +119,8 @@ class DynamicalModel[StateT, StateSequenceT, StateBatchT, InputSequenceT, InputB
         ...
 
 
-class Costs[T: int, M: int](Protocol):
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[T, M]]:
+class Costs(Protocol):
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "T M"]:
         """Returns the costs as a NumPy array."""
         ...
 
@@ -129,12 +129,12 @@ class Costs[T: int, M: int](Protocol):
         ...
 
     @property
-    def horizon(self) -> T:
+    def horizon(self) -> int:
         """Time horizon of the costs."""
         ...
 
     @property
-    def rollout_count(self) -> M:
+    def rollout_count(self) -> int:
         """Number of rollouts the costs correspond to."""
         ...
 
@@ -156,13 +156,13 @@ class Sampler[InputSequenceT, InputBatchT](Protocol):
         ...
 
 
-class Weights[M: int](Protocol):
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[M]]:
+class Weights(Protocol):
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, " M"]:
         """Returns the weights as a NumPy array."""
         ...
 
     @property
-    def rollout_count(self) -> M:
+    def rollout_count(self) -> int:
         """Number of rollouts the weights correspond to."""
         ...
 

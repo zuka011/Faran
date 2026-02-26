@@ -64,9 +64,9 @@ class JaxSatDistanceExtractor[StateT, SampledObstacleStatesT](
             obstacle_headings_from=obstacle_heading_extractor,
         )
 
-    def __call__[T: int = int, N: int = int, M: int = int](
+    def __call__(
         self, *, states: StateT, obstacle_states: SampledObstacleStatesT
-    ) -> JaxDistance[T, V, M, N]:
+    ) -> JaxDistance:
         ego_positions = self.positions_from(states)
         ego_headings = self.headings_from(states)
         obstacle_positions = self.obstacle_positions_from(obstacle_states)
@@ -141,9 +141,9 @@ def compute_sat_distances(
         ego_x_tm: Scalar,
         ego_y_tm: Scalar,
         ego_heading_tm: Scalar,
-        obs_x_kn: Float[JaxArray, "K"],
-        obs_y_kn: Float[JaxArray, "K"],
-        obs_heading_kn: Float[JaxArray, "K"],
+        obs_x_kn: Float[JaxArray, " K"],
+        obs_y_kn: Float[JaxArray, " K"],
+        obs_heading_kn: Float[JaxArray, " K"],
     ) -> Scalar:
         distances_k = jax.vmap(
             lambda ox, oy, oh: compute_single_distance(
@@ -153,9 +153,9 @@ def compute_sat_distances(
         return jnp.min(distances_k)
 
     def compute_for_timestep(
-        ego_x_t: Float[JaxArray, "M"],
-        ego_y_t: Float[JaxArray, "M"],
-        ego_heading_t: Float[JaxArray, "M"],
+        ego_x_t: Float[JaxArray, " M"],
+        ego_y_t: Float[JaxArray, " M"],
+        ego_heading_t: Float[JaxArray, " M"],
         obs_x_t: Float[JaxArray, "K N"],
         obs_y_t: Float[JaxArray, "K N"],
         obs_heading_t: Float[JaxArray, "K N"],

@@ -23,9 +23,9 @@ class JaxGaussianObstacle2dPoseSampler(
     def create(*, seed: int = 42) -> "JaxGaussianObstacle2dPoseSampler":
         return JaxGaussianObstacle2dPoseSampler(key=jax.random.key(seed))
 
-    def __call__[T: int, K: int, N: int](
-        self, states: JaxObstacle2dPoses[T, K], *, count: N
-    ) -> JaxSampledObstacle2dPoses[T, K, N]:
+    def __call__(
+        self, states: JaxObstacle2dPoses, *, count: int
+    ) -> JaxSampledObstacle2dPoses:
         if states.count == 0:
             return cast(JaxSampledObstacle2dPoses, states.single())
 

@@ -1,5 +1,6 @@
-from typing import Protocol, Self, Any, overload
+from typing import Protocol, Self, Any
 
+from faran.types.array import Array
 from faran.types.mppi.common import (
     State,
     StateSequence,
@@ -15,73 +16,57 @@ from faran.types.mppi.common import (
     FilterFunction,
 )
 
-from numtypes import Array, Dims
+from jaxtyping import Float
 
 
-class NumPyState[D_x: int](State[D_x], Protocol):
+class NumPyState(State, Protocol):
     @property
-    def array(self) -> Array[Dims[D_x]]:
+    def array(self) -> Float[Array, " D_x"]:
         """Returns the underlying NumPy array representing the state."""
         ...
 
 
-class NumPyStateSequence[T: int, D_x: int, StateBatchT = Any](
-    StateSequence[T, D_x, StateBatchT], Protocol
-):
+class NumPyStateSequence[StateBatchT = Any](StateSequence[StateBatchT], Protocol):
     @property
-    def array(self) -> Array[Dims[T, D_x]]:
+    def array(self) -> Float[Array, "T D_x"]:
         """Returns the underlying NumPy array representing the state sequence."""
         ...
 
 
-class NumPyStateBatch[T: int, D_x: int, M: int](StateBatch[T, D_x, M], Protocol):
+class NumPyStateBatch(StateBatch, Protocol):
     @property
-    def array(self) -> Array[Dims[T, D_x, M]]:
+    def array(self) -> Float[Array, "T D_x M"]:
         """Returns the underlying NumPy array representing the state batch."""
         ...
 
 
-class NumPyControlInputSequence[T: int, D_u: int](
-    ControlInputSequence[T, D_u], Protocol
-):
-    @overload
-    def similar(self, *, array: Array[Dims[T, D_u]]) -> Self:
+class NumPyControlInputSequence(ControlInputSequence, Protocol):
+    def similar(self, *, array: Float[Array, "T D_u"]) -> Self:
         """Creates a new control input sequence similar to this one but with the given
         array as its data.
         """
         ...
 
-    @overload
-    def similar[L: int](
-        self, *, array: Array[Dims[L, D_u]], length: L
-    ) -> "NumPyControlInputSequence[L, D_u]":
-        """Creates a new control input sequence similar to this one but with the given
-        array as its data. The length of the new sequence may differ from the original.
-        """
-        ...
-
     @property
-    def array(self) -> Array[Dims[T, D_u]]:
+    def array(self) -> Float[Array, "T D_u"]:
         """Returns the underlying NumPy array representing the control input sequence."""
         ...
 
 
-class NumPyControlInputBatch[T: int, D_u: int, M: int](
-    ControlInputBatch[T, D_u, M], Protocol
-):
+class NumPyControlInputBatch(ControlInputBatch, Protocol):
     @property
-    def array(self) -> Array[Dims[T, D_u, M]]:
+    def array(self) -> Float[Array, "T D_u M"]:
         """Returns the underlying NumPy array representing the control input batch."""
         ...
 
 
-class NumPyCosts[T: int, M: int](Costs[T, M], Protocol):
-    def similar(self, *, array: Array[Dims[T, M]]) -> Self:
+class NumPyCosts(Costs, Protocol):
+    def similar(self, *, array: Float[Array, "T M"]) -> Self:
         """Creates new costs similar to this one but with the given array as its data."""
         ...
 
     @property
-    def array(self) -> Array[Dims[T, M]]:
+    def array(self) -> Float[Array, "T M"]:
         """Returns the underlying NumPy array representing the costs."""
         ...
 

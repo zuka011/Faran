@@ -2,20 +2,29 @@ from typing import Any
 from dataclasses import dataclass
 from functools import cached_property
 
-from faran.types import StateSequence, ContouringCost, LagCost, SimulationData, Metric
+from faran.types import (
+    jaxtyped,
+    Array,
+    StateSequence,
+    ContouringCost,
+    LagCost,
+    SimulationData,
+    Metric,
+)
 from faran.collectors import access
 
-from numtypes import Array, Dims
+from jaxtyping import Float
 
 import numpy as np
 
 
+@jaxtyped
 @dataclass(kw_only=True, frozen=True)
-class MpccErrorMetricResult[T: int = int]:
+class MpccErrorMetricResult:
     """Results of the MPCC error metric, including contouring and lag errors."""
 
-    contouring: Array[Dims[T]]
-    lag: Array[Dims[T]]
+    contouring: Float[Array, " T"]
+    lag: Float[Array, " T"]
 
     @cached_property
     def max_contouring(self) -> float:
@@ -29,7 +38,7 @@ class MpccErrorMetricResult[T: int = int]:
 
 
 @dataclass(kw_only=True, frozen=True)
-class MpccErrorMetric[StateBatchT](Metric[MpccErrorMetricResult[Any]]):
+class MpccErrorMetric[StateBatchT](Metric[MpccErrorMetricResult]):
     """Metric evaluating contouring and lag errors in MPCC tracking."""
 
     contouring: ContouringCost[Any, StateBatchT]
@@ -43,17 +52,16 @@ class MpccErrorMetric[StateBatchT](Metric[MpccErrorMetricResult[Any]]):
     ) -> "MpccErrorMetric[StateBatchT]":
         return MpccErrorMetric(contouring=contouring, lag=lag)
 
-    def compute[T: int = int](self, data: SimulationData) -> MpccErrorMetricResult[T]:
-        states = data(
-            access.states.assume(StateSequence[T, Any, StateBatchT]).require()
-        )
+    def compute(self, data: SimulationData) -> MpccErrorMetricResult:
+        states = data(access.states.assume(StateSequence[StateBatchT]).require())
         state_batch = states.batched()
 
         contouring_error = self.contouring.error(states=state_batch)
         lag_error = self.lag.error(states=state_batch)
 
         return MpccErrorMetricResult(
-            contouring=np.asarray(contouring_error), lag=np.asarray(lag_error)
+            contouring=np.asarray(contouring_error)[..., 0],
+            lag=np.asarray(lag_error)[..., 0],
         )
 
     @property

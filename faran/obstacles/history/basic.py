@@ -2,9 +2,9 @@ from typing import Protocol, Sequence, Self, NamedTuple
 from dataclasses import dataclass
 from functools import cached_property
 
-from faran.types import DataType, NumPyObstacleStatesForTimeStep
+from faran.types import Array, jaxtyped, DataType, NumPyObstacleStatesForTimeStep
 
-from numtypes import NumberArray, IndexArray, Array, Dims, D, shape_of
+from jaxtyping import Float, Int, Num
 
 import numpy as np
 
@@ -12,9 +12,7 @@ import numpy as np
 class NumPyObstacleStateCreator[StatesT](Protocol):
     """Protocol for creating obstacle state objects from NumPy arrays."""
 
-    def wrap[T: int = int, D_o: int = int, K: int = int](
-        self, states: Array[Dims[T, D_o, K]], /
-    ) -> StatesT:
+    def wrap(self, states: Float[Array, "T D_o K"], /) -> StatesT:
         """Wraps a NumPy array into the appropriate obstacle states type."""
         ...
 
@@ -37,29 +35,30 @@ class HistoryEntry[StatesForTimeStepT](Protocol):
         ...
 
 
+@jaxtyped
 @dataclass(frozen=True)
-class NumPyObstacleIds[K: int]:
+class NumPyObstacleIds:
     """NumPy container for integer obstacle identifiers."""
 
-    _array: IndexArray[Dims[K]]
+    _array: Int[Array, " K"]
 
     @staticmethod
-    def empty() -> "NumPyObstacleIds[D[0]]":
+    def empty() -> "NumPyObstacleIds":
         return NumPyObstacleIds(np.array([], dtype=np.intp))
 
     @staticmethod
-    def create[K_: int](*, ids: NumberArray[Dims[K_]]) -> "NumPyObstacleIds[K_]":
+    def create(*, ids: Num[Array, " K"]) -> "NumPyObstacleIds":
         return NumPyObstacleIds(ids.astype(np.intp))
 
-    def __array__(self, dtype: DataType | None = None) -> IndexArray[Dims[K]]:
+    def __array__(self, dtype: DataType | None = None) -> Int[Array, " K"]:
         return self.array
 
     @property
-    def count(self) -> K:
+    def count(self) -> int:
         return self.array.shape[0]
 
     @property
-    def array(self) -> IndexArray[Dims[K]]:
+    def array(self) -> Int[Array, " K"]:
         return self._array
 
 
@@ -230,17 +229,17 @@ class NumPyObstacleStatesRunningHistory[
         )
 
 
-def combine_history[H: int, K: int, D_o: int = int](
+def combine_history(
     *,
-    recent_ids: NumPyObstacleIds[K],
+    recent_ids: NumPyObstacleIds,
     history: Sequence[HistoryEntry[NumPyObstacleStatesForTimeStep]],
-    horizon: H,
-    obstacle_count: K,
-) -> Array[Dims[H, D_o, K]]:
+    horizon: int,
+    obstacle_count: int,
+) -> Float[Array, "H D_o K"]:
     recent_id_count = recent_ids.count
     time_padding = horizon - len(history)
     dimension = history[0].states.dimension
-    output = np.full((output_shape := (horizon, dimension, obstacle_count)), np.nan)
+    output = np.full((horizon, dimension, obstacle_count), np.nan)
 
     for t, entry in enumerate(history):
         assert entry.ids is not None, (
@@ -259,7 +258,5 @@ def combine_history[H: int, K: int, D_o: int = int](
         output[time_padding + t, :, valid_positions] = entry.states.array[
             :, valid_mask
         ].T
-
-    assert shape_of(output, matches=output_shape)
 
     return output

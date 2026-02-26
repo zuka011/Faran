@@ -1,13 +1,11 @@
-from typing import Protocol, Any
+from typing import Protocol
 
 from faran.types.predictors import ObstacleStatesHistory
 
 from jaxtyping import Array as JaxArray, Float
 
 
-class JaxBicycleObstacleStatesHistory[T: int, K: int](
-    ObstacleStatesHistory[T, Any, K], Protocol
-):
+class JaxBicycleObstacleStatesHistory(ObstacleStatesHistory, Protocol):
     @property
     def x_array(self) -> Float[JaxArray, "T K"]:
         """Returns the x positions of the obstacles over time."""

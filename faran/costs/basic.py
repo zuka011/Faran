@@ -2,6 +2,8 @@ from typing import Any
 from dataclasses import dataclass
 
 from faran.types import (
+    jaxtyped,
+    Array,
     DataType,
     StateBatch,
     ControlInputBatch,
@@ -20,18 +22,19 @@ from faran.types import (
 )
 from faran.states import NumPySimpleCosts
 
-from numtypes import Array, Dims
+from jaxtyping import Float
 
 import numpy as np
 
 
+@jaxtyped
 @dataclass(frozen=True)
-class NumPyError[T: int, M: int](Error[T, M]):
+class NumPyError(Error):
     """Contouring or lag error between the state batch and reference trajectory."""
 
-    array: Array[Dims[T, M]]
+    array: Float[Array, "T M"]
 
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[T, M]]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "T M"]:
         return self.array
 
 
@@ -70,15 +73,11 @@ class NumPyContouringCost[StateBatchT](
             weight=weight,
         )
 
-    def __call__[T: int, M: int](
-        self, *, inputs: ControlInputBatch[T, int, M], states: StateBatchT
-    ) -> NumPyCosts[T, M]:
+    def __call__(self, *, inputs: ControlInputBatch, states: StateBatchT) -> NumPyCosts:
         error = self.error(states=states)
         return NumPySimpleCosts(self.weight * error.array**2)
 
-    def error[T: int = int, M: int = int](
-        self, *, states: StateBatchT
-    ) -> NumPyError[T, M]:
+    def error(self, *, states: StateBatchT) -> NumPyError:
         ref_points = self.reference.query(self.path_parameter_extractor(states))
         heading = ref_points.heading()
         positions = self.position_extractor(states)
@@ -124,15 +123,11 @@ class NumPyLagCost[StateBatchT](
             weight=weight,
         )
 
-    def __call__[T: int, M: int](
-        self, *, inputs: ControlInputBatch[T, int, M], states: StateBatchT
-    ) -> NumPyCosts[T, M]:
+    def __call__(self, *, inputs: ControlInputBatch, states: StateBatchT) -> NumPyCosts:
         error = self.error(states=states)
         return NumPySimpleCosts(self.weight * error.array**2)
 
-    def error[T: int = int, M: int = int](
-        self, *, states: StateBatchT
-    ) -> NumPyError[T, M]:
+    def error(self, *, states: StateBatchT) -> NumPyError:
         ref_points = self.reference.query(self.path_parameter_extractor(states))
         heading = ref_points.heading()
         positions = self.position_extractor(states)
@@ -171,27 +166,26 @@ class NumPyProgressCost[InputBatchT](CostFunction[InputBatchT, StateBatch, NumPy
             weight=weight,
         )
 
-    def __call__[T: int, M: int](
-        self, *, inputs: InputBatchT, states: StateBatch[T, int, M]
-    ) -> NumPyCosts[T, M]:
+    def __call__(self, *, inputs: InputBatchT, states: StateBatch) -> NumPyCosts:
         path_velocities = self.path_velocity_extractor(inputs)
 
         return NumPySimpleCosts(-self.weight * path_velocities * self.time_step_size)
 
 
+@jaxtyped
 @dataclass(kw_only=True, frozen=True)
-class NumPyControlSmoothingCost[D_u: int](
-    CostFunction[NumPyControlInputBatch[int, D_u, int], StateBatch, NumPyCosts]
+class NumPyControlSmoothingCost(
+    CostFunction[NumPyControlInputBatch, StateBatch, NumPyCosts]
 ):
     """Penalizes abrupt changes in control inputs between consecutive time steps."""
 
-    weights: Array[Dims[D_u]]
+    weights: Float[Array, " D_u"]
 
     @staticmethod
-    def create[D_u_: int](
+    def create(
         *,
-        weights: Array[Dims[D_u_]],
-    ) -> "NumPyControlSmoothingCost[D_u_]":
+        weights: Float[Array, " D_u"],
+    ) -> "NumPyControlSmoothingCost":
         """Creates a control smoothing cost implemented with NumPy.
 
         Args:
@@ -199,12 +193,9 @@ class NumPyControlSmoothingCost[D_u: int](
         """
         return NumPyControlSmoothingCost(weights=weights)
 
-    def __call__[T: int, M: int](
-        self,
-        *,
-        inputs: NumPyControlInputBatch[T, D_u, M],
-        states: StateBatch[T, int, M],
-    ) -> NumPyCosts[T, M]:
+    def __call__(
+        self, *, inputs: NumPyControlInputBatch, states: StateBatch
+    ) -> NumPyCosts:
         diffs = np.diff(inputs.array, axis=0, prepend=inputs.array[0:1, :, :])
         squared_diffs = diffs**2
         weighted_squared_diffs = squared_diffs * self.weights[np.newaxis, :, np.newaxis]
@@ -213,18 +204,15 @@ class NumPyControlSmoothingCost[D_u: int](
         return NumPySimpleCosts(cost_per_time_step)
 
 
+@jaxtyped
 @dataclass(kw_only=True, frozen=True)
-class NumPyControlEffortCost[D_u: int](
-    CostFunction[NumPyControlInputBatch[int, D_u, int], Any, NumPyCosts]
-):
+class NumPyControlEffortCost(CostFunction[NumPyControlInputBatch, Any, NumPyCosts]):
     """Penalizes large control input magnitudes."""
 
-    weights: Array[Dims[D_u]]
+    weights: Float[Array, " D_u"]
 
     @staticmethod
-    def create[D_u_: int](
-        *, weights: Array[Dims[D_u_]]
-    ) -> "NumPyControlEffortCost[D_u_]":
+    def create(*, weights: Float[Array, " D_u"]) -> "NumPyControlEffortCost":
         """Creates a control effort cost implemented with NumPy.
 
         Args:
@@ -232,7 +220,5 @@ class NumPyControlEffortCost[D_u: int](
         """
         return NumPyControlEffortCost(weights=weights)
 
-    def __call__[T: int, M: int](
-        self, *, inputs: NumPyControlInputBatch[T, D_u, M], states: Any
-    ) -> NumPyCosts[T, M]:
+    def __call__(self, *, inputs: NumPyControlInputBatch, states: Any) -> NumPyCosts:
         return NumPySimpleCosts(np.einsum("u,tum->tm", self.weights, inputs.array**2))

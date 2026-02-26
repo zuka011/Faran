@@ -2,6 +2,7 @@ from typing import TypedDict
 
 from faran.types import (
     NumPyState,
+    Array,
     NumPyStateSequence,
     NumPyStateBatch,
     NumPyControlInputSequence,
@@ -38,30 +39,31 @@ from faran.costs import costs as create_costs, NumPyContouringCost, NumPyLagCost
 from faran.mppi import NumPyWeights
 from faran.mpcc.common import MpccMppiSetup
 
-from numtypes import Array, Dim2, D, array_1d
+from numtypes import array_1d
+from jaxtyping import Float
 from deepmerge import always_merger
 
-type NumPyMpccVirtualState = NumPySimpleState[D[1]]
+type NumPyMpccVirtualState = NumPySimpleState
 type NumPyMpccAugmentedState[S: NumPyState] = NumPyAugmentedState[
     S, NumPyMpccVirtualState
 ]
 
-type NumPyMpccVirtualStateSequence = NumPyStateSequence[int, D[1]]
+type NumPyMpccVirtualStateSequence = NumPyStateSequence
 type NumPyMpccAugmentedStateSequence[SS: NumPyStateSequence] = (
     NumPyAugmentedStateSequence[SS, NumPyMpccVirtualStateSequence]
 )
 
-type NumPyMpccVirtualStateBatch = NumPyStateBatch[int, D[1], int]
+type NumPyMpccVirtualStateBatch = NumPyStateBatch
 type NumPyMpccAugmentedStateBatch[SB: NumPyStateBatch] = NumPyAugmentedStateBatch[
     SB, NumPyMpccVirtualStateBatch
 ]
 
-type NumPyMpccVirtualControlInputSequence = NumPySimpleControlInputSequence[int, D[1]]
+type NumPyMpccVirtualControlInputSequence = NumPySimpleControlInputSequence
 type NumPyMpccAugmentedControlInputSequence[CS: NumPyControlInputSequence] = (
     NumPyAugmentedControlInputSequence[CS, NumPyMpccVirtualControlInputSequence]
 )
 
-type NumPyMpccVirtualControlInputBatch = NumPyControlInputBatch[int, D[1], int]
+type NumPyMpccVirtualControlInputBatch = NumPyControlInputBatch
 type NumPyMpccAugmentedControlInputBatch[CB: NumPyControlInputBatch] = (
     NumPyAugmentedControlInputBatch[CB, NumPyMpccVirtualControlInputBatch]
 )
@@ -70,9 +72,7 @@ type NumPyMpccCostFunction[
     CB: NumPyControlInputBatch,
     SB: NumPyStateBatch,
     C: NumPyCosts,
-] = NumPyCostFunction[
-    NumPyMpccAugmentedControlInputBatch[CB], NumPyMpccAugmentedStateBatch[SB], C
-]
+] = NumPyCostFunction
 
 
 class NumPyMpccWeightConfig:
@@ -239,7 +239,7 @@ class NumPyMpccMppi:
                     position_extractor=position_extractor,
                     weight=full_config["weights"]["lag"],
                 ),
-                create_costs.numpy.tracking.progress(
+                create_costs.numpy.tracking.progress(  # type: ignore
                     path_velocity_extractor=extract.from_virtual(extract_path_velocity),
                     time_step_size=model.time_step_size,
                     weight=full_config["weights"]["progress"],
@@ -267,5 +267,7 @@ def extract_path_parameters(states: NumPyMpccVirtualStateBatch) -> NumPyPathPara
     return NumPyPathParameters(states.array[:, 0, :])
 
 
-def extract_path_velocity(inputs: NumPyMpccVirtualControlInputBatch) -> Array[Dim2]:
+def extract_path_velocity(
+    inputs: NumPyMpccVirtualControlInputBatch,
+) -> Float[Array, "T M"]:
     return inputs.array[:, 0, :]

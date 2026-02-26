@@ -1,14 +1,13 @@
 from typing import Protocol
 
-from numtypes import Array, Dims
+from faran.types.array import Array
+
+from jaxtyping import Float
 
 
 class NumPyControlInputBatchCreator[
     InputBatchT,
-    T: int = int,
-    D_u: int = int,
-    M: int = int,
 ](Protocol):
-    def __call__(self, *, array: Array[Dims[T, D_u, M]]) -> InputBatchT:
+    def __call__(self, *, array: Float[Array, "T D_u M"]) -> InputBatchT:
         """Creates a control input batch from the given array."""
         ...

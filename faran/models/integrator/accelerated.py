@@ -1,10 +1,11 @@
 import math
-from typing import Final, NamedTuple, cast
+from typing import Final, NamedTuple
 from dataclasses import dataclass
 from functools import cached_property
 
 from faran.types import (
     jaxtyped,
+    Array,
     DynamicalModel,
     ObstacleModel,
     ObstacleStateEstimator,
@@ -36,7 +37,6 @@ from faran.models.integrator.common import (
     kf_state_dimension_for,
 )
 
-from numtypes import Array, Dims
 
 from jaxtyping import Array as JaxArray, Float, Scalar
 
@@ -46,45 +46,45 @@ import numpy as np
 
 NO_LIMITS: Final = (jnp.asarray(-jnp.inf), jnp.asarray(jnp.inf))
 
-type JaxIntegratorObstacleCovariances[D_x: int, K: int] = Float[JaxArray, "D_x D_x K"]
+type JaxIntegratorObstacleCovariances = Float[JaxArray, "D_x D_x K"]
 
 
 @jaxtyped
 @dataclass(frozen=True)
-class JaxIntegratorObstacleStates[D_o: int, K: int]:
+class JaxIntegratorObstacleStates:
     """Obstacle states represented in integrator model coordinates."""
 
     _array: Float[JaxArray, "D_o K"]
 
     @staticmethod
     def create(
-        *, array: Array[Dims[D_o, K]] | Float[JaxArray, "D_o K"]
-    ) -> "JaxIntegratorObstacleStates[D_o, K]":
+        *, array: Float[Array, "D_o K"] | Float[JaxArray, "D_o K"]
+    ) -> "JaxIntegratorObstacleStates":
         return JaxIntegratorObstacleStates(jnp.asarray(array))
 
-    def __array__(self, dtype: None | type = None) -> Array[Dims[D_o, K]]:
+    def __array__(self, dtype: None | type = None) -> Float[Array, "D_o K"]:
         return self._numpy_array
 
     @property
-    def dimension(self) -> D_o:
-        return cast(D_o, self.array.shape[0])
+    def dimension(self) -> int:
+        return self.array.shape[0]
 
     @property
-    def count(self) -> K:
-        return cast(K, self.array.shape[1])
+    def count(self) -> int:
+        return self.array.shape[1]
 
     @property
     def array(self) -> Float[JaxArray, "D_o K"]:
         return self._array
 
     @cached_property
-    def _numpy_array(self) -> Array[Dims[D_o, K]]:
+    def _numpy_array(self) -> Float[Array, "D_o K"]:
         return np.asarray(self.array)
 
 
 @jaxtyped
 @dataclass(frozen=True)
-class JaxIntegratorObstacleStateSequences[T: int, D_x: int, K: int]:
+class JaxIntegratorObstacleStateSequences:
     """Time-indexed obstacle state sequences for integrator model obstacles."""
 
     _array: Float[JaxArray, "T D_x K"]
@@ -93,23 +93,23 @@ class JaxIntegratorObstacleStateSequences[T: int, D_x: int, K: int]:
     @staticmethod
     def wrap(
         *, array: Float[JaxArray, "T D_x K"], covariance: Float[JaxArray, "T D_x D_x K"]
-    ) -> "JaxIntegratorObstacleStateSequences[T, D_x, K]":
+    ) -> "JaxIntegratorObstacleStateSequences":
         return JaxIntegratorObstacleStateSequences(array, covariance)
 
-    def __array__(self, dtype: None | type = None) -> Array[Dims[T, D_x, K]]:
+    def __array__(self, dtype: None | type = None) -> Float[Array, "T D_x K"]:
         return self._numpy_array
 
     @property
-    def horizon(self) -> T:
-        return cast(T, self.array.shape[0])
+    def horizon(self) -> int:
+        return self.array.shape[0]
 
     @property
-    def dimension(self) -> D_x:
-        return cast(D_x, self.array.shape[1])
+    def dimension(self) -> int:
+        return self.array.shape[1]
 
     @property
-    def count(self) -> K:
-        return cast(K, self.array.shape[2])
+    def count(self) -> int:
+        return self.array.shape[2]
 
     @property
     def array(self) -> Float[JaxArray, "T D_x K"]:
@@ -120,43 +120,43 @@ class JaxIntegratorObstacleStateSequences[T: int, D_x: int, K: int]:
         return self._covariance
 
     @cached_property
-    def _numpy_array(self) -> Array[Dims[T, D_x, K]]:
+    def _numpy_array(self) -> Float[Array, "T D_x K"]:
         return np.asarray(self.array)
 
 
 @jaxtyped
 @dataclass(frozen=True)
-class JaxIntegratorObstacleInputs[D_o: int, K: int]:
+class JaxIntegratorObstacleInputs:
     _array: Float[JaxArray, "D_o K"]
 
     @staticmethod
     def create(
-        *, array: Array[Dims[D_o, K]] | Float[JaxArray, "D_o K"]
-    ) -> "JaxIntegratorObstacleInputs[D_o, K]":
+        *, array: Float[Array, "D_o K"] | Float[JaxArray, "D_o K"]
+    ) -> "JaxIntegratorObstacleInputs":
         return JaxIntegratorObstacleInputs(jnp.asarray(array))
 
-    def __array__(self, dtype: None | type = None) -> Array[Dims[D_o, K]]:
+    def __array__(self, dtype: None | type = None) -> Float[Array, "D_o K"]:
         return self._numpy_array
 
-    def zeroed(self, *, at: tuple[int, ...]) -> "JaxIntegratorObstacleInputs[D_o, K]":
+    def zeroed(self, *, at: tuple[int, ...]) -> "JaxIntegratorObstacleInputs":
         """Returns new obstacle inputs with inputs at specified state dimensions zeroed out."""
 
         return JaxIntegratorObstacleInputs.create(array=self.array.at[at].set(0.0))
 
     @property
-    def dimension(self) -> D_o:
-        return cast(D_o, self.array.shape[0])
+    def dimension(self) -> int:
+        return self.array.shape[0]
 
     @property
-    def count(self) -> K:
-        return cast(K, self.array.shape[1])
+    def count(self) -> int:
+        return self.array.shape[1]
 
     @property
     def array(self) -> Float[JaxArray, "D_o K"]:
         return self._array
 
     @cached_property
-    def _numpy_array(self) -> Array[Dims[D_o, K]]:
+    def _numpy_array(self) -> Float[Array, "D_o K"]:
         return np.asarray(self.array)
 
 
@@ -212,11 +212,9 @@ class JaxIntegratorModel(
             periodic=periodic,
         )
 
-    def simulate[T: int, D_u: int, D_x: int, M: int](
-        self,
-        inputs: JaxIntegratorControlInputBatch[T, D_u, M],
-        initial_state: JaxIntegratorState[D_x],
-    ) -> SimpleStateBatch[T, D_x, M]:
+    def simulate(
+        self, inputs: JaxIntegratorControlInputBatch, initial_state: JaxIntegratorState
+    ) -> SimpleStateBatch:
         initial = jnp.broadcast_to(
             initial_state.array[:, None],
             (initial_state.dimension, inputs.rollout_count),
@@ -240,11 +238,9 @@ class JaxIntegratorModel(
             )
         )
 
-    def step[T: int, D_u: int, D_x: int](
-        self,
-        inputs: JaxIntegratorControlInputSequence[T, D_u],
-        state: JaxIntegratorState[D_x],
-    ) -> SimpleState[D_x]:
+    def step(
+        self, inputs: JaxIntegratorControlInputSequence, state: JaxIntegratorState
+    ) -> SimpleState:
         return SimpleState(
             step_periodic(
                 control=inputs.array,
@@ -263,11 +259,9 @@ class JaxIntegratorModel(
             )
         )
 
-    def forward[T: int, D_x: int](
-        self,
-        inputs: JaxIntegratorControlInputSequence[T, D_x],
-        state: JaxIntegratorState[D_x],
-    ) -> SimpleStateSequence[T, D_x]:
+    def forward(
+        self, inputs: JaxIntegratorControlInputSequence, state: JaxIntegratorState
+    ) -> SimpleStateSequence:
         return self.simulate(
             inputs=SimpleControlInputBatch.of(inputs), initial_state=state
         ).rollout(0)
@@ -277,22 +271,22 @@ class JaxIntegratorModel(
         return self._time_step_size
 
 
-class JaxIntegratorStateEstimationModel[D_o: int, D_x: int](NamedTuple):
+class JaxIntegratorStateEstimationModel(NamedTuple):
     """Single integrator model used for obstacle state estimation."""
 
     time_step_size: float
-    observation_dimension: D_o
+    observation_dimension: int
     initial_state_covariance: Float[JaxArray, "D_x D_x"]
 
     @staticmethod
-    def create[D_o_: int, D_x_: int = int](
+    def create(
         *,
         time_step_size: float,
-        observation_dimension: D_o_,
-        initial_state_covariance: Array[Dims[D_x_, D_x_]]
+        observation_dimension: int,
+        initial_state_covariance: Float[Array, "D_x D_x"]
         | Float[JaxArray, "D_x D_x"]
         | None = None,
-    ) -> "JaxIntegratorStateEstimationModel[D_o_, D_x_]":
+    ) -> "JaxIntegratorStateEstimationModel":
         if initial_state_covariance is None:
             initial_state_covariance = (
                 JaxIntegratorStateEstimationModel.default_initial_state_covariance_for(
@@ -307,41 +301,37 @@ class JaxIntegratorStateEstimationModel[D_o: int, D_x: int](NamedTuple):
         )
 
     @staticmethod
-    def default_initial_state_covariance_for[D_o_: int = int](
-        observation_dimension: D_o_,
+    def default_initial_state_covariance_for(
+        observation_dimension: int,
     ) -> Float[JaxArray, "D_x D_x"]:
-        D_o = observation_dimension
+        D_o_ = observation_dimension
 
         # NOTE: We are sure of the observed states, unsure of the velocities.
         return jnp.diag(
             jnp.concatenate(
-                (jnp.full(D_o, SMALL_UNCERTAINTY), jnp.full(D_o, LARGE_UNCERTAINTY))
+                (jnp.full(D_o_, SMALL_UNCERTAINTY), jnp.full(D_o_, LARGE_UNCERTAINTY))
             )
         )
 
-    def __call__[K: int](
+    def __call__(
         self, augmented_state: Float[JaxArray, "D_x K"]
     ) -> Float[JaxArray, "D_x K"]:
         return self.state_transition_matrix @ augmented_state
 
-    def states_from[K: int = int](
-        self, belief: JaxGaussianBelief
-    ) -> JaxIntegratorObstacleStates[D_o, K]:
+    def states_from(self, belief: JaxGaussianBelief) -> JaxIntegratorObstacleStates:
         D_o = self.observation_dimension
         return JaxIntegratorObstacleStates.create(array=belief.mean[:D_o, :])
 
-    def inputs_from[K: int = int](
-        self, belief: JaxGaussianBelief
-    ) -> JaxIntegratorObstacleInputs[D_o, K]:
+    def inputs_from(self, belief: JaxGaussianBelief) -> JaxIntegratorObstacleInputs:
         D_o = self.observation_dimension
         return JaxIntegratorObstacleInputs.create(array=belief.mean[D_o:, :])
 
-    def initial_belief_from[K: int](
+    def initial_belief_from(
         self,
         *,
-        states: JaxIntegratorObstacleStates[D_o, K],
-        inputs: JaxIntegratorObstacleInputs[D_o, K],
-        covariances: JaxIntegratorObstacleCovariances[D_x, K] | None = None,
+        states: JaxIntegratorObstacleStates,
+        inputs: JaxIntegratorObstacleInputs,
+        covariances: JaxIntegratorObstacleCovariances | None = None,
     ) -> JaxGaussianBelief:
         augmented = jnp.concatenate([states.array, inputs.array], axis=0)
         D_x = 2 * self.observation_dimension
@@ -374,28 +364,28 @@ class JaxIntegratorStateEstimationModel[D_o: int, D_x: int](NamedTuple):
 
 
 @dataclass(kw_only=True, frozen=True)
-class JaxIntegratorObstacleModel[D_o: int, D_x: int](
+class JaxIntegratorObstacleModel(
     ObstacleModel[
         JaxIntegratorObstacleStatesHistory,
         JaxIntegratorObstacleStates,
         JaxIntegratorObstacleInputs,
-        JaxIntegratorObstacleCovariances[D_x, int],
-        JaxIntegratorObstacleStateSequences[int, D_x, int],
+        JaxIntegratorObstacleCovariances,
+        JaxIntegratorObstacleStateSequences,
     ]
 ):
     """Propagates integrator dynamics forward with constant velocity."""
 
-    model: JaxIntegratorStateEstimationModel[D_o, D_x]
+    model: JaxIntegratorStateEstimationModel
     process_noise_covariance: Float[JaxArray, "D_x D_x"]
     predictor: JaxKalmanFilter
 
     @staticmethod
-    def create[D_o_: int, D_x_: int](
+    def create(
         *,
         time_step_size: float,
-        state_dimension: D_o_,
-        process_noise_covariance: JaxNoiseCovarianceDescription[D_x_] = 1e-3,
-    ) -> "JaxIntegratorObstacleModel[D_o_, D_x_]":
+        state_dimension: int,
+        process_noise_covariance: JaxNoiseCovarianceDescription = 1e-3,
+    ) -> "JaxIntegratorObstacleModel":
         """Creates a JAX integrator obstacle model.
 
         Args:
@@ -417,14 +407,14 @@ class JaxIntegratorObstacleModel[D_o: int, D_x: int](
             predictor=JaxKalmanFilter.create(),
         )
 
-    def forward[T: int, K: int](
+    def forward(
         self,
         *,
-        states: JaxIntegratorObstacleStates[D_o, K],
-        inputs: JaxIntegratorObstacleInputs[D_o, K],
-        covariances: JaxIntegratorObstacleCovariances[D_x, K] | None,
-        horizon: T,
-    ) -> JaxIntegratorObstacleStateSequences[T, D_x, K]:
+        states: JaxIntegratorObstacleStates,
+        inputs: JaxIntegratorObstacleInputs,
+        covariances: JaxIntegratorObstacleCovariances | None,
+        horizon: int,
+    ) -> JaxIntegratorObstacleStateSequences:
         means, covariance = forward(
             initial=self.model.initial_belief_from(
                 states=states, inputs=inputs, covariances=covariances
@@ -458,10 +448,10 @@ class JaxFiniteDifferenceIntegratorStateEstimator(
             time_step_size=jnp.asarray(time_step_size)
         )
 
-    def estimate_from[D_o: int, K: int, T: int = int](
-        self, history: JaxIntegratorObstacleStatesHistory[T, D_o, K]
+    def estimate_from(
+        self, history: JaxIntegratorObstacleStatesHistory
     ) -> EstimatedObstacleStates[
-        JaxIntegratorObstacleStates[D_o, K], JaxIntegratorObstacleInputs[D_o, K], None
+        JaxIntegratorObstacleStates, JaxIntegratorObstacleInputs, None
     ]:
         """Estimates velocities from position history using finite differences.
 
@@ -482,32 +472,32 @@ class JaxFiniteDifferenceIntegratorStateEstimator(
 
 
 @dataclass(frozen=True)
-class JaxKfIntegratorStateEstimator[D_o: int, D_x: int](
+class JaxKfIntegratorStateEstimator(
     ObstacleStateEstimator[
         JaxIntegratorObstacleStatesHistory,
         JaxIntegratorObstacleStates,
         JaxIntegratorObstacleInputs,
-        JaxIntegratorObstacleCovariances[D_x, int],
+        JaxIntegratorObstacleCovariances,
     ]
 ):
     """Kalman Filter state estimator for integrator model obstacles."""
 
     process_noise_covariance: Float[JaxArray, "D_x D_x"]
     observation_noise_covariance: Float[JaxArray, "D_o D_o"]
-    model: JaxIntegratorStateEstimationModel[D_o, D_x]
+    model: JaxIntegratorStateEstimationModel
     estimator: JaxKalmanFilter
 
     @staticmethod
-    def create[D_o_: int, D_x_: int](
+    def create(
         *,
         time_step_size: float,
-        process_noise_covariance: JaxNoiseCovarianceDescription[D_x_],
-        observation_noise_covariance: JaxNoiseCovarianceArrayDescription[D_o_],
-        initial_state_covariance: Array[Dims[D_x_, D_x_]]
+        process_noise_covariance: JaxNoiseCovarianceDescription,
+        observation_noise_covariance: JaxNoiseCovarianceArrayDescription,
+        initial_state_covariance: Float[Array, "D_x D_x"]
         | Float[JaxArray, "D_x D_x"]
         | None = None,
-        observation_dimension: D_o_ | None = None,
-    ) -> "JaxKfIntegratorStateEstimator[D_o_, D_x_]":
+        observation_dimension: int | None = None,
+    ) -> "JaxKfIntegratorStateEstimator":
         """Creates an integrator state estimator based on the Kalman Filter with the
         specified noise covariances.
 
@@ -548,12 +538,12 @@ class JaxKfIntegratorStateEstimator[D_o: int, D_x: int](
             estimator=JaxKalmanFilter.create(),
         )
 
-    def estimate_from[K: int, T: int = int](
-        self, history: JaxIntegratorObstacleStatesHistory[T, D_o, K]
+    def estimate_from(
+        self, history: JaxIntegratorObstacleStatesHistory
     ) -> EstimatedObstacleStates[
-        JaxIntegratorObstacleStates[D_o, K],
-        JaxIntegratorObstacleInputs[D_o, K],
-        JaxIntegratorObstacleCovariances[D_x, K],
+        JaxIntegratorObstacleStates,
+        JaxIntegratorObstacleInputs,
+        JaxIntegratorObstacleCovariances,
     ]:
         """Estimate states and velocities using Kalman filtering."""
         assert history.horizon > 0, (
@@ -620,10 +610,8 @@ def wrap_periodic_batch(
 @jax.jit
 @jaxtyped
 def wrap_periodic_state(
-    *,
-    state: Float[JaxArray, "D_u"],
-    state_limits: tuple[Scalar, Scalar],
-) -> Float[JaxArray, "D_u"]:
+    *, state: Float[JaxArray, " D_u"], state_limits: tuple[Scalar, Scalar]
+) -> Float[JaxArray, " D_u"]:
     lower, upper = state_limits
     period = upper - lower
     wrapped = lower + jnp.mod(state - lower, period)
@@ -673,11 +661,11 @@ def simulate_periodic(
 def step(
     *,
     control: Float[JaxArray, "T D_u"],
-    state: Float[JaxArray, "D_u"],
+    state: Float[JaxArray, " D_u"],
     time_step: Scalar,
     state_limits: tuple[Scalar, Scalar],
     velocity_limits: tuple[Scalar, Scalar],
-) -> Float[JaxArray, "D_u"]:
+) -> Float[JaxArray, " D_u"]:
     clipped_control = jnp.clip(control[0], *velocity_limits)
     return jnp.clip(state + clipped_control * time_step, *state_limits)
 
@@ -687,11 +675,11 @@ def step(
 def step_periodic(
     *,
     control: Float[JaxArray, "T D_u"],
-    state: Float[JaxArray, "D_u"],
+    state: Float[JaxArray, " D_u"],
     time_step: Scalar,
     state_limits: tuple[Scalar, Scalar],
     velocity_limits: tuple[Scalar, Scalar],
-) -> Float[JaxArray, "D_u"]:
+) -> Float[JaxArray, " D_u"]:
     clipped_control = jnp.clip(control[0], *velocity_limits)
     unbounded = state + clipped_control * time_step
     return wrap_periodic_state(state=unbounded, state_limits=state_limits)
@@ -701,7 +689,7 @@ def step_periodic(
 @jaxtyped
 def estimate_states(
     history: Float[JaxArray, "T D_o K"], time_step: Scalar
-) -> EstimatedIntegratorObstacleStates:
+) -> "EstimatedIntegratorObstacleStates":
     filter_invalid = invalid_obstacle_filter_from(history, check_recent=2)
 
     return EstimatedIntegratorObstacleStates(

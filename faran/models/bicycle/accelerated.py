@@ -1,9 +1,10 @@
-from typing import cast, overload, Self, Sequence, Final, Any, NamedTuple
+from typing import cast, Self, Sequence, Final, NamedTuple
 from dataclasses import dataclass
 from functools import cached_property
 
 from faran.types import (
     jaxtyped,
+    Array,
     DataType,
     JaxState,
     JaxStateSequence,
@@ -41,7 +42,7 @@ from faran.models.common import SMALL_UNCERTAINTY, LARGE_UNCERTAINTY
 from faran.models.accelerated import invalid_obstacle_filter_from
 
 from jaxtyping import Array as JaxArray, Float, Scalar
-from numtypes import Array, Dims, D, shape_of
+from numtypes import D
 
 
 import jax
@@ -58,12 +59,12 @@ type BicycleEstimationD_x = D[6]
 type BicycleObservationD_o = D[3]
 
 type StateArray = Float[JaxArray, f"{BICYCLE_D_X}"]
-type ControlInputSequenceArray[T: int] = Float[JaxArray, f"T {BICYCLE_D_U}"]
-type StateBatchArray[T: int, M: int] = Float[JaxArray, f"T {BICYCLE_D_X} M"]
-type ControlInputBatchArray[T: int, M: int] = Float[JaxArray, f"T {BICYCLE_D_U} M"]
+type ControlInputSequenceArray = Float[JaxArray, f"T {BICYCLE_D_U}"]
+type StateBatchArray = Float[JaxArray, f"T {BICYCLE_D_X} M"]
+type ControlInputBatchArray = Float[JaxArray, f"T {BICYCLE_D_U} M"]
 
-type StatesAtTimeStep[M: int] = Float[JaxArray, f"{BICYCLE_D_X} M"]
-type ControlInputsAtTimeStep[M: int] = Float[JaxArray, f"{BICYCLE_D_U} M"]
+type StatesAtTimeStep = Float[JaxArray, f"{BICYCLE_D_X} M"]
+type ControlInputsAtTimeStep = Float[JaxArray, f"{BICYCLE_D_U} M"]
 
 type EstimationStateCovarianceArray = Float[
     JaxArray, f"{BICYCLE_ESTIMATION_D_X} {BICYCLE_ESTIMATION_D_X}"
@@ -78,8 +79,8 @@ type ObservationMatrix = Float[
     JaxArray, f"{BICYCLE_OBSERVATION_D_O} {BICYCLE_ESTIMATION_D_X}"
 ]
 
-type BicycleGaussianBelief[K: int] = JaxGaussianBelief
-type JaxBicycleObstacleCovariances[K: int] = Float[
+type BicycleGaussianBelief = JaxGaussianBelief
+type JaxBicycleObstacleCovariances = Float[
     JaxArray, f"{BICYCLE_ESTIMATION_D_X} {BICYCLE_ESTIMATION_D_X} K"
 ]
 type KalmanFilter = JaxExtendedKalmanFilter | JaxUnscentedKalmanFilter
@@ -87,7 +88,7 @@ type KalmanFilter = JaxExtendedKalmanFilter | JaxUnscentedKalmanFilter
 
 @jaxtyped
 @dataclass(frozen=True)
-class JaxBicycleState(BicycleState, JaxState[BicycleD_x]):
+class JaxBicycleState(BicycleState, JaxState):
     """Kinematic bicycle state: [x, y, heading, speed]."""
 
     _array: StateArray
@@ -102,7 +103,7 @@ class JaxBicycleState(BicycleState, JaxState[BicycleD_x]):
     ) -> "JaxBicycleState":
         return JaxBicycleState(jnp.array([x, y, heading, speed]))
 
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[BicycleD_x]]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, " BicycleD_x"]:
         return np.asarray(self.array)
 
     @property
@@ -147,53 +148,44 @@ class JaxBicycleState(BicycleState, JaxState[BicycleD_x]):
 
 
 @dataclass(kw_only=True, frozen=True)
-class JaxBicycleStateSequence[T: int, M: int = Any](
-    BicycleStateSequence, JaxStateSequence[T, BicycleD_x]
-):
-    batch: "JaxBicycleStateBatch[T, M]"
+class JaxBicycleStateSequence(BicycleStateSequence, JaxStateSequence):
+    batch: "JaxBicycleStateBatch"
     rollout: int
 
     @staticmethod
-    def of_states[T_: int = int](
-        states: Sequence[JaxBicycleState], *, horizon: T_ | None = None
-    ) -> "JaxBicycleStateSequence[T_, D[1]]":
+    def of_states(states: Sequence[JaxBicycleState]) -> "JaxBicycleStateSequence":
         assert len(states) > 0, "States sequence must not be empty."
 
-        horizon = horizon if horizon is not None else cast(T_, len(states))
         array = jnp.stack([state.array for state in states], axis=0)[:, :, jnp.newaxis]
-
-        assert array.shape == (horizon, BICYCLE_D_X, 1), (
-            f"Array shape {array.shape} does not match expected shape {(horizon, BICYCLE_D_X, 1)}."
-        )
 
         return JaxBicycleStateSequence(
             batch=JaxBicycleStateBatch.wrap(array), rollout=0
         )
 
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[T, BicycleD_x]]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "T BicycleD_x"]:
         return np.asarray(self.array)
 
     def step(self, index: int) -> JaxBicycleState:
         return JaxBicycleState(self.array[index])
 
-    def batched(self) -> "JaxBicycleStateBatch[T, D[1]]":
+    def batched(self) -> "JaxBicycleStateBatch":
         return JaxBicycleStateBatch.wrap(self.array[..., jnp.newaxis])
 
-    def x(self) -> Array[Dims[T]]:
+    def x(self) -> Float[Array, " T"]:
         return np.asarray(self.array[:, 0])
 
-    def y(self) -> Array[Dims[T]]:
+    def y(self) -> Float[Array, " T"]:
         return np.asarray(self.array[:, 1])
 
-    def heading(self) -> Array[Dims[T]]:
+    def heading(self) -> Float[Array, " T"]:
         return np.asarray(self.array[:, 2])
 
-    def speed(self) -> Array[Dims[T]]:
+    def speed(self) -> Float[Array, " T"]:
         return np.asarray(self.array[:, 3])
 
     @property
-    def horizon(self) -> T:
-        return cast(T, self.array.shape[0])
+    def horizon(self) -> int:
+        return self.array.shape[0]
 
     @property
     def dimension(self) -> BicycleD_x:
@@ -206,62 +198,53 @@ class JaxBicycleStateSequence[T: int, M: int = Any](
 
 @jaxtyped
 @dataclass(frozen=True)
-class JaxBicycleStateBatch[T: int, M: int](
-    BicycleStateBatch[T, M], JaxStateBatch[T, BicycleD_x, M]
-):
-    _array: StateBatchArray[T, M]
+class JaxBicycleStateBatch(BicycleStateBatch, JaxStateBatch):
+    _array: StateBatchArray
 
     @staticmethod
-    def wrap[T_: int, M_: int](
-        array: StateBatchArray[T_, M_],
-    ) -> "JaxBicycleStateBatch[T_, M_]":
+    def wrap(array: StateBatchArray) -> "JaxBicycleStateBatch":
         return JaxBicycleStateBatch(array)
 
     @staticmethod
-    def of_states[T_: int = int](
-        states: Sequence[JaxBicycleState], *, horizon: T_ | None = None
-    ) -> "JaxBicycleStateBatch[T_, int]":
+    def of_states(states: Sequence[JaxBicycleState]) -> "JaxBicycleStateBatch":
         assert len(states) > 0, "States sequence must not be empty."
 
-        horizon = horizon if horizon is not None else cast(T_, len(states))
         array = jnp.stack([state.array for state in states], axis=0)[:, :, jnp.newaxis]
-
-        assert array.shape == (expected := (horizon, BICYCLE_D_X, 1)), (
-            f"Array shape {array.shape} does not match expected shape {expected}."
-        )
 
         return JaxBicycleStateBatch(array)
 
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[T, BicycleD_x, M]]:
+    def __array__(
+        self, dtype: DataType | None = None
+    ) -> Float[Array, "T BicycleD_x M"]:
         return np.asarray(self.array)
 
-    def heading(self) -> Array[Dims[T, M]]:
+    def heading(self) -> Float[Array, "T M"]:
         return np.asarray(self.array[:, 2, :])
 
-    def speed(self) -> Array[Dims[T, M]]:
+    def speed(self) -> Float[Array, "T M"]:
         return np.asarray(self.array[:, 3, :])
 
-    def rollout(self, index: int) -> JaxBicycleStateSequence[T, M]:
+    def rollout(self, index: int) -> JaxBicycleStateSequence:
         return JaxBicycleStateSequence(batch=self, rollout=index)
 
     @property
-    def horizon(self) -> T:
-        return cast(T, self.array.shape[0])
+    def horizon(self) -> int:
+        return self.array.shape[0]
 
     @property
     def dimension(self) -> BicycleD_x:
         return cast(BicycleD_x, self.array.shape[1])
 
     @property
-    def rollout_count(self) -> M:
-        return cast(M, self.array.shape[2])
+    def rollout_count(self) -> int:
+        return self.array.shape[2]
 
     @property
-    def positions(self) -> "JaxBicyclePositions[T, M]":
+    def positions(self) -> "JaxBicyclePositions":
         return JaxBicyclePositions(self)
 
     @property
-    def array(self) -> StateBatchArray[T, M]:
+    def array(self) -> StateBatchArray:
         return self._array
 
     @property
@@ -271,16 +254,16 @@ class JaxBicycleStateBatch[T: int, M: int](
 
 @jaxtyped
 @dataclass(frozen=True)
-class JaxBicyclePositions[T: int, M: int](BicyclePositions[T, M]):
-    batch: JaxBicycleStateBatch[T, M]
+class JaxBicyclePositions(BicyclePositions):
+    batch: JaxBicycleStateBatch
 
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[T, D[2], M]]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "T 2 M"]:
         return np.asarray(self.batch.array[:, :2, :])
 
-    def x(self) -> Array[Dims[T, M]]:
+    def x(self) -> Float[Array, "T M"]:
         return np.asarray(self.batch.array[:, 0, :])
 
-    def y(self) -> Array[Dims[T, M]]:
+    def y(self) -> Float[Array, "T M"]:
         return np.asarray(self.batch.array[:, 1, :])
 
     @property
@@ -294,85 +277,63 @@ class JaxBicyclePositions[T: int, M: int](BicyclePositions[T, M]):
 
 @jaxtyped
 @dataclass(frozen=True)
-class JaxBicycleControlInputSequence[T: int](
-    BicycleControlInputSequence[T], JaxControlInputSequence[T, BicycleD_u]
+class JaxBicycleControlInputSequence(
+    BicycleControlInputSequence, JaxControlInputSequence
 ):
     """Control inputs: [acceleration, steering_angle]."""
 
-    _array: ControlInputSequenceArray[T]
+    _array: ControlInputSequenceArray
 
     @staticmethod
-    def zeroes[T_: int](horizon: T_) -> "JaxBicycleControlInputSequence[T_]":
+    def zeroes(horizon: int) -> "JaxBicycleControlInputSequence":
         return JaxBicycleControlInputSequence(jnp.zeros((horizon, BICYCLE_D_U)))
 
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[T, BicycleD_u]]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "T BicycleD_u"]:
         return np.asarray(self.array)
 
-    @overload
-    def similar(self, *, array: Float[JaxArray, "T D_u"]) -> Self: ...
-
-    @overload
-    def similar[L: int](
-        self, *, array: Float[JaxArray, "L D_u"], length: L
-    ) -> "JaxBicycleControlInputSequence[L]": ...
-
-    def similar[L: int](
-        self, *, array: Float[JaxArray, "L D_u"], length: L | None = None
-    ) -> Self | "JaxBicycleControlInputSequence[L]":
-        expected_length = length if length is not None else array.shape[0]
-
-        assert array.shape == (expected := (expected_length, BICYCLE_D_U)), (
-            f"Array shape {array.shape} does not match expected shape {expected}."
-        )
-
+    def similar(self, *, array: Float[JaxArray, "L D_u"]) -> Self:
         return self.__class__(array)
 
     @property
-    def horizon(self) -> T:
-        return cast(T, self.array.shape[0])
+    def horizon(self) -> int:
+        return self.array.shape[0]
 
     @property
     def dimension(self) -> BicycleD_u:
         return cast(BicycleD_u, self.array.shape[1])
 
     @property
-    def array(self) -> ControlInputSequenceArray[T]:
+    def array(self) -> ControlInputSequenceArray:
         return self._array
 
     @property
-    def accelerations_array(self) -> Float[JaxArray, "T"]:
+    def accelerations_array(self) -> Float[JaxArray, " T"]:
         return self.array[:, 0]
 
     @property
-    def steering_angles_array(self) -> Float[JaxArray, "T"]:
+    def steering_angles_array(self) -> Float[JaxArray, " T"]:
         return self.array[:, 1]
 
 
 @jaxtyped
 @dataclass(frozen=True)
-class JaxBicycleControlInputBatch[T: int, M: int](
-    BicycleControlInputBatch[T, M], JaxControlInputBatch[T, BicycleD_u, M]
-):
-    _array: ControlInputBatchArray[T, M]
+class JaxBicycleControlInputBatch(BicycleControlInputBatch, JaxControlInputBatch):
+    _array: ControlInputBatchArray
 
     @staticmethod
-    def zero[T_: int, M_: int](
-        *, horizon: T_, rollout_count: M_ = 1
-    ) -> "JaxBicycleControlInputBatch[T_, M_]":
+    def zero(*, horizon: int, rollout_count: int = 1) -> "JaxBicycleControlInputBatch":
         array = jnp.zeros((horizon, BICYCLE_D_U, rollout_count))
 
         return JaxBicycleControlInputBatch(array)
 
     @staticmethod
-    def create[T_: int = int, M_: int = int](
-        *, array: Array[Dims[T_, BicycleD_u, M_]] | ControlInputBatchArray[T_, M_]
-    ) -> "JaxBicycleControlInputBatch[T_, M_]":
+    def create(
+        *, array: Float[Array, "T BicycleD_u M"] | ControlInputBatchArray
+    ) -> "JaxBicycleControlInputBatch":
         return JaxBicycleControlInputBatch(jnp.asarray(array))
 
     @staticmethod
-    def of[T_: int = int](
-        sequence: JaxBicycleControlInputSequence[T_],
-    ) -> "JaxBicycleControlInputBatch[T_, D[1]]":
+    def of(sequence: JaxBicycleControlInputSequence) -> "JaxBicycleControlInputBatch":
         array = sequence.array[..., jnp.newaxis]
 
         assert array.shape == (expected := (sequence.horizon, BICYCLE_D_U, 1)), (
@@ -381,68 +342,62 @@ class JaxBicycleControlInputBatch[T: int, M: int](
 
         return JaxBicycleControlInputBatch(array)
 
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[T, BicycleD_u, M]]:
+    def __array__(
+        self, dtype: DataType | None = None
+    ) -> Float[Array, "T BicycleD_u M"]:
         return np.asarray(self.array)
 
     @property
-    def horizon(self) -> T:
-        return cast(T, self.array.shape[0])
+    def horizon(self) -> int:
+        return self.array.shape[0]
 
     @property
     def dimension(self) -> BicycleD_u:
         return cast(BicycleD_u, self.array.shape[1])
 
     @property
-    def rollout_count(self) -> M:
-        return cast(M, self.array.shape[2])
+    def rollout_count(self) -> int:
+        return self.array.shape[2]
 
     @property
-    def array(self) -> ControlInputBatchArray[T, M]:
+    def array(self) -> ControlInputBatchArray:
         return self._array
 
 
 @jaxtyped
 @dataclass(frozen=True)
-class JaxBicycleObstacleStates[K: int]:
+class JaxBicycleObstacleStates:
     _array: Float[JaxArray, f"{BICYCLE_D_O} K"]
 
     @staticmethod
-    def wrap[K_: int](
-        array: Array[Dims[BicycleD_o, K_]] | Float[JaxArray, f"{BICYCLE_D_O} K"],
-    ) -> "JaxBicycleObstacleStates[K_]":
+    def wrap(
+        array: Float[Array, "BicycleD_o K"] | Float[JaxArray, f"{BICYCLE_D_O} K"],
+    ) -> "JaxBicycleObstacleStates":
         return JaxBicycleObstacleStates(jnp.asarray(array))
 
     @staticmethod
-    def create[K_: int](
+    def create(
         *,
-        x: Array[Dims[K_]] | Float[JaxArray, "K_"],
-        y: Array[Dims[K_]] | Float[JaxArray, "K_"],
-        heading: Array[Dims[K_]] | Float[JaxArray, "K_"],
-        speed: Array[Dims[K_]] | Float[JaxArray, "K_"],
-        count: K_ | None = None,
-    ) -> "JaxBicycleObstacleStates[K_]":
-        count = count if count is not None else cast(K_, x.shape[0])
-        array = jnp.stack([x, y, heading, speed], axis=0)
+        x: Float[Array, " K"] | Float[JaxArray, " K"],
+        y: Float[Array, " K"] | Float[JaxArray, " K"],
+        heading: Float[Array, " K"] | Float[JaxArray, " K"],
+        speed: Float[Array, " K"] | Float[JaxArray, " K"],
+    ) -> "JaxBicycleObstacleStates":
+        return JaxBicycleObstacleStates(jnp.stack([x, y, heading, speed], axis=0))
 
-        assert array.shape == (expected := (BICYCLE_D_O, count)), (
-            f"Array shape {array.shape} does not match expected shape {expected}."
-        )
-
-        return JaxBicycleObstacleStates(array)
-
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[BicycleD_o, K]]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "BicycleD_o K"]:
         return self._numpy_array
 
-    def x(self) -> Array[Dims[K]]:
+    def x(self) -> Float[Array, " K"]:
         return self._numpy_array[0, :]
 
-    def y(self) -> Array[Dims[K]]:
+    def y(self) -> Float[Array, " K"]:
         return self._numpy_array[1, :]
 
-    def heading(self) -> Array[Dims[K]]:
+    def heading(self) -> Float[Array, " K"]:
         return self._numpy_array[2, :]
 
-    def speed(self) -> Array[Dims[K]]:
+    def speed(self) -> Float[Array, " K"]:
         return self._numpy_array[3, :]
 
     @property
@@ -450,59 +405,40 @@ class JaxBicycleObstacleStates[K: int]:
         return cast(BicycleD_o, self.array.shape[0])
 
     @property
-    def count(self) -> K:
-        return cast(K, self.array.shape[1])
+    def count(self) -> int:
+        return self.array.shape[1]
 
     @property
     def array(self) -> Float[JaxArray, f"{BICYCLE_D_O} K"]:
         return self._array
 
     @cached_property
-    def _numpy_array(self) -> Array[Dims[BicycleD_o, K]]:
+    def _numpy_array(self) -> Float[Array, "BicycleD_o K"]:
         return np.asarray(self.array)
 
 
 @jaxtyped
 @dataclass(frozen=True)
-class JaxBicycleObstacleStateSequences[T: int, K: int]:
+class JaxBicycleObstacleStateSequences:
     _array: Float[JaxArray, f"T {BICYCLE_ESTIMATION_D_X} K"]
     _covariance: Float[
         JaxArray, f"T {BICYCLE_ESTIMATION_D_X} {BICYCLE_ESTIMATION_D_X} K"
     ]
 
     @staticmethod
-    def wrap[T_: int, K_: int](
+    def wrap(
         *,
         array: Float[JaxArray, f"T {BICYCLE_ESTIMATION_D_X} K"],
         covariance: Float[
             JaxArray, f"T {BICYCLE_ESTIMATION_D_X} {BICYCLE_ESTIMATION_D_X} K"
         ],
-        horizon: T_ | None = None,
-        count: K_ | None = None,
-    ) -> "JaxBicycleObstacleStateSequences[T_, K_]":
-        horizon = horizon if horizon is not None else cast(T_, array.shape[0])
-        count = count if count is not None else cast(K_, array.shape[2])
-
-        assert array.shape == (expected := (horizon, BICYCLE_ESTIMATION_D_X, count)), (
-            f"Array shape {array.shape} does not match expected shape {expected}."
-        )
-        assert covariance.shape == (
-            expected := (
-                horizon,
-                BICYCLE_ESTIMATION_D_X,
-                BICYCLE_ESTIMATION_D_X,
-                count,
-            )
-        ), (
-            f"Covariance shape {covariance.shape} does not match expected shape {expected}."
-        )
-
+    ) -> "JaxBicycleObstacleStateSequences":
         return JaxBicycleObstacleStateSequences(array, covariance)
 
     @staticmethod
-    def create[T_: int = int, K_: int = int](
-        predictions: Sequence[BicycleGaussianBelief[K_]],
-    ) -> "JaxBicycleObstacleStateSequences[T_, K_]":
+    def create(
+        predictions: Sequence[BicycleGaussianBelief],
+    ) -> "JaxBicycleObstacleStateSequences":
         assert len(predictions) > 0, "Predictions sequence must not be empty."
 
         array = jnp.stack([belief.mean for belief in predictions], axis=0)
@@ -512,16 +448,16 @@ class JaxBicycleObstacleStateSequences[T: int, K: int]:
 
     def __array__(
         self, dtype: DataType | None = None
-    ) -> Array[Dims[T, BicycleEstimationD_x, K]]:
+    ) -> Float[Array, "T BicycleEstimationD_x K"]:
         return self._numpy_array
 
-    def x(self) -> Array[Dims[T, K]]:
+    def x(self) -> Float[Array, "T K"]:
         return self._numpy_array[:, 0, :]
 
-    def y(self) -> Array[Dims[T, K]]:
+    def y(self) -> Float[Array, "T K"]:
         return self._numpy_array[:, 1, :]
 
-    def heading(self) -> Array[Dims[T, K]]:
+    def heading(self) -> Float[Array, "T K"]:
         return self._numpy_array[:, 2, :]
 
     def covariance(
@@ -529,7 +465,7 @@ class JaxBicycleObstacleStateSequences[T: int, K: int]:
     ) -> Float[JaxArray, f"T {BICYCLE_ESTIMATION_D_X} {BICYCLE_ESTIMATION_D_X} K"]:
         return self._covariance
 
-    def pose(self) -> JaxObstacle2dPoses[T, K]:
+    def pose(self) -> JaxObstacle2dPoses:
         return JaxObstacle2dPoses.create(
             x=self.x_array,
             y=self.y_array,
@@ -538,16 +474,16 @@ class JaxBicycleObstacleStateSequences[T: int, K: int]:
         )
 
     @property
-    def horizon(self) -> T:
-        return cast(T, self.array.shape[0])
+    def horizon(self) -> int:
+        return self.array.shape[0]
 
     @property
     def dimension(self) -> BicycleEstimationD_x:
         return cast(BicycleEstimationD_x, self.array.shape[1])
 
     @property
-    def count(self) -> K:
-        return cast(K, self.array.shape[2])
+    def count(self) -> int:
+        return self.array.shape[2]
 
     @property
     def array(self) -> Float[JaxArray, f"T {BICYCLE_ESTIMATION_D_X} K"]:
@@ -576,48 +512,48 @@ class JaxBicycleObstacleStateSequences[T: int, K: int]:
         return self._covariance[:, :3, :3, :]
 
     @cached_property
-    def _numpy_array(self) -> Array[Dims[T, BicycleEstimationD_x, K]]:
+    def _numpy_array(self) -> Float[Array, "T BicycleEstimationD_x K"]:
         return np.asarray(self._array)
 
 
 @jaxtyped
 @dataclass(frozen=True)
-class JaxBicycleObstacleInputs[K: int]:
-    _accelerations: Float[JaxArray, "K"]
-    _steering_angles: Float[JaxArray, "K"]
+class JaxBicycleObstacleInputs:
+    _accelerations: Float[JaxArray, " K"]
+    _steering_angles: Float[JaxArray, " K"]
 
     @staticmethod
-    def wrap[K_: int](
-        inputs: Array[Dims[BicycleD_u, K_]] | Float[JaxArray, f"{BICYCLE_D_U} K"],
-    ) -> "JaxBicycleObstacleInputs[K_]":
+    def wrap(
+        inputs: Float[Array, "BicycleD_u K"] | Float[JaxArray, f"{BICYCLE_D_U} K"],
+    ) -> "JaxBicycleObstacleInputs":
         inputs = jnp.asarray(inputs)
         return JaxBicycleObstacleInputs(
             _accelerations=inputs[0], _steering_angles=inputs[1]
         )
 
     @staticmethod
-    def create[K_: int](
+    def create(
         *,
-        accelerations: Array[Dims[K_]] | Float[JaxArray, "K"],
-        steering_angles: Array[Dims[K_]] | Float[JaxArray, "K"],
-    ) -> "JaxBicycleObstacleInputs[int]":
+        accelerations: Float[Array, " K"] | Float[JaxArray, " K"],
+        steering_angles: Float[Array, " K"] | Float[JaxArray, " K"],
+    ) -> "JaxBicycleObstacleInputs":
         return JaxBicycleObstacleInputs(
             _accelerations=jnp.asarray(accelerations),
             _steering_angles=jnp.asarray(steering_angles),
         )
 
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[BicycleD_u, K]]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "BicycleD_u K"]:
         return self._numpy_array
 
-    def accelerations(self) -> Array[Dims[K]]:
+    def accelerations(self) -> Float[Array, " K"]:
         return self._numpy_array[0, :]
 
-    def steering_angles(self) -> Array[Dims[K]]:
+    def steering_angles(self) -> Float[Array, " K"]:
         return self._numpy_array[1, :]
 
     def zeroed(
         self, *, acceleration: bool = False, steering_angle: bool = False
-    ) -> "JaxBicycleObstacleInputs[K]":
+    ) -> "JaxBicycleObstacleInputs":
         """Returns a version of the inputs with the specified components zeroed out."""
         return JaxBicycleObstacleInputs(
             _accelerations=jnp.zeros_like(self._accelerations)
@@ -633,15 +569,15 @@ class JaxBicycleObstacleInputs[K: int]:
         return BICYCLE_D_U
 
     @property
-    def count(self) -> K:
-        return cast(K, self._steering_angles.shape[0])
+    def count(self) -> int:
+        return self._steering_angles.shape[0]
 
     @property
-    def accelerations_array(self) -> Float[JaxArray, "K"]:
+    def accelerations_array(self) -> Float[JaxArray, " K"]:
         return self._accelerations
 
     @property
-    def steering_angles_array(self) -> Float[JaxArray, "K"]:
+    def steering_angles_array(self) -> Float[JaxArray, " K"]:
         return self._steering_angles
 
     @property
@@ -649,12 +585,8 @@ class JaxBicycleObstacleInputs[K: int]:
         return jnp.stack([self._accelerations, self._steering_angles], axis=0)
 
     @cached_property
-    def _numpy_array(self) -> Array[Dims[BicycleD_u, K]]:
-        array = np.asarray(self.array)
-
-        assert shape_of(array, matches=(BICYCLE_D_U, self.count))
-
-        return array
+    def _numpy_array(self) -> Float[Array, "BicycleD_u K"]:
+        return np.asarray(self.array)
 
 
 @dataclass(kw_only=True, frozen=True)
@@ -699,9 +631,9 @@ class JaxBicycleModel(
             else NO_LIMITS,
         )
 
-    def simulate[T: int, M: int](
-        self, inputs: JaxBicycleControlInputBatch[T, M], initial_state: JaxBicycleState
-    ) -> JaxBicycleStateBatch[T, M]:
+    def simulate(
+        self, inputs: JaxBicycleControlInputBatch, initial_state: JaxBicycleState
+    ) -> JaxBicycleStateBatch:
         rollout_count = inputs.rollout_count
 
         initial = jnp.stack(
@@ -725,8 +657,8 @@ class JaxBicycleModel(
             )
         )
 
-    def step[T: int](
-        self, inputs: JaxBicycleControlInputSequence[T], state: JaxBicycleState
+    def step(
+        self, inputs: JaxBicycleControlInputSequence, state: JaxBicycleState
     ) -> JaxBicycleState:
         return JaxBicycleState(
             step(
@@ -740,9 +672,9 @@ class JaxBicycleModel(
             )[:, 0]
         )
 
-    def forward[T: int](
-        self, inputs: JaxBicycleControlInputSequence[T], state: JaxBicycleState
-    ) -> JaxBicycleStateSequence[T]:
+    def forward(
+        self, inputs: JaxBicycleControlInputSequence, state: JaxBicycleState
+    ) -> JaxBicycleStateSequence:
         return self.simulate(JaxBicycleControlInputBatch.of(inputs), state).rollout(0)
 
     @property
@@ -762,8 +694,8 @@ class JaxBicycleStateEstimationModel(NamedTuple):
         *,
         time_step_size: float,
         wheelbase: float,
-        initial_state_covariance: Array[
-            Dims[BicycleEstimationD_x, BicycleEstimationD_x]
+        initial_state_covariance: Float[
+            Array, "BicycleEstimationD_x BicycleEstimationD_x"
         ]
         | EstimationStateCovarianceArray
         | None = None,
@@ -809,7 +741,7 @@ class JaxBicycleStateEstimationModel(NamedTuple):
 
     @jax.jit
     @jaxtyped
-    def step(self, state: Float[JaxArray, "D_x"]) -> Float[JaxArray, "D_x"]:
+    def step(self, state: Float[JaxArray, " D_x"]) -> Float[JaxArray, " D_x"]:
         dt = self.time_step_size
         x, y, theta, v, a, delta = state
         return jnp.array(
@@ -823,30 +755,26 @@ class JaxBicycleStateEstimationModel(NamedTuple):
             ]
         )
 
-    def observations_from[T: int = int, K: int = int](
-        self, history: JaxBicycleObstacleStatesHistory[T, K]
+    def observations_from(
+        self, history: JaxBicycleObstacleStatesHistory
     ) -> Float[JaxArray, "T D_z K"]:
         return jnp.stack(
             [history.x_array, history.y_array, history.heading_array], axis=1
         )
 
-    def states_from[K: int = int](
-        self, belief: BicycleGaussianBelief[K]
-    ) -> JaxBicycleObstacleStates[K]:
+    def states_from(self, belief: BicycleGaussianBelief) -> JaxBicycleObstacleStates:
         return JaxBicycleObstacleStates.wrap(belief.mean[:4, :])
 
-    def inputs_from[K: int = int](
-        self, belief: BicycleGaussianBelief[K]
-    ) -> JaxBicycleObstacleInputs[K]:
+    def inputs_from(self, belief: BicycleGaussianBelief) -> JaxBicycleObstacleInputs:
         return JaxBicycleObstacleInputs.wrap(belief.mean[4:, :])
 
-    def initial_belief_from[K: int](
+    def initial_belief_from(
         self,
         *,
-        states: JaxBicycleObstacleStates[K],
-        inputs: JaxBicycleObstacleInputs[K],
-        covariances: JaxBicycleObstacleCovariances[K] | None = None,
-    ) -> BicycleGaussianBelief[K]:
+        states: JaxBicycleObstacleStates,
+        inputs: JaxBicycleObstacleInputs,
+        covariances: JaxBicycleObstacleCovariances | None = None,
+    ) -> BicycleGaussianBelief:
         augmented = jnp.concatenate([states.array, inputs.array], axis=0)
 
         if covariances is None:
@@ -923,14 +851,14 @@ class JaxBicycleObstacleModel(
             ),
         )
 
-    def forward[T: int, K: int](
+    def forward(
         self,
         *,
-        states: JaxBicycleObstacleStates[K],
-        inputs: JaxBicycleObstacleInputs[K],
-        covariances: JaxBicycleObstacleCovariances[K] | None,
-        horizon: T,
-    ) -> JaxBicycleObstacleStateSequences[T, K]:
+        states: JaxBicycleObstacleStates,
+        inputs: JaxBicycleObstacleInputs,
+        covariances: JaxBicycleObstacleCovariances | None,
+        horizon: int,
+    ) -> JaxBicycleObstacleStateSequences:
         means, covariance = forward(
             initial=self.model.initial_belief_from(
                 states=states, inputs=inputs, covariances=covariances
@@ -963,10 +891,10 @@ class JaxFiniteDifferenceBicycleStateEstimator(
             time_step_size=jnp.asarray(time_step_size), wheelbase=jnp.asarray(wheelbase)
         )
 
-    def estimate_from[K: int, T: int = int](
-        self, history: JaxBicycleObstacleStatesHistory[T, K]
+    def estimate_from(
+        self, history: JaxBicycleObstacleStatesHistory
     ) -> EstimatedObstacleStates[
-        JaxBicycleObstacleStates[K], JaxBicycleObstacleInputs[K], None
+        JaxBicycleObstacleStates, JaxBicycleObstacleInputs, None
     ]:
         """Estimates current states and inputs from pose history using finite differences. Zeros
         are assumed for states that cannot be estimated due to insufficient history length.
@@ -1006,12 +934,9 @@ class JaxFiniteDifferenceBicycleStateEstimator(
                 heading=estimated.heading,
                 speed=estimated.speed,
             ),
-            inputs=cast(
-                JaxBicycleObstacleInputs[K],
-                JaxBicycleObstacleInputs.create(
-                    accelerations=estimated.accelerations,
-                    steering_angles=estimated.steering_angles,
-                ),
+            inputs=JaxBicycleObstacleInputs.create(
+                accelerations=estimated.accelerations,
+                steering_angles=estimated.steering_angles,
             ),
             covariance=None,
         )
@@ -1038,12 +963,10 @@ class JaxKfBicycleStateEstimator(
         *,
         time_step_size: float,
         wheelbase: float,
-        process_noise_covariance: JaxNoiseCovarianceDescription[BicycleEstimationD_x],
-        observation_noise_covariance: JaxNoiseCovarianceDescription[
-            BicycleObservationD_o
-        ],
-        initial_state_covariance: Array[
-            Dims[BicycleEstimationD_x, BicycleEstimationD_x]
+        process_noise_covariance: JaxNoiseCovarianceDescription,
+        observation_noise_covariance: JaxNoiseCovarianceDescription,
+        initial_state_covariance: Float[
+            Array, "BicycleEstimationD_x BicycleEstimationD_x"
         ]
         | EstimationStateCovarianceArray
         | None = None,
@@ -1082,12 +1005,10 @@ class JaxKfBicycleStateEstimator(
         *,
         time_step_size: float,
         wheelbase: float,
-        process_noise_covariance: JaxNoiseCovarianceDescription[BicycleEstimationD_x],
-        observation_noise_covariance: JaxNoiseCovarianceDescription[
-            BicycleObservationD_o
-        ],
-        initial_state_covariance: Array[
-            Dims[BicycleEstimationD_x, BicycleEstimationD_x]
+        process_noise_covariance: JaxNoiseCovarianceDescription,
+        observation_noise_covariance: JaxNoiseCovarianceDescription,
+        initial_state_covariance: Float[
+            Array, "BicycleEstimationD_x BicycleEstimationD_x"
         ]
         | EstimationStateCovarianceArray
         | None = None,
@@ -1121,12 +1042,12 @@ class JaxKfBicycleStateEstimator(
             estimator=JaxUnscentedKalmanFilter.create(),
         )
 
-    def estimate_from[K: int, T: int = int](
-        self, history: JaxBicycleObstacleStatesHistory[T, K]
+    def estimate_from(
+        self, history: JaxBicycleObstacleStatesHistory
     ) -> EstimatedObstacleStates[
-        JaxBicycleObstacleStates[K],
-        JaxBicycleObstacleInputs[K],
-        JaxBicycleObstacleCovariances[K],
+        JaxBicycleObstacleStates,
+        JaxBicycleObstacleInputs,
+        JaxBicycleObstacleCovariances,
     ]:
         estimate = self.estimator.filter(
             self.model.observations_from(history),
@@ -1145,12 +1066,12 @@ class JaxKfBicycleStateEstimator(
 
 
 class EstimatedBicycleObstacleStates(NamedTuple):
-    x: Float[JaxArray, "K"]
-    y: Float[JaxArray, "K"]
-    heading: Float[JaxArray, "K"]
-    speed: Float[JaxArray, "K"]
-    accelerations: Float[JaxArray, "K"]
-    steering_angles: Float[JaxArray, "K"]
+    x: Float[JaxArray, " K"]
+    y: Float[JaxArray, " K"]
+    heading: Float[JaxArray, " K"]
+    speed: Float[JaxArray, " K"]
+    accelerations: Float[JaxArray, " K"]
+    steering_angles: Float[JaxArray, " K"]
 
 
 def wrap(limits: tuple[float, float]) -> tuple[Scalar, Scalar]:
@@ -1221,7 +1142,7 @@ def estimate_states(
     heading_history: Float[JaxArray, "T K"],
     time_step_size: Scalar,
     wheelbase: Scalar,
-) -> EstimatedBicycleObstacleStates:
+) -> "EstimatedBicycleObstacleStates":
     filter_invalid_short = invalid_obstacle_filter_from(
         x_history, y_history, heading_history, check_recent=2
     )
@@ -1269,19 +1190,19 @@ def estimate_speed(
     y_history: Float[JaxArray, "T K"],
     heading_history: Float[JaxArray, "T K"],
     time_step_size: Scalar,
-) -> Float[JaxArray, "K"]:
+) -> Float[JaxArray, " K"]:
 
     horizon = x_history.shape[0]
     obstacle_count = x_history.shape[1]
 
     def estimate(
         *,
-        x_current: Float[JaxArray, "K"],
-        y_current: Float[JaxArray, "K"],
-        x_previous: Float[JaxArray, "K"],
-        y_previous: Float[JaxArray, "K"],
-        heading: Float[JaxArray, "K"],
-    ) -> Float[JaxArray, "K"]:
+        x_current: Float[JaxArray, " K"],
+        y_current: Float[JaxArray, " K"],
+        x_previous: Float[JaxArray, " K"],
+        y_previous: Float[JaxArray, " K"],
+        heading: Float[JaxArray, " K"],
+    ) -> Float[JaxArray, " K"]:
         delta_x = x_current - x_previous
         delta_y = y_current - y_previous
 
@@ -1310,15 +1231,15 @@ def estimate_acceleration(
     x_history: Float[JaxArray, "T K"],
     y_history: Float[JaxArray, "T K"],
     heading_history: Float[JaxArray, "T K"],
-    speed_current: Float[JaxArray, "K"],
+    speed_current: Float[JaxArray, " K"],
     time_step_size: Scalar,
-) -> Float[JaxArray, "K"]:
+) -> Float[JaxArray, " K"]:
     horizon = x_history.shape[0]
     obstacle_count = x_history.shape[1]
 
     def estimate(
-        *, speed_current: Float[JaxArray, "K"], speed_previous: Float[JaxArray, "K"]
-    ) -> Float[JaxArray, "K"]:
+        *, speed_current: Float[JaxArray, " K"], speed_previous: Float[JaxArray, " K"]
+    ) -> Float[JaxArray, " K"]:
         return (speed_current - speed_previous) / time_step_size
 
     if horizon < 3:
@@ -1340,19 +1261,19 @@ def estimate_acceleration(
 def estimate_steering_angle(
     *,
     heading_history: Float[JaxArray, "T K"],
-    speed_current: Float[JaxArray, "K"],
+    speed_current: Float[JaxArray, " K"],
     time_step_size: Scalar,
     wheelbase: Scalar,
-) -> Float[JaxArray, "K"]:
+) -> Float[JaxArray, " K"]:
     horizon = heading_history.shape[0]
     obstacle_count = heading_history.shape[1]
 
     def estimate(
         *,
-        speed_current: Float[JaxArray, "K"],
-        heading_current: Float[JaxArray, "K"],
-        heading_previous: Float[JaxArray, "K"],
-    ) -> Float[JaxArray, "K"]:
+        speed_current: Float[JaxArray, " K"],
+        heading_current: Float[JaxArray, " K"],
+        heading_previous: Float[JaxArray, " K"],
+    ) -> Float[JaxArray, " K"]:
         heading_velocity = (heading_current - heading_previous) / time_step_size
 
         steering_angles = jnp.where(

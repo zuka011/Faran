@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 from functools import cached_property
 
+from faran.types.array import Array, jaxtyped
 from faran.types.trajectories.common import (
-    D_r,
     D_R,
     PathParameters,
     ReferencePoints,
@@ -12,224 +12,213 @@ from faran.types.trajectories.common import (
     Normals,
 )
 
-from numtypes import array, Array, Dims, D
+from jaxtyping import Float
 
 import numpy as np
 
 
+@jaxtyped
 @dataclass(frozen=True)
-class NumPyPathParameters[T: int, M: int](PathParameters[T, M]):
-    array: Array[Dims[T, M]]
+class NumPyPathParameters(PathParameters):
+    array: Float[Array, "T M"]
 
-    def __array__(self) -> Array[Dims[T, M]]:
+    def __array__(self) -> Float[Array, "T M"]:
         return self.array
 
     @property
-    def horizon(self) -> T:
+    def horizon(self) -> int:
         return self.array.shape[0]
 
     @property
-    def rollout_count(self) -> M:
+    def rollout_count(self) -> int:
         return self.array.shape[1]
 
 
+@jaxtyped
 @dataclass(frozen=True)
-class NumPyPositions[T: int, M: int](Positions[T, M]):
-    _x: Array[Dims[T, M]]
-    _y: Array[Dims[T, M]]
+class NumPyPositions(Positions):
+    _x: Float[Array, "T M"]
+    _y: Float[Array, "T M"]
 
     @staticmethod
-    def create[T_: int, M_: int](
-        *,
-        x: Array[Dims[T_, M_]],
-        y: Array[Dims[T_, M_]],
-    ) -> "NumPyPositions[T_, M_]":
+    def create(*, x: Float[Array, "T M"], y: Float[Array, "T M"]) -> "NumPyPositions":
         """Creates a NumPy positions instance from x and y coordinate arrays."""
         return NumPyPositions(_x=x, _y=y)
 
-    def __array__(self) -> Array[Dims[T, D[2], M]]:
+    def __array__(self) -> Float[Array, "T 2 M"]:
         return self.array
 
-    def x(self) -> Array[Dims[T, M]]:
+    def x(self) -> Float[Array, "T M"]:
         return self._x
 
-    def y(self) -> Array[Dims[T, M]]:
+    def y(self) -> Float[Array, "T M"]:
         return self._y
 
     @property
-    def horizon(self) -> T:
+    def horizon(self) -> int:
         return self._x.shape[0]
 
     @property
-    def rollout_count(self) -> M:
+    def rollout_count(self) -> int:
         return self._x.shape[1]
 
     @property
-    def array(self) -> Array[Dims[T, D[2], M]]:
+    def array(self) -> Float[Array, "T 2 M"]:
         return self._array
 
     @cached_property
-    def _array(self) -> Array[Dims[T, D[2], M]]:
+    def _array(self) -> Float[Array, "T 2 M"]:
         return np.stack([self._x, self._y], axis=1)
 
 
+@jaxtyped
 @dataclass(frozen=True)
-class NumPyHeadings[T: int, M: int]:
-    _heading: Array[Dims[T, M]]
+class NumPyHeadings:
+    _heading: Float[Array, "T M"]
 
     @staticmethod
-    def create[T_: int, M_: int](
+    def create(
         *,
-        heading: Array[Dims[T_, M_]],
-    ) -> "NumPyHeadings[T_, M_]":
+        heading: Float[Array, "T M"],
+    ) -> "NumPyHeadings":
         """Creates a NumPy headings instance from an array of headings."""
         return NumPyHeadings(heading)
 
-    def __array__(self) -> Array[Dims[T, M]]:
+    def __array__(self) -> Float[Array, "T M"]:
         return self.array
 
-    def heading(self) -> Array[Dims[T, M]]:
+    def heading(self) -> Float[Array, "T M"]:
         return self._heading
 
     @property
-    def horizon(self) -> T:
+    def horizon(self) -> int:
         return self._heading.shape[0]
 
     @property
-    def rollout_count(self) -> M:
+    def rollout_count(self) -> int:
         return self._heading.shape[1]
 
     @property
-    def array(self) -> Array[Dims[T, M]]:
+    def array(self) -> Float[Array, "T M"]:
         return self._heading
 
 
+@jaxtyped
 @dataclass(frozen=True)
-class NumPyReferencePoints[T: int, M: int](ReferencePoints[T, M]):
-    array: Array[Dims[T, D_r, M]]
+class NumPyReferencePoints(ReferencePoints):
+    array: Float[Array, f"T {D_R} M"]
 
     @staticmethod
-    def create[T_: int, M_: int](
-        *,
-        x: Array[Dims[T_, M_]],
-        y: Array[Dims[T_, M_]],
-        heading: Array[Dims[T_, M_]],
-    ) -> "NumPyReferencePoints[T_, M_]":
+    def create(
+        *, x: Float[Array, "T M"], y: Float[Array, "T M"], heading: Float[Array, "T M"]
+    ) -> "NumPyReferencePoints":
         """Creates a NumPy reference points instance from x, y, and heading arrays."""
-        T, M = x.shape
-        return NumPyReferencePoints(
-            array=array(np.stack([x, y, heading], axis=1).tolist(), shape=(T, D_R, M))
-        )
+        return NumPyReferencePoints(array=np.stack([x, y, heading], axis=1))
 
-    def __array__(self) -> Array[Dims[T, D_r, M]]:
+    def __array__(self) -> Float[Array, f"T {D_R} M"]:
         return self.array
 
-    def x(self) -> Array[Dims[T, M]]:
+    def x(self) -> Float[Array, "T M"]:
         return self.array[:, 0]
 
-    def y(self) -> Array[Dims[T, M]]:
+    def y(self) -> Float[Array, "T M"]:
         return self.array[:, 1]
 
-    def heading(self) -> Array[Dims[T, M]]:
+    def heading(self) -> Float[Array, "T M"]:
         return self.array[:, 2]
 
     @property
-    def horizon(self) -> T:
+    def horizon(self) -> int:
         return self.array.shape[0]
 
     @property
-    def rollout_count(self) -> M:
+    def rollout_count(self) -> int:
         return self.array.shape[2]
 
     @property
-    def positions(self) -> Array[Dims[T, D[2], M]]:
+    def positions(self) -> Float[Array, "T 2 M"]:
         return self.array[:, :2]
 
 
+@jaxtyped
 @dataclass(frozen=True)
-class NumPyLateralPositions[T: int, M: int](LateralPositions[T, M]):
-    _array: Array[Dims[T, M]]
+class NumPyLateralPositions(LateralPositions):
+    _array: Float[Array, "T M"]
 
     @staticmethod
-    def create[T_: int, M_: int](
-        array: Array[Dims[T_, M_]],
-    ) -> "NumPyLateralPositions[T_, M_]":
+    def create(array: Float[Array, "T M"]) -> "NumPyLateralPositions":
         """Creates a NumPy lateral positions instance from an array."""
         return NumPyLateralPositions(array)
 
-    def __array__(self) -> Array[Dims[T, M]]:
+    def __array__(self) -> Float[Array, "T M"]:
         return self.array
 
     @property
-    def horizon(self) -> T:
+    def horizon(self) -> int:
         return self.array.shape[0]
 
     @property
-    def rollout_count(self) -> M:
+    def rollout_count(self) -> int:
         return self.array.shape[1]
 
     @property
-    def array(self) -> Array[Dims[T, M]]:
+    def array(self) -> Float[Array, "T M"]:
         return self._array
 
 
+@jaxtyped
 @dataclass(frozen=True)
-class NumPyLongitudinalPositions[T: int, M: int](LongitudinalPositions[T, M]):
-    _array: Array[Dims[T, M]]
+class NumPyLongitudinalPositions(LongitudinalPositions):
+    _array: Float[Array, "T M"]
 
     @staticmethod
-    def create[T_: int, M_: int](
-        array: Array[Dims[T_, M_]],
-    ) -> "NumPyLongitudinalPositions[T_, M_]":
+    def create(array: Float[Array, "T M"]) -> "NumPyLongitudinalPositions":
         """Creates a NumPy longitudinal positions instance from an array."""
         return NumPyLongitudinalPositions(array)
 
-    def __array__(self) -> Array[Dims[T, M]]:
+    def __array__(self) -> Float[Array, "T M"]:
         return self.array
 
     @property
-    def horizon(self) -> T:
+    def horizon(self) -> int:
         return self.array.shape[0]
 
     @property
-    def rollout_count(self) -> M:
+    def rollout_count(self) -> int:
         return self.array.shape[1]
 
     @property
-    def array(self) -> Array[Dims[T, M]]:
+    def array(self) -> Float[Array, "T M"]:
         return self._array
 
 
+@jaxtyped
 @dataclass(frozen=True)
-class NumPyNormals[T: int, M: int](Normals[T, M]):
-    _array: Array[Dims[T, D[2], M]]
+class NumPyNormals(Normals):
+    _array: Float[Array, "T 2 M"]
 
     @staticmethod
-    def create[T_: int, M_: int](
-        *,
-        x: Array[Dims[T_, M_]],
-        y: Array[Dims[T_, M_]],
-    ) -> "NumPyNormals[T_, M_]":
+    def create(*, x: Float[Array, "T M"], y: Float[Array, "T M"]) -> "NumPyNormals":
         """Creates a NumPy normals instance from x and y coordinate arrays."""
         return NumPyNormals(np.stack([x, y], axis=1))
 
-    def __array__(self) -> Array[Dims[T, D[2], M]]:
+    def __array__(self) -> Float[Array, "T 2 M"]:
         return self.array
 
-    def x(self) -> Array[Dims[T, M]]:
+    def x(self) -> Float[Array, "T M"]:
         return self.array[:, 0]
 
-    def y(self) -> Array[Dims[T, M]]:
+    def y(self) -> Float[Array, "T M"]:
         return self.array[:, 1]
 
     @property
-    def horizon(self) -> T:
+    def horizon(self) -> int:
         return self.array.shape[0]
 
     @property
-    def rollout_count(self) -> M:
+    def rollout_count(self) -> int:
         return self.array.shape[2]
 
     @property
-    def array(self) -> Array[Dims[T, D[2], M]]:
+    def array(self) -> Float[Array, "T 2 M"]:
         return self._array

@@ -3,13 +3,14 @@ from dataclasses import dataclass
 from functools import lru_cache
 
 from faran.types import (
+    Array,
     NumPyControlInputBatchCreator,
     NumPyControlInputSequence,
     NumPyControlInputBatch,
     NumPySampler,
 )
 
-from numtypes import Array, Dims
+from jaxtyping import Float
 
 from scipy.stats.qmc import Halton
 from scipy.stats import norm
@@ -21,28 +22,26 @@ import numpy as np
 @dataclass(kw_only=True)
 class NumPyHaltonSplineSampler[
     BatchT: NumPyControlInputBatch,
-    D_u: int = int,
-    M: int = int,
 ](NumPySampler[NumPyControlInputSequence, BatchT]):
     """Perturbs a nominal control sequence using Halton sequences interpolated through cubic splines."""
 
-    standard_deviation: Final[Array[Dims[D_u]]]
-    to_batch: Final[NumPyControlInputBatchCreator[BatchT, D_u, M]]
+    standard_deviation: Final[Float[Array, " D_u"]]
+    to_batch: Final[NumPyControlInputBatchCreator[BatchT]]
     knot_count: Final[int]
     seed: Final[int]
     halton_start_index: int
 
-    _rollout_count: Final[M]
+    _rollout_count: Final[int]
 
     @staticmethod
-    def create[B: NumPyControlInputBatch, D_u_: int, M_: int](
+    def create[B: NumPyControlInputBatch](
         *,
-        standard_deviation: Array[Dims[D_u_]],
-        rollout_count: M_,
+        standard_deviation: Float[Array, " D_u"],
+        rollout_count: int,
         knot_count: int,
-        to_batch: NumPyControlInputBatchCreator[B, D_u_, M_],
+        to_batch: NumPyControlInputBatchCreator,
         seed: int,
-    ) -> "NumPyHaltonSplineSampler[B, D_u_, M_]":
+    ) -> "NumPyHaltonSplineSampler":
         """Creates a sampler generating temporally smooth perturbations using Halton
         sequences and cubic splines around the specified control input sequence.
         """
@@ -75,14 +74,14 @@ class NumPyHaltonSplineSampler[
         return self.to_batch(array=samples)
 
     @property
-    def dimension(self) -> D_u:
+    def dimension(self) -> int:
         return self.standard_deviation.shape[0]
 
     @property
-    def rollout_count(self) -> M:
+    def rollout_count(self) -> int:
         return self._rollout_count
 
-    def _generate_halton_samples[N_knot: int = int](self) -> Array[Dims[M, N_knot]]:
+    def _generate_halton_samples(self) -> Float[Array, "M N_knot"]:
         halton_dimensions = self.knot_count * self.dimension
         halton_sequence = Halton(d=halton_dimensions, scramble=True, seed=self.seed)  # type: ignore
         halton_sequence.fast_forward(self.halton_start_index)
@@ -92,9 +91,9 @@ class NumPyHaltonSplineSampler[
 
         return uniform_samples
 
-    def _transform_to_gaussian[N_knot: int](
-        self, halton_samples: Array[Dims[M, N_knot]]
-    ) -> Array[Dims[M, N_knot, D_u]]:
+    def _transform_to_gaussian(
+        self, halton_samples: Float[Array, "M N_knot"]
+    ) -> Float[Array, "M N_knot D_u"]:
         rollout_count = halton_samples.shape[0]
 
         # NOTE: Clip to avoid infinities from ppf at 0 and 1.
@@ -102,13 +101,13 @@ class NumPyHaltonSplineSampler[
         gaussian_samples = norm.ppf(clipped)
 
         return cast(
-            Array[Dims[M, N_knot, D_u]],
+            Float[Array, "M N_knot D_u"],
             gaussian_samples.reshape(rollout_count, self.knot_count, self.dimension),
         )
 
-    def _interpolate_knots[T: int, N_knot: int = int](
-        self, *, gaussian_knots: Array[Dims[M, N_knot, D_u]], time_horizon: T
-    ) -> Array[Dims[T, D_u, M]]:
+    def _interpolate_knots(
+        self, *, gaussian_knots: Float[Array, "M N_knot D_u"], time_horizon: int
+    ) -> Float[Array, "T D_u M"]:
         knot_times = knot_times_for(
             time_horizon=time_horizon, knot_count=self.knot_count
         )
@@ -126,7 +125,5 @@ class NumPyHaltonSplineSampler[
 
 
 @lru_cache
-def knot_times_for[N_knot: int](
-    *, time_horizon: int, knot_count: N_knot
-) -> Array[Dims[N_knot]]:
+def knot_times_for(*, time_horizon: int, knot_count: int) -> Float[Array, " N_knot"]:
     return np.linspace(0, time_horizon - 1, knot_count)

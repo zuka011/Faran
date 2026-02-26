@@ -2,7 +2,8 @@ from typing import Sequence, Protocol
 
 from faran import ObstacleStateEstimator, EstimatedObstacleStates, model
 
-from numtypes import Array, Dims, array
+from numtypes import Array, array
+from jaxtyping import Float
 
 import numpy as np
 
@@ -430,16 +431,14 @@ class test_that_covariance_is_independent_across_obstacles:
         K = 3
         rng = np.random.default_rng(42)
 
-        def perturb[T: int, K: int](
-            poses: Array[Dims[T, K]], *, index: int
-        ) -> Array[Dims[T, K]]:
+        def perturb(poses: Float[Array, "T K"], *, index: int) -> Float[Array, "T K"]:
             perturbed = poses.copy()
             perturbed[:, index] += 10.0
             return perturbed
 
-        def perturb_simple[T: int, D_o: int, K: int](
-            states: Array[Dims[T, D_o, K]], *, index: int
-        ) -> Array[Dims[T, D_o, K]]:
+        def perturb_simple(
+            states: Float[Array, "T D_o K"], *, index: int
+        ) -> Float[Array, "T D_o K"]:
             perturbed = states.copy()
             perturbed[:, :, index] += 10.0
             return perturbed

@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
 from faran.types import (
+    Array,
     CostFunction,
     ControlInputBatch,
     Trajectory,
@@ -17,7 +18,7 @@ from faran.types import (
 )
 from faran.states import NumPySimpleCosts
 
-from numtypes import Array, Dims
+from jaxtyping import Float
 
 import numpy as np
 
@@ -41,9 +42,7 @@ class NumPyBoundaryCost[StateT](CostFunction[ControlInputBatch, StateT, NumPyCos
             distance=distance, distance_threshold=distance_threshold, weight=weight
         )
 
-    def __call__[T: int, M: int](
-        self, *, inputs: ControlInputBatch[T, int, M], states: StateT
-    ) -> NumPyCosts[T, M]:
+    def __call__(self, *, inputs: ControlInputBatch, states: StateT) -> NumPyCosts:
         cost = self.distance_threshold - self.distance(states=states).array
 
         return NumPySimpleCosts(self.weight * np.clip(cost, 0, None))
@@ -107,7 +106,7 @@ class NumPyFixedWidthBoundary[StateT](
 
         return NumPyBoundaryDistance(np.minimum(distance_to_left, distance_to_right))
 
-    def left[L: int](self, *, sample_count: L = 100) -> BoundaryPoints[L]:
+    def left(self, *, sample_count: int = 100) -> BoundaryPoints:
         s = NumPyPathParameters(
             np.linspace(0, self.reference.path_length, sample_count).reshape(-1, 1)
         )
@@ -117,7 +116,7 @@ class NumPyFixedWidthBoundary[StateT](
             - self._left * self.reference.normal(s).array
         )[..., 0]
 
-    def right[L: int](self, *, sample_count: L = 100) -> BoundaryPoints[L]:
+    def right(self, *, sample_count: int = 100) -> BoundaryPoints:
         s = NumPyPathParameters(
             np.linspace(0, self.reference.path_length, sample_count).reshape(-1, 1)
         )
@@ -129,7 +128,7 @@ class NumPyFixedWidthBoundary[StateT](
 
 
 @dataclass(kw_only=True, frozen=True)
-class NumPyPiecewiseFixedWidthBoundary[StateT, B: int = int](
+class NumPyPiecewiseFixedWidthBoundary[StateT](
     NumPyBoundaryDistanceExtractor[StateT, NumPyBoundaryDistance]
 ):
     """Piecewise fixed-width corridor boundary with segment-varying widths."""
@@ -138,9 +137,9 @@ class NumPyPiecewiseFixedWidthBoundary[StateT, B: int = int](
         NumPyPathParameters, NumPyReferencePoints, NumPyPositions, NumPyLateralPositions
     ]
     position_extractor: NumPyPositionExtractor[StateT]
-    breakpoints: Array[Dims[B]]
-    left_widths: Array[Dims[B]]
-    right_widths: Array[Dims[B]]
+    breakpoints: Float[Array, " B"]
+    left_widths: Float[Array, " B"]
+    right_widths: Float[Array, " B"]
 
     @staticmethod
     def create[S](
@@ -193,7 +192,7 @@ class NumPyPiecewiseFixedWidthBoundary[StateT, B: int = int](
 
         return NumPyBoundaryDistance(np.minimum(distance_to_left, distance_to_right))
 
-    def left[L: int](self, *, sample_count: L = 100) -> BoundaryPoints[L]:
+    def left(self, *, sample_count: int = 100) -> BoundaryPoints:
         s_values = np.linspace(0, self.reference.path_length, sample_count)
         s = NumPyPathParameters(s_values.reshape(-1, 1))
 
@@ -206,7 +205,7 @@ class NumPyPiecewiseFixedWidthBoundary[StateT, B: int = int](
             - left[:, np.newaxis, np.newaxis] * self.reference.normal(s).array
         )[..., 0]
 
-    def right[L: int](self, *, sample_count: L = 100) -> BoundaryPoints[L]:
+    def right(self, *, sample_count: int = 100) -> BoundaryPoints:
         s_values = np.linspace(0, self.reference.path_length, sample_count)
         s = NumPyPathParameters(s_values.reshape(-1, 1))
 

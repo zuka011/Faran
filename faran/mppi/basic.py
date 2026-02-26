@@ -2,13 +2,14 @@ from typing import cast, Any
 from dataclasses import dataclass
 
 from faran.types import (
+    jaxtyped,
+    Array,
     DataType,
     NumPyState,
     NumPyStateBatch,
     NumPyControlInputSequence,
     NumPyControlInputBatch,
     NumPyDynamicalModel,
-    NumPyCosts,
     NumPyCostFunction,
     NumPySampler,
     NumPyUpdateFunction,
@@ -20,26 +21,27 @@ from faran.types import (
 )
 from faran.mppi.common import UseOptimalControlUpdate, NoFilter
 
-from numtypes import Array, Dim2, Dims, shape_of
+from jaxtyping import Float
 
 import numpy as np
 
 
+@jaxtyped
 @dataclass(frozen=True)
-class NumPyWeights[M: int]:
+class NumPyWeights:
     """Softmax-normalized cost weights used to compute the weighted average over rollouts."""
 
-    _array: Array[Dims[M]]
+    _array: Float[Array, " M"]
 
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[M]]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, " M"]:
         return self._array
 
     @property
-    def rollout_count(self) -> M:
+    def rollout_count(self) -> int:
         return self._array.shape[0]
 
     @property
-    def array(self) -> Array[Dims[M]]:
+    def array(self) -> Float[Array, " M"]:
         return self._array
 
 
@@ -48,14 +50,12 @@ class NumPyZeroPadding(
 ):
     """Fills shifted-out time steps with zero control inputs after horizon advancement."""
 
-    def __call__[T: int, D_u: int, L: int](
-        self, *, nominal_input: NumPyControlInputSequence[T, D_u], padding_size: L
-    ) -> NumPyControlInputSequence[L, D_u]:
-        array = np.zeros(shape := (padding_size, nominal_input.dimension))
+    def __call__(
+        self, *, nominal_input: NumPyControlInputSequence, padding_size: int
+    ) -> NumPyControlInputSequence:
+        array = np.zeros((padding_size, nominal_input.dimension))
 
-        assert shape_of(array, matches=shape, name="padding array")
-
-        return nominal_input.similar(array=array, length=padding_size)
+        return nominal_input.similar(array=array)
 
 
 @dataclass(kw_only=True, frozen=True)
@@ -65,14 +65,14 @@ class NumPyMppi[
     ControlInputSequenceT: NumPyControlInputSequence,
     ControlInputBatchT: NumPyControlInputBatch,
     ControlInputPaddingT: NumPyControlInputSequence = ControlInputSequenceT,
-](Mppi[StateT, ControlInputSequenceT, NumPyWeights[int]]):
+](Mppi[StateT, ControlInputSequenceT, NumPyWeights]):
     """Sampling-based stochastic optimal controller using the information-theoretic MPPI algorithm."""
 
     planning_interval: int
     model: NumPyDynamicalModel[
         StateT, Any, StateBatchT, ControlInputSequenceT, ControlInputBatchT
     ]
-    cost_function: NumPyCostFunction[ControlInputBatchT, StateBatchT, NumPyCosts]
+    cost_function: NumPyCostFunction
     sampler: NumPySampler[ControlInputSequenceT, ControlInputBatchT]
     update_function: NumPyUpdateFunction[ControlInputSequenceT]
     padding_function: NumPyPaddingFunction[ControlInputSequenceT, ControlInputPaddingT]
@@ -89,7 +89,7 @@ class NumPyMppi[
         *,
         planning_interval: int = 1,
         model: NumPyDynamicalModel[S, Any, SB, CIS, CIB],
-        cost_function: NumPyCostFunction[CIB, SB, NumPyCosts],
+        cost_function: NumPyCostFunction,
         sampler: NumPySampler[CIS, CIB],
         update_function: NumPyUpdateFunction[CIS] | None = None,
         padding_function: NumPyPaddingFunction[CIS, CIP] | None = None,
@@ -122,15 +122,10 @@ class NumPyMppi[
         assert temperature > 0.0, "Temperature must be positive."
 
         samples = self.sampler.sample(around=nominal_input)
-        rollout_count = samples.rollout_count
 
         rollouts = self.model.simulate(inputs=samples, initial_state=initial_state)
         costs = self.cost_function(inputs=samples, states=rollouts)
         costs_per_rollout = np.sum(costs.array, axis=0)
-
-        assert shape_of(
-            costs_per_rollout, matches=(rollout_count,), name="costs per rollout"
-        )
 
         min_cost = np.min(costs_per_rollout)
         exp_costs = np.exp((costs_per_rollout - min_cost) / (-temperature))
@@ -138,9 +133,7 @@ class NumPyMppi[
         normalizing_constant = exp_costs.sum()
         weights = exp_costs / normalizing_constant
 
-        optimal_control = cast(
-            Array[Dim2], np.tensordot(samples, weights, axes=([2], [0]))
-        )
+        optimal_control = np.tensordot(samples, weights, axes=([2], [0]))
         optimal_input = self.filter_function(
             optimal_input=nominal_input.similar(array=optimal_control)
         )

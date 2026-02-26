@@ -43,7 +43,6 @@ from faran.costs import (
 from faran.mppi import JaxWeights
 from faran.mpcc.common import MpccMppiSetup
 
-from numtypes import D
 from jaxtyping import Float, Array as JaxArray
 from deepmerge import always_merger
 
@@ -51,36 +50,32 @@ import jax.numpy as jnp
 import jax.random as jrandom
 
 
-type JaxMpccVirtualState = JaxSimpleState[D[1]]
+type JaxMpccVirtualState = JaxSimpleState
 type JaxMpccAugmentedState[S: JaxState] = JaxAugmentedState[S, JaxMpccVirtualState]
 
-type JaxMpccVirtualStateSequence = JaxStateSequence[int, D[1]]
+type JaxMpccVirtualStateSequence = JaxStateSequence
 type JaxMpccAugmentedStateSequence[SS: JaxStateSequence] = JaxAugmentedStateSequence[
     SS, JaxMpccVirtualStateSequence
 ]
 
-type JaxMpccVirtualStateBatch = JaxStateBatch[int, D[1], int]
+type JaxMpccVirtualStateBatch = JaxStateBatch
 type JaxMpccAugmentedStateBatch[SB: JaxStateBatch] = JaxAugmentedStateBatch[
     SB, JaxMpccVirtualStateBatch
 ]
 
-type JaxMpccVirtualControlInputSequence = JaxSimpleControlInputSequence[int, D[1]]
+type JaxMpccVirtualControlInputSequence = JaxSimpleControlInputSequence
 type JaxMpccAugmentedControlInputSequence[CS: JaxControlInputSequence] = (
     JaxAugmentedControlInputSequence[CS, JaxMpccVirtualControlInputSequence]
 )
 
-type JaxMpccVirtualControlInputBatch = JaxControlInputBatch[int, D[1], int]
+type JaxMpccVirtualControlInputBatch = JaxControlInputBatch
 type JaxMpccAugmentedControlInputBatch[CB: JaxControlInputBatch] = (
     JaxAugmentedControlInputBatch[CB, JaxMpccVirtualControlInputBatch]
 )
 
-type JaxMpccCostFunction[
-    CB: JaxControlInputBatch,
-    SB: JaxStateBatch,
-    C: JaxCosts,
-] = JaxCostFunction[
-    JaxMpccAugmentedControlInputBatch[CB], JaxMpccAugmentedStateBatch[SB], C
-]
+type JaxMpccCostFunction[CB: JaxControlInputBatch, SB: JaxStateBatch, C: JaxCosts] = (
+    JaxCostFunction
+)
 
 
 class JaxMpccWeightConfig:
@@ -247,7 +242,7 @@ class JaxMpccMppi:
                     position_extractor=position_extractor,
                     weight=full_config["weights"]["lag"],
                 ),
-                create_costs.jax.tracking.progress(
+                create_costs.jax.tracking.progress(  # type: ignore
                     path_velocity_extractor=extract.from_virtual(extract_path_velocity),
                     time_step_size=model.time_step_size,
                     weight=full_config["weights"]["progress"],

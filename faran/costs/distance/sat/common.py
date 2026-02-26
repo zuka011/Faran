@@ -1,12 +1,16 @@
 from dataclasses import dataclass
 
-from numtypes import Array, Dims, D, array
+from faran.types.array import Array, jaxtyped
+
+from numtypes import array
+from jaxtyping import Float
 
 import numpy as np
 
-type VerticesArray[P: int = int] = Array[Dims[P, D[2]]]
+type VerticesArray = Float[Array, "P 2"]
 
 
+@jaxtyped
 @dataclass(frozen=True)
 class ConvexPolygon:
     """Describes a convex polygon for SAT-based distance computation.

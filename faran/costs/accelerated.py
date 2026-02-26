@@ -1,8 +1,9 @@
-from typing import Any, overload, cast
+from typing import Any
 from dataclasses import dataclass
 
 from faran.types import (
     jaxtyped,
+    Array,
     DataType,
     StateBatch,
     ControlInputBatch,
@@ -23,7 +24,6 @@ from faran.types import (
 from faran.states import JaxSimpleCosts
 
 from jaxtyping import Array as JaxArray, Float, Scalar
-from numtypes import Array, Dims
 
 import numpy as np
 import jax
@@ -32,12 +32,12 @@ import jax.numpy as jnp
 
 @jaxtyped
 @dataclass(frozen=True)
-class JaxError[T: int, M: int](Error[T, M]):
+class JaxError(Error):
     """Contouring or lag error between the state batch and reference trajectory."""
 
     array: Float[JaxArray, "T M"]
 
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[T, M]]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "T M"]:
         return np.asarray(self.array)
 
 
@@ -76,9 +76,7 @@ class JaxContouringCost[StateBatchT](
             weight=weight,
         )
 
-    def __call__[T: int, M: int](
-        self, *, inputs: ControlInputBatch[T, int, M], states: StateBatchT
-    ) -> JaxCosts[T, M]:
+    def __call__(self, *, inputs: ControlInputBatch, states: StateBatchT) -> JaxCosts:
         ref_points = self.reference.query(self.path_parameter_extractor(states))
         heading = ref_points.heading_array
         positions = self.position_extractor(states)
@@ -94,9 +92,7 @@ class JaxContouringCost[StateBatchT](
             )
         )
 
-    def error[T: int = int, M: int = int](
-        self, *, states: StateBatchT
-    ) -> JaxError[T, M]:
+    def error(self, *, states: StateBatchT) -> JaxError:
         ref_points = self.reference.query(self.path_parameter_extractor(states))
         heading = ref_points.heading_array
         positions = self.position_extractor(states)
@@ -147,9 +143,7 @@ class JaxLagCost[StateBatchT](
             weight=weight,
         )
 
-    def __call__[T: int, M: int](
-        self, *, inputs: ControlInputBatch[T, int, M], states: StateBatchT
-    ) -> JaxCosts[T, M]:
+    def __call__(self, *, inputs: ControlInputBatch, states: StateBatchT) -> JaxCosts:
         ref_points, positions = self._reference_points_and_positions(states=states)
         heading = ref_points.heading_array
 
@@ -164,9 +158,7 @@ class JaxLagCost[StateBatchT](
             )
         )
 
-    def error[T: int = int, M: int = int](
-        self, *, states: StateBatchT
-    ) -> JaxError[T, M]:
+    def error(self, *, states: StateBatchT) -> JaxError:
         ref_points, positions = self._reference_points_and_positions(states=states)
         heading = ref_points.heading_array
 
@@ -180,9 +172,9 @@ class JaxLagCost[StateBatchT](
             )
         )
 
-    def _reference_points_and_positions[T: int, M: int](
+    def _reference_points_and_positions(
         self, *, states: StateBatchT
-    ) -> tuple[JaxReferencePoints[T, M], JaxPositions[T, M]]:
+    ) -> tuple[JaxReferencePoints, JaxPositions]:
         return (
             self.reference.query(self.path_parameter_extractor(states)),
             self.position_extractor(states),
@@ -217,9 +209,7 @@ class JaxProgressCost[InputBatchT](CostFunction[InputBatchT, StateBatch, JaxCost
             weight=weight,
         )
 
-    def __call__[T: int, M: int](
-        self, *, inputs: InputBatchT, states: StateBatch[T, int, M]
-    ) -> JaxCosts[T, M]:
+    def __call__(self, *, inputs: InputBatchT, states: StateBatch) -> JaxCosts:
         path_velocities = self.path_velocity_extractor(inputs)
 
         return JaxSimpleCosts(
@@ -233,76 +223,40 @@ class JaxProgressCost[InputBatchT](CostFunction[InputBatchT, StateBatch, JaxCost
 
 @jaxtyped
 @dataclass(kw_only=True, frozen=True)
-class JaxControlSmoothingCost[D_u: int](
-    CostFunction[JaxControlInputBatch[int, D_u, int], StateBatch, JaxCosts]
-):
+class JaxControlSmoothingCost(CostFunction[JaxControlInputBatch, StateBatch, JaxCosts]):
     """Penalizes abrupt changes in control inputs between consecutive time steps."""
 
-    weights: Float[JaxArray, "D_u"]
-    dimensions: D_u
+    weights: Float[JaxArray, " D_u"]
 
-    @overload
     @staticmethod
-    def create[D_u_: int](
-        *, weights: Array[Dims[D_u_]]
-    ) -> "JaxControlSmoothingCost[D_u_]":
+    def create(
+        *, weights: Float[Array, " D_u"] | Float[JaxArray, " D_u"]
+    ) -> "JaxControlSmoothingCost":
         """Creates a control smoothing cost implemented with JAX.
 
         Args:
             weights: The weights for each control input dimension.
         """
-        ...
+        return JaxControlSmoothingCost(weights=jnp.asarray(weights))
 
-    @overload
-    @staticmethod
-    def create[D_u_: int](
-        *, weights: Float[JaxArray, "D_u_"], dimensions: D_u_ | None = None
-    ) -> "JaxControlSmoothingCost[D_u_]":
-        """Creates a control smoothing cost implemented with JAX.
-
-        Args:
-            weights: The weights for each control input dimension.
-            dimensions: The number of control input dimensions.
-        """
-        ...
-
-    @staticmethod
-    def create[D_u_: int](
-        *,
-        weights: Array[Dims[D_u_]] | Float[JaxArray, "D_u_"],
-        dimensions: D_u_ | None = None,
-    ) -> "JaxControlSmoothingCost[D_u_]":
-        dimensions = (
-            dimensions if dimensions is not None else cast(D_u_, weights.shape[0])
-        )
-        return JaxControlSmoothingCost(
-            weights=jnp.asarray(weights), dimensions=dimensions
-        )
-
-    def __call__[T: int, M: int](
-        self,
-        *,
-        inputs: JaxControlInputBatch[T, D_u, M],
-        states: StateBatch[T, int, M],
-    ) -> JaxCosts[T, M]:
+    def __call__(self, *, inputs: JaxControlInputBatch, states: StateBatch) -> JaxCosts:
         return JaxSimpleCosts(
             control_smoothing_cost(inputs=inputs.array, weights=self.weights)
         )
 
 
+@jaxtyped
 @dataclass(kw_only=True, frozen=True)
-class JaxControlEffortCost[D_u: int](
-    CostFunction[JaxControlInputBatch[int, D_u, int], Any, JaxCosts]
-):
+class JaxControlEffortCost(CostFunction[JaxControlInputBatch, Any, JaxCosts]):
     """Penalizes large control input magnitudes."""
 
-    weights: Float[JaxArray, "D_u"]
+    weights: Float[JaxArray, " D_u"]
 
     @staticmethod
-    def create[D_u_: int](
+    def create(
         *,
-        weights: Float[JaxArray, "D_u_"] | Array[Dims[D_u_]],
-    ) -> "JaxControlEffortCost[D_u_]":
+        weights: Float[JaxArray, " D_u"] | Float[Array, " D_u"],
+    ) -> "JaxControlEffortCost":
         """Creates a control effort cost implemented with JAX.
 
         Args:
@@ -310,9 +264,7 @@ class JaxControlEffortCost[D_u: int](
         """
         return JaxControlEffortCost(weights=jnp.asarray(weights))
 
-    def __call__[T: int, M: int](
-        self, *, inputs: JaxControlInputBatch[T, D_u, M], states: Any
-    ) -> JaxCosts[T, M]:
+    def __call__(self, *, inputs: JaxControlInputBatch, states: Any) -> JaxCosts:
         return JaxSimpleCosts(
             control_effort_cost(inputs=inputs.array, weights=self.weights)
         )
@@ -397,6 +349,6 @@ def control_smoothing_cost(
 @jax.jit
 @jaxtyped
 def control_effort_cost(
-    *, inputs: Float[JaxArray, "T D_u M"], weights: Float[JaxArray, "D_u"]
+    *, inputs: Float[JaxArray, "T D_u M"], weights: Float[JaxArray, " D_u"]
 ) -> Float[JaxArray, "T M"]:
     return jnp.einsum("u,tum->tm", weights, inputs**2)

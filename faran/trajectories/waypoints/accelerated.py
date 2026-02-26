@@ -3,6 +3,7 @@ from dataclasses import dataclass
 
 from faran.types import (
     jaxtyped,
+    Array,
     D_R,
     Trajectory,
     NumPyPathParameters,
@@ -17,13 +18,12 @@ from faran.trajectories.waypoints.basic import NumPyWaypointsTrajectory
 
 from scipy.interpolate import CubicSpline
 from jaxtyping import Array as JaxArray, Float, Scalar, Int as JaxInt
-from numtypes import Array, Dims, D
 
 import jax
 import jax.numpy as jnp
 import numpy as np
 
-type PointArray = Array[Dims[int, D[2]]]
+type PointArray = Float[Array, "N 2"]
 type JaxPointArray = Float[JaxArray, "N 2"]
 type Int = JaxInt[JaxArray, ""]
 
@@ -31,9 +31,9 @@ type Int = JaxInt[JaxArray, ""]
 class GuessSamples(NamedTuple):
     """Precomputed spline samples used for fast nearest-point lookup."""
 
-    x: Float[JaxArray, "K"]
-    y: Float[JaxArray, "K"]
-    arc_lengths: Float[JaxArray, "K"]
+    x: Float[JaxArray, " K"]
+    y: Float[JaxArray, " K"]
+    arc_lengths: Float[JaxArray, " K"]
 
 
 @dataclass(kw_only=True, frozen=True)
@@ -48,7 +48,7 @@ class JaxWaypointsTrajectory(
 ):
     """JAX cubic spline trajectory through a set of waypoints."""
 
-    reference_points: Float[JaxArray, "N"]
+    reference_points: Float[JaxArray, " N"]
     coefficients_x: Float[JaxArray, "N-1 4"]
     coefficients_y: Float[JaxArray, "N-1 4"]
 
@@ -107,9 +107,9 @@ class JaxWaypointsTrajectory(
             _inner=trajectory,
         )
 
-    def query[T: int, M: int](
-        self, parameters: JaxPathParameters[T, M] | NumPyPathParameters[T, M]
-    ) -> JaxReferencePoints[T, M]:
+    def query(
+        self, parameters: JaxPathParameters | NumPyPathParameters
+    ) -> JaxReferencePoints:
         parameters_array = jnp.asarray(parameters.array)
 
         assert path_parameters_are_valid(
@@ -125,9 +125,7 @@ class JaxWaypointsTrajectory(
             )
         )
 
-    def lateral[T: int, M: int](
-        self, positions: JaxPositions[T, M]
-    ) -> JaxLateralPositions[T, M]:
+    def lateral(self, positions: JaxPositions) -> JaxLateralPositions:
         return JaxLateralPositions(
             compute_lateral(
                 x=positions.x_array,
@@ -148,9 +146,7 @@ class JaxWaypointsTrajectory(
             )
         )
 
-    def longitudinal[T: int, M: int](
-        self, positions: JaxPositions[T, M]
-    ) -> JaxLongitudinalPositions[T, M]:
+    def longitudinal(self, positions: JaxPositions) -> JaxLongitudinalPositions:
         return JaxLongitudinalPositions(
             closest_arc_lengths(
                 x=positions.x_array,
@@ -164,9 +160,7 @@ class JaxWaypointsTrajectory(
             )
         )
 
-    def normal[T: int, M: int](
-        self, parameters: JaxPathParameters[T, M] | NumPyPathParameters[T, M]
-    ) -> JaxNormals[T, M]:
+    def normal(self, parameters: JaxPathParameters | NumPyPathParameters) -> JaxNormals:
         x, y = compute_normal(
             parameters=jnp.asarray(parameters.array),
             reference_points=self.reference_points,
@@ -236,7 +230,7 @@ def path_parameters_are_valid(
 def query(
     parameters: Float[JaxArray, "T M"],
     *,
-    reference_points: Float[JaxArray, "N"],
+    reference_points: Float[JaxArray, " N"],
     coefficients_x: Float[JaxArray, "S 4"],
     coefficients_y: Float[JaxArray, "S 4"],
 ) -> Float[JaxArray, f"T {D_R} M"]:
@@ -254,7 +248,7 @@ def query(
 @jaxtyped
 def evaluate(
     parameters: Float[JaxArray, "T M"],
-    reference_points: Float[JaxArray, "N"],
+    reference_points: Float[JaxArray, " N"],
     coefficients: Float[JaxArray, "S 4"],
 ) -> Float[JaxArray, "T M"]:
     num_segments = len(coefficients)
@@ -281,7 +275,7 @@ def evaluate(
 @jaxtyped
 def evaluate_derivative(
     parameters: Float[JaxArray, "T M"],
-    reference_points: Float[JaxArray, "N"],
+    reference_points: Float[JaxArray, " N"],
     coefficients: Float[JaxArray, "S 4"],
 ) -> Float[JaxArray, "T M"]:
     num_segments = len(coefficients)
@@ -305,7 +299,7 @@ def evaluate_derivative(
 @jaxtyped
 def evaluate_second_derivative(
     parameters: Float[JaxArray, "T M"],
-    reference_points: Float[JaxArray, "N"],
+    reference_points: Float[JaxArray, " N"],
     coefficients: Float[JaxArray, "S 4"],
 ) -> Float[JaxArray, "T M"]:
     num_segments = len(coefficients)
@@ -330,7 +324,7 @@ def closest_arc_lengths(
     *,
     x: Float[JaxArray, "T M"],
     y: Float[JaxArray, "T M"],
-    reference_points: Float[JaxArray, "N"],
+    reference_points: Float[JaxArray, " N"],
     coefficients_x: Float[JaxArray, "S 4"],
     coefficients_y: Float[JaxArray, "S 4"],
     guess: GuessSamples,
@@ -373,7 +367,7 @@ def refine_newton(
     arc_lengths: Float[JaxArray, "T M"],
     x: Float[JaxArray, "T M"],
     y: Float[JaxArray, "T M"],
-    reference_points: Float[JaxArray, "N"],
+    reference_points: Float[JaxArray, " N"],
     coefficients_x: Float[JaxArray, "S 4"],
     coefficients_y: Float[JaxArray, "S 4"],
     path_length: Scalar,
@@ -416,7 +410,7 @@ def compute_lateral(
     x: Float[JaxArray, "T M"],
     y: Float[JaxArray, "T M"],
     arc_lengths: Float[JaxArray, "T M"],
-    reference_points: Float[JaxArray, "N"],
+    reference_points: Float[JaxArray, " N"],
     coefficients_x: Float[JaxArray, "S 4"],
     coefficients_y: Float[JaxArray, "S 4"],
 ) -> Float[JaxArray, "T M"]:
@@ -442,7 +436,7 @@ def compute_lateral(
 def compute_normal(
     parameters: Float[JaxArray, "T M"],
     *,
-    reference_points: Float[JaxArray, "N"],
+    reference_points: Float[JaxArray, " N"],
     coefficients_x: Float[JaxArray, "S 4"],
     coefficients_y: Float[JaxArray, "S 4"],
 ) -> tuple[Float[JaxArray, "T M"], Float[JaxArray, "T M"]]:

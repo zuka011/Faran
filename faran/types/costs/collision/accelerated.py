@@ -1,8 +1,8 @@
-from typing import Protocol, Any, cast
+from typing import Protocol, Any
 from dataclasses import dataclass
 from functools import cached_property
 
-from faran.types.array import jaxtyped, DataType
+from faran.types.array import Array, jaxtyped, DataType
 from faran.types.costs.collision.common import (
     ObstacleStateProvider,
     ObstacleStateSampler,
@@ -19,23 +19,20 @@ from faran.types.costs.collision.common import (
     RiskMetric,
 )
 
-from numtypes import Array, Dims, D
 from jaxtyping import Float, Array as JaxArray
 
 import numpy as np
 
 
-class JaxSampledObstacleStates[T: int, D_o: int, K: int, N: int](
-    SampledObstacleStates[T, D_o, K, N], Protocol
-):
+class JaxSampledObstacleStates(SampledObstacleStates, Protocol):
     @property
     def array(self) -> Float[JaxArray, "T D_o K N"]:
         """Returns the sampled states of obstacles as a JAX array."""
         ...
 
 
-class JaxObstacleStatesForTimeStep[D_o: int, K: int, ObstacleStatesT, NumPyT = Any](
-    ObstacleStatesForTimeStep[D_o, K, ObstacleStatesT], Protocol
+class JaxObstacleStatesForTimeStep[ObstacleStatesT, NumPyT = Any](
+    ObstacleStatesForTimeStep[ObstacleStatesT], Protocol
 ):
     def numpy(self) -> NumPyT:
         """Returns the states of obstacles at a specific time step wrapped for the NumPy backend."""
@@ -47,13 +44,9 @@ class JaxObstacleStatesForTimeStep[D_o: int, K: int, ObstacleStatesT, NumPyT = A
         ...
 
 
-class JaxObstacleStates[
-    T: int,
-    D_o: int,
-    K: int,
-    SingleSampleT,
-    ObstacleStatesForTimeStepT = Any,
-](ObstacleStates[T, D_o, K, SingleSampleT], Protocol):
+class JaxObstacleStates[SingleSampleT, ObstacleStatesForTimeStepT = Any](
+    ObstacleStates[SingleSampleT], Protocol
+):
     def last(self) -> ObstacleStatesForTimeStepT:
         """Returns the states of obstacles at the last time step."""
         ...
@@ -71,56 +64,36 @@ class JaxObstacleStates[
 
 @jaxtyped
 @dataclass(frozen=True)
-class JaxSampledObstaclePositions[T: int, K: int, N: int](
-    SampledObstaclePositions[T, K, N]
-):
+class JaxSampledObstaclePositions(SampledObstaclePositions):
     _x: Float[JaxArray, "T K N"]
     _y: Float[JaxArray, "T K N"]
 
     @staticmethod
-    def create[T_: int, K_: int, N_: int](
-        *,
-        x: Float[JaxArray, "T K N"],
-        y: Float[JaxArray, "T K N"],
-        horizon: T_ | None = None,
-        obstacle_count: K_ | None = None,
-        sample_count: N_ | None = None,
-    ) -> "JaxSampledObstaclePositions[T_, K_, N_]":
-        horizon = horizon if horizon is not None else cast(T_, x.shape[0])
-        obstacle_count = (
-            obstacle_count if obstacle_count is not None else cast(K_, x.shape[1])
-        )
-        sample_count = (
-            sample_count if sample_count is not None else cast(N_, x.shape[2])
-        )
-
-        assert x.shape == y.shape == (horizon, obstacle_count, sample_count), (
-            f"Expected shape (T={horizon}, K={obstacle_count}, N={sample_count}), "
-            f"but got x: {x.shape}, y: {y.shape}."
-        )
-
+    def create(
+        *, x: Float[JaxArray, "T K N"], y: Float[JaxArray, "T K N"]
+    ) -> "JaxSampledObstaclePositions":
         return JaxSampledObstaclePositions(_x=x, _y=y)
 
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[T, D[2], K, N]]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "T 2 K N"]:
         return self._numpy_array
 
-    def x(self) -> Array[Dims[T, K, N]]:
+    def x(self) -> Float[Array, "T K N"]:
         return self._numpy_x
 
-    def y(self) -> Array[Dims[T, K, N]]:
+    def y(self) -> Float[Array, "T K N"]:
         return self._numpy_y
 
     @property
-    def horizon(self) -> T:
-        return cast(T, self._x.shape[0])
+    def horizon(self) -> int:
+        return self._x.shape[0]
 
     @property
-    def count(self) -> K:
-        return cast(K, self._x.shape[1])
+    def count(self) -> int:
+        return self._x.shape[1]
 
     @property
-    def sample_count(self) -> N:
-        return cast(N, self._x.shape[2])
+    def sample_count(self) -> int:
+        return self._x.shape[2]
 
     @property
     def x_array(self) -> Float[JaxArray, "T K N"]:
@@ -131,72 +104,51 @@ class JaxSampledObstaclePositions[T: int, K: int, N: int](
         return self._y
 
     @cached_property
-    def _numpy_x(self) -> Array[Dims[T, K, N]]:
+    def _numpy_x(self) -> Float[Array, "T K N"]:
         return np.asarray(self._x)
 
     @cached_property
-    def _numpy_y(self) -> Array[Dims[T, K, N]]:
+    def _numpy_y(self) -> Float[Array, "T K N"]:
         return np.asarray(self._y)
 
     @cached_property
-    def _numpy_array(self) -> Array[Dims[T, D[2], K, N]]:
+    def _numpy_array(self) -> Float[Array, "T 2 K N"]:
         return np.stack([self._numpy_x, self._numpy_y], axis=1)
 
 
 @jaxtyped
 @dataclass(frozen=True)
-class JaxSampledObstacleHeadings[T: int, K: int, N: int](
-    SampledObstacleHeadings[T, K, N]
-):
+class JaxSampledObstacleHeadings(SampledObstacleHeadings):
     _heading: Float[JaxArray, "T K N"]
 
     @staticmethod
-    def create[T_: int, K_: int, N_: int](
-        *,
-        heading: Float[JaxArray, "T K N"],
-        horizon: T_ | None = None,
-        obstacle_count: K_ | None = None,
-        sample_count: N_ | None = None,
-    ) -> "JaxSampledObstacleHeadings[T_, K_, N_]":
-        horizon = horizon if horizon is not None else cast(T_, heading.shape[0])
-        obstacle_count = (
-            obstacle_count if obstacle_count is not None else cast(K_, heading.shape[1])
-        )
-        sample_count = (
-            sample_count if sample_count is not None else cast(N_, heading.shape[2])
-        )
-
-        assert heading.shape == (horizon, obstacle_count, sample_count), (
-            f"Expected shape (T={horizon}, K={obstacle_count}, N={sample_count}), "
-            f"but got {heading.shape}."
-        )
-
+    def create(*, heading: Float[JaxArray, "T K N"]) -> "JaxSampledObstacleHeadings":
         return JaxSampledObstacleHeadings(_heading=heading)
 
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[T, K, N]]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "T K N"]:
         return self._numpy_heading
 
-    def heading(self) -> Array[Dims[T, K, N]]:
+    def heading(self) -> Float[Array, "T K N"]:
         return self._numpy_heading
 
     @property
-    def horizon(self) -> T:
-        return cast(T, self._heading.shape[0])
+    def horizon(self) -> int:
+        return self._heading.shape[0]
 
     @property
-    def count(self) -> K:
-        return cast(K, self._heading.shape[1])
+    def count(self) -> int:
+        return self._heading.shape[1]
 
     @property
-    def sample_count(self) -> N:
-        return cast(N, self._heading.shape[2])
+    def sample_count(self) -> int:
+        return self._heading.shape[2]
 
     @property
     def heading_array(self) -> Float[JaxArray, "T K N"]:
         return self._heading
 
     @cached_property
-    def _numpy_heading(self) -> Array[Dims[T, K, N]]:
+    def _numpy_heading(self) -> Float[Array, "T K N"]:
         return np.asarray(self._heading)
 
 
@@ -229,19 +181,19 @@ class JaxDistanceExtractor[StateBatchT, SampledObstacleStatesT, DistanceT](
 
 @jaxtyped
 @dataclass(frozen=True)
-class JaxRisk[T: int, M: int](Risk[T, M]):
+class JaxRisk(Risk):
     _array: Float[JaxArray, "T M"]
 
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[T, M]]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "T M"]:
         return np.asarray(self.array)
 
     @property
-    def horizon(self) -> T:
-        return cast(T, self.array.shape[0])
+    def horizon(self) -> int:
+        return self.array.shape[0]
 
     @property
-    def rollout_count(self) -> M:
-        return cast(M, self.array.shape[1])
+    def rollout_count(self) -> int:
+        return self.array.shape[1]
 
     @property
     def array(self) -> Float[JaxArray, "T M"]:

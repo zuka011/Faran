@@ -3,13 +3,13 @@ from dataclasses import dataclass
 
 from faran.types import (
     jaxtyped,
+    Array,
     DataType,
     JaxState,
     JaxStateBatch,
     JaxControlInputSequence,
     JaxControlInputBatch,
     JaxDynamicalModel,
-    JaxCosts,
     JaxCostFunction,
     JaxSampler,
     JaxUpdateFunction,
@@ -21,7 +21,6 @@ from faran.types import (
 )
 from faran.mppi.common import UseOptimalControlUpdate, NoFilter
 
-from numtypes import Array, Dims
 from jaxtyping import Array as JaxArray, Float, Scalar
 
 import jax
@@ -31,20 +30,20 @@ import numpy as np
 
 @jaxtyped
 @dataclass(frozen=True)
-class JaxWeights[M: int]:
+class JaxWeights:
     """Softmax-normalized cost weights used to compute the weighted average over rollouts."""
 
-    _array: Float[JaxArray, "M"]
+    _array: Float[JaxArray, " M"]
 
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[M]]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, " M"]:
         return np.asarray(self._array)
 
     @property
-    def rollout_count(self) -> M:
-        return cast(M, self._array.shape[0])
+    def rollout_count(self) -> int:
+        return self._array.shape[0]
 
     @property
-    def array(self) -> Float[JaxArray, "M"]:
+    def array(self) -> Float[JaxArray, " M"]:
         return self._array
 
 
@@ -53,11 +52,11 @@ class JaxZeroPadding(
 ):
     """Fills shifted-out time steps with zero control inputs after horizon advancement."""
 
-    def __call__[T: int, D_u: int, L: int](
-        self, *, nominal_input: JaxControlInputSequence[T, D_u], padding_size: L
-    ) -> JaxControlInputSequence[L, D_u]:
+    def __call__(
+        self, *, nominal_input: JaxControlInputSequence, padding_size: int
+    ) -> JaxControlInputSequence:
         padding_array = jnp.zeros((padding_size, nominal_input.array.shape[1]))
-        return nominal_input.similar(array=padding_array, length=padding_size)
+        return nominal_input.similar(array=padding_array)
 
 
 @dataclass(kw_only=True, frozen=True)
@@ -67,14 +66,14 @@ class JaxMppi[
     ControlInputSequenceT: JaxControlInputSequence,
     ControlInputBatchT: JaxControlInputBatch,
     ControlInputPaddingT: JaxControlInputSequence = ControlInputSequenceT,
-](Mppi[StateT, ControlInputSequenceT, JaxWeights[int]]):
+](Mppi[StateT, ControlInputSequenceT, JaxWeights]):
     """Sampling-based stochastic optimal controller using the information-theoretic MPPI algorithm."""
 
     planning_interval: int
     model: JaxDynamicalModel[
         StateT, Any, StateBatchT, ControlInputSequenceT, ControlInputBatchT
     ]
-    cost_function: JaxCostFunction[ControlInputBatchT, StateBatchT, JaxCosts]
+    cost_function: JaxCostFunction
     sampler: JaxSampler[ControlInputSequenceT, ControlInputBatchT]
     update_function: JaxUpdateFunction[ControlInputSequenceT]
     padding_function: JaxPaddingFunction[ControlInputSequenceT, ControlInputPaddingT]
@@ -91,7 +90,7 @@ class JaxMppi[
         *,
         planning_interval: int = 1,
         model: JaxDynamicalModel[S, Any, SB, CIS, CIB],
-        cost_function: JaxCostFunction[CIB, SB, JaxCosts],
+        cost_function: JaxCostFunction,
         sampler: JaxSampler[CIS, CIB],
         update_function: JaxUpdateFunction[CIS] | None = None,
         padding_function: JaxPaddingFunction[CIS, CIP] | None = None,
@@ -159,7 +158,7 @@ def compute_weighted_control(
     samples: Float[JaxArray, "T D_u M"],
     costs: Float[JaxArray, "T M"],
     temperature: Scalar,
-) -> tuple[Float[JaxArray, "T D_u"], Float[JaxArray, "M"]]:
+) -> tuple[Float[JaxArray, "T D_u"], Float[JaxArray, " M"]]:
     total_costs = jnp.sum(costs, axis=0)
     min_cost = jnp.min(total_costs)
     exp_costs = jnp.exp((total_costs - min_cost) / (-temperature))

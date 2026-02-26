@@ -9,11 +9,12 @@ import jax
 import jax.numpy as jnp
 
 
+@jaxtyped
 @dataclass(frozen=True)
 class JaxSavGolFilter:
     """Savitzky-Golay smoothing filter for MPPI control sequences (JAX)."""
 
-    coefficients: Float[JaxArray, "W"]
+    coefficients: Float[JaxArray, " W"]
 
     @staticmethod
     def create(*, window_length: int, polynomial_order: int) -> "JaxSavGolFilter":
@@ -38,8 +39,8 @@ class JaxSavGolFilter:
 
 @jax.jit
 @jaxtyped
-def convolve_along_time_axis[T: int, D_u: int](
-    input_array: Float[JaxArray, "T D_u"], *, coefficients: Float[JaxArray, "W"]
+def convolve_along_time_axis(
+    input_array: Float[JaxArray, "T D_u"], *, coefficients: Float[JaxArray, " W"]
 ) -> Float[JaxArray, "T D_u"]:
     half_window = coefficients.shape[0] // 2
     padded = jnp.pad(input_array, ((half_window, half_window), (0, 0)), mode="edge")

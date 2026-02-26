@@ -3,13 +3,9 @@ import numpy as np
 from faran.types import NumPySampledObstaclePositions, NumPySampledObstacleHeadings
 
 
-def replace_missing[T: int, K: int, N: int](
-    *,
-    positions: NumPySampledObstaclePositions[T, K, N],
-    headings: NumPySampledObstacleHeadings[T, K, N],
-) -> tuple[
-    NumPySampledObstaclePositions[T, K, N], NumPySampledObstacleHeadings[T, K, N]
-]:
+def replace_missing(
+    *, positions: NumPySampledObstaclePositions, headings: NumPySampledObstacleHeadings
+) -> tuple[NumPySampledObstaclePositions, NumPySampledObstacleHeadings]:
     return (
         NumPySampledObstaclePositions.create(
             x=np.nan_to_num(positions.x(), nan=np.inf, posinf=np.inf, neginf=np.inf),

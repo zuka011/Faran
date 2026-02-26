@@ -1,11 +1,11 @@
 from typing import Protocol, TypedDict, Mapping
 
-from faran.types.array import DataType
+from faran.types.array import Array, DataType
 
-from numtypes import Array, Dims, D
+from jaxtyping import Float
 
 
-type BoundaryPoints[L: int = int] = Array[Dims[L, D[2]]]
+type BoundaryPoints = Float[Array, "L 2"]
 type Breakpoint = float
 type BoundaryWidthsDescription = Mapping[Breakpoint, "BoundaryWidths"]
 """A mapping describing the widths of the boundary at various segments
@@ -30,18 +30,18 @@ class BoundaryWidths(TypedDict):
     """Distance to the right boundary at a breakpoint."""
 
 
-class BoundaryDistance[T: int, M: int](Protocol):
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[T, M]]:
+class BoundaryDistance(Protocol):
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "T M"]:
         """Returns the distances between the ego and the nearest boundary as a NumPy array."""
         ...
 
     @property
-    def horizon(self) -> T:
+    def horizon(self) -> int:
         """The time horizon over which the distances are defined."""
         ...
 
     @property
-    def rollout_count(self) -> M:
+    def rollout_count(self) -> int:
         """The number of rollouts for which the distances are defined."""
         ...
 
@@ -53,10 +53,10 @@ class BoundaryDistanceExtractor[StateBatchT, DistanceT](Protocol):
 
 
 class ExplicitBoundary(Protocol):
-    def left[L: int](self, *, sample_count: L = 100) -> BoundaryPoints[L]:
+    def left(self, *, sample_count: int = 100) -> BoundaryPoints:
         """Returns the left boundary points as a NumPy array."""
         ...
 
-    def right[L: int](self, *, sample_count: L = 100) -> BoundaryPoints[L]:
+    def right(self, *, sample_count: int = 100) -> BoundaryPoints:
         """Returns the right boundary points as a NumPy array."""
         ...

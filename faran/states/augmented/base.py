@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 from faran.types import (
     DataType,
+    Array,
     State,
     StateSequence,
     StateBatch,
@@ -16,7 +17,7 @@ from faran.types import (
     HasVirtual,
 )
 
-from numtypes import Array, Dim1, Dim2, Dim3
+from jaxtyping import Float
 
 import numpy as np
 
@@ -36,7 +37,7 @@ class BaseAugmentedState[P: State, V: State](
     ) -> "BaseAugmentedState[P_, V_]":
         return BaseAugmentedState(_physical=physical, _virtual=virtual)
 
-    def __array__(self, dtype: DataType | None = None) -> Array[Dim1]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, " D_x"]:
         return np.concatenate([np.asarray(self.physical), np.asarray(self.virtual)])
 
     @property
@@ -79,7 +80,7 @@ class BaseAugmentedStateSequence[P: StateSequence, V: StateSequence](
             virtual=self.virtual.batched(),
         )
 
-    def __array__(self, dtype: DataType | None = None) -> Array[Dim2]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "T D_x"]:
         return np.concatenate(
             [np.asarray(self.physical), np.asarray(self.virtual)], axis=1
         )
@@ -126,7 +127,7 @@ class BaseAugmentedStateBatch[P: StateBatch, V: StateBatch](
             f"Got {self.physical.rollout_count} (physical) and {self.virtual.rollout_count} (virtual)"
         )
 
-    def __array__(self, dtype: DataType | None = None) -> Array[Dim3]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "T D_x M"]:
         return np.concatenate(
             [np.asarray(self.physical), np.asarray(self.virtual)], axis=1
         )
@@ -179,7 +180,7 @@ class BaseAugmentedControlInputSequence[
             f"Got {self.physical.horizon} (physical) and {self.virtual.horizon} (virtual)"
         )
 
-    def __array__(self, dtype: DataType | None = None) -> Array[Dim2]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "T D_u"]:
         return np.concatenate(
             [np.asarray(self.physical), np.asarray(self.virtual)], axis=1
         )
@@ -226,7 +227,7 @@ class BaseAugmentedControlInputBatch[P: ControlInputBatch, V: ControlInputBatch]
             f"Got {self.physical.rollout_count} (physical) and {self.virtual.rollout_count} (virtual)"
         )
 
-    def __array__(self, dtype: DataType | None = None) -> Array[Dim3]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "T D_u M"]:
         return np.concatenate(
             [np.asarray(self.physical), np.asarray(self.virtual)], axis=1
         )

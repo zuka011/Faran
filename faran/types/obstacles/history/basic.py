@@ -1,5 +1,6 @@
 from typing import Protocol
 
+from faran.types.array import Array
 from faran.types.obstacles.history.common import (
     ObstaclePositionsForTimeStep,
     ObstaclePositions,
@@ -9,41 +10,33 @@ from faran.types.obstacles.history.common import (
     ObstacleOrientationExtractor,
 )
 
-from numtypes import Array, Dims
+from jaxtyping import Float
 
 
-class NumPyObstaclePositionsForTimeStep[D_p: int, K: int](
-    ObstaclePositionsForTimeStep[D_p, K], Protocol
-):
+class NumPyObstaclePositionsForTimeStep(ObstaclePositionsForTimeStep, Protocol):
     @property
-    def array(self) -> Array[Dims[D_p, K]]:
+    def array(self) -> Float[Array, "D_p K"]:
         """Returns the obstacle positions for a single time step as a NumPy array."""
         ...
 
 
-class NumPyObstaclePositions[T: int, D_p: int, K: int](
-    ObstaclePositions[T, D_p, K], Protocol
-):
+class NumPyObstaclePositions(ObstaclePositions, Protocol):
     @property
-    def array(self) -> Array[Dims[T, D_p, K]]:
+    def array(self) -> Float[Array, "T D_p K"]:
         """Returns the obstacle positions as a NumPy array."""
         ...
 
 
-class NumPyObstacleOrientationsForTimeStep[D_o: int, K: int](
-    ObstacleOrientationsForTimeStep[D_o, K], Protocol
-):
+class NumPyObstacleOrientationsForTimeStep(ObstacleOrientationsForTimeStep, Protocol):
     @property
-    def array(self) -> Array[Dims[D_o, K]]:
+    def array(self) -> Float[Array, "D_o K"]:
         """Returns the obstacle orientations for a single time step as a NumPy array."""
         ...
 
 
-class NumPyObstacleOrientations[T: int, D_o: int, K: int](
-    ObstacleOrientations[T, D_o, K], Protocol
-):
+class NumPyObstacleOrientations(ObstacleOrientations, Protocol):
     @property
-    def array(self) -> Array[Dims[T, D_o, K]]:
+    def array(self) -> Float[Array, "T D_o K"]:
         """Returns the obstacle orientations as a NumPy array."""
         ...
 

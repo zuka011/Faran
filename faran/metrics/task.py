@@ -3,6 +3,8 @@ from dataclasses import dataclass
 from functools import cached_property
 
 from faran.types import (
+    jaxtyped,
+    Array,
     StateSequence,
     SimulationData,
     Metric,
@@ -13,13 +15,15 @@ from faran.types import (
 )
 from faran.collectors import access
 
-from numtypes import BoolArray, Array, Dims, D, array
+from numtypes import array
+from jaxtyping import Float, Bool
 
 import numpy as np
 
 
+@jaxtyped
 @dataclass(kw_only=True, frozen=True)
-class TaskCompletionMetricResult[T: int = int]:
+class TaskCompletionMetricResult:
     """Results of the task completion metric.
 
     Attributes:
@@ -31,7 +35,7 @@ class TaskCompletionMetricResult[T: int = int]:
             Laps are counted when longitudinal position wraps around (drops by >50% of path length).
     """
 
-    completion: BoolArray[Dims[T]]
+    completion: Bool[Array, " T"]
     completion_time: float
     stretch: float
     completed_part: float
@@ -46,11 +50,11 @@ class TaskCompletionMetric[
     StateBatchT,
     PositionsT: Positions,
     LongitudinalT: LongitudinalPositions,
-](Metric[TaskCompletionMetricResult[Any]]):
+](Metric[TaskCompletionMetricResult]):
     """Metric evaluating whether the ego vehicle reached the goal position."""
 
     reference: Trajectory[Any, Any, PositionsT, Any, LongitudinalT]
-    goal_position: Array[Dims[D[2]]]
+    goal_position: Float[Array, "2"]
     optimal_distance: float
     path_length: float
     distance_threshold: float
@@ -82,12 +86,8 @@ class TaskCompletionMetric[
             lap_detection_threshold=lap_detection_threshold,
         )
 
-    def compute[T: int = int](
-        self, data: SimulationData
-    ) -> TaskCompletionMetricResult[T]:
-        states = data(
-            access.states.assume(StateSequence[T, Any, StateBatchT]).require()
-        )
+    def compute(self, data: SimulationData) -> TaskCompletionMetricResult:
+        states = data(access.states.assume(StateSequence[StateBatchT]).require())
         positions = self.position_extractor(states.batched())
         positions_array = np.asarray(positions)[..., 0]
 
@@ -102,20 +102,18 @@ class TaskCompletionMetric[
     def name(self) -> str:
         return "task-completion"
 
-    def _compute_completion[T: int](
-        self, positions: Array[Dims[T, D[2]]]
-    ) -> BoolArray[Dims[T]]:
+    def _compute_completion(self, positions: Float[Array, "T 2"]) -> Bool[Array, " T"]:
         distances_from_goal = np.linalg.norm(positions - self.goal_position, axis=1)
         return distances_from_goal <= self.distance_threshold
 
-    def _compute_completion_time(self, completion: BoolArray[Dims[int]]) -> float:
+    def _compute_completion_time(self, completion: Bool[Array, " T"]) -> float:
         return (
             float(np.argmax(completion)) * self.time_step_size
             if completion.any()
             else float("inf")
         )
 
-    def _compute_stretch(self, positions: Array[Dims[int, D[2]]]) -> float:
+    def _compute_stretch(self, positions: Float[Array, "_ 2"]) -> float:
         traversed_distance = np.linalg.norm(np.diff(positions, axis=0), axis=1).sum()
 
         return float(traversed_distance / self.optimal_distance)

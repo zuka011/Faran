@@ -2,6 +2,8 @@ from typing import cast
 from dataclasses import dataclass
 
 from faran.types import (
+    jaxtyped,
+    Array,
     DataType,
     Distance,
     ControlInputBatch,
@@ -18,45 +20,45 @@ from faran.types import (
 )
 from faran.states import NumPySimpleCosts
 
-from numtypes import Array, Dims, D, shape_of
+from numtypes import D
+from jaxtyping import Float
 
 import numpy as np
 
 
+@jaxtyped
 @dataclass(frozen=True)
-class NumPyDistance[T: int, V: int, M: int, N: int](Distance[T, V, M, N]):
+class NumPyDistance(Distance):
     """Pairwise distances between V vehicle parts and N obstacle samples over T time steps and M rollouts."""
 
-    _array: Array[Dims[T, V, M, N]]
+    _array: Float[Array, "T V M N"]
 
     @staticmethod
-    def create[T_: int, V_: int, M_: int, N_: int](
-        array: Array[Dims[T_, V_, M_, N_]],
-    ) -> "NumPyDistance[T_, V_, M_, N_]":
+    def create(array: Float[Array, "T V M N"]) -> "NumPyDistance":
         """Creates a NumPy distance from the given array."""
         return NumPyDistance(array)
 
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[T, V, M, N]]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "T V M N"]:
         return self.array
 
     @property
-    def horizon(self) -> T:
+    def horizon(self) -> int:
         return self._array.shape[0]
 
     @property
-    def vehicle_parts(self) -> V:
+    def vehicle_parts(self) -> int:
         return self._array.shape[1]
 
     @property
-    def rollout_count(self) -> M:
+    def rollout_count(self) -> int:
         return self._array.shape[2]
 
     @property
-    def sample_count(self) -> N:
+    def sample_count(self) -> int:
         return self._array.shape[3]
 
     @property
-    def array(self) -> Array[Dims[T, V, M, N]]:
+    def array(self) -> Float[Array, "T V M N"]:
         return self._array
 
 
@@ -67,16 +69,16 @@ class NumPyNoMetric:
     def create() -> "NumPyNoMetric":
         return NumPyNoMetric()
 
-    def compute[StateT, ObstacleStateT, SampledObstacleStateT, T: int, M: int](
+    def compute[StateT, ObstacleStateT, SampledObstacleStateT](
         self,
         cost_function: SampleCostFunction[
-            StateT, SampledObstacleStateT, Array[Dims[T, M, int]]
+            StateT, SampledObstacleStateT, Float[Array, "T M _"]
         ],
         *,
         states: StateT,
         obstacle_states: ObstacleStateT,
         sampler: ObstacleStateSampler[ObstacleStateT, SampledObstacleStateT],
-    ) -> NumPyRisk[T, M]:
+    ) -> NumPyRisk:
         samples = sampler(obstacle_states, count=1)
         return NumPyRisk(cost_function(states=states, samples=samples).squeeze(axis=-1))
 
@@ -91,27 +93,26 @@ class NumPyCollisionCost[
     ObstacleStatesT: ObstacleStates,
     SampledObstacleStatesT,
     DistanceT: NumPyDistance,
-    V: int,
 ](CostFunction[ControlInputBatch, StateT, NumPyCosts]):
     """Collision avoidance cost based on distance thresholds to sampled obstacle positions."""
 
     obstacle_states: NumPyObstacleStateProvider[ObstacleStatesT]
     sampler: NumPyObstacleStateSampler[ObstacleStatesT, SampledObstacleStatesT]
     distance: NumPyDistanceExtractor[StateT, SampledObstacleStatesT, DistanceT]
-    distance_threshold: Array[Dims[V]]
+    distance_threshold: Float[Array, " V"]
     weight: float
     metric: NumPyRiskMetric[StateT, ObstacleStatesT, SampledObstacleStatesT]
 
     @staticmethod
-    def create[S, OS: ObstacleStates, SOS, D: NumPyDistance, V_: int](
+    def create[S, OS: ObstacleStates, SOS, D: NumPyDistance](
         *,
         obstacle_states: NumPyObstacleStateProvider[OS],
         sampler: NumPyObstacleStateSampler[OS, SOS],
         distance: NumPyDistanceExtractor[S, SOS, D],
-        distance_threshold: Array[Dims[V_]],
+        distance_threshold: Float[Array, " V"],
         weight: float,
         metric: NumPyRiskMetric[S, OS, SOS] | None = None,
-    ) -> "NumPyCollisionCost[S, OS, SOS, D, V_]":
+    ) -> "NumPyCollisionCost[S, OS, SOS, D]":
         return NumPyCollisionCost(
             obstacle_states=obstacle_states,
             sampler=sampler,
@@ -123,12 +124,10 @@ class NumPyCollisionCost[
             else cast(NumPyRiskMetric[S, OS, SOS], NumPyNoMetric()),
         )
 
-    def __call__[T: int, M: int](
-        self, *, inputs: ControlInputBatch[T, int, M], states: StateT
-    ) -> NumPyCosts[T, M]:
+    def __call__(self, *, inputs: ControlInputBatch, states: StateT) -> NumPyCosts:
         def cost(
             *, states: StateT, samples: SampledObstacleStatesT
-        ) -> Array[Dims[T, M, int]]:
+        ) -> Float[Array, "T M _"]:
             cost = (
                 self.distance_threshold[np.newaxis, :, np.newaxis, np.newaxis]
                 - self.distance(states=states, obstacle_states=samples).array
@@ -138,17 +137,15 @@ class NumPyCollisionCost[
 
         horizon, rollouts = inputs.horizon, inputs.rollout_count
 
-        costs = (
-            np.zeros((horizon, rollouts))
-            if (obstacle_states := self.obstacle_states()).count == 0
-            else self.metric.compute(
-                cost,
-                states=states,
-                obstacle_states=obstacle_states,
-                sampler=self.sampler,
-            ).array
+        return NumPySimpleCosts(
+            (
+                np.zeros((horizon, rollouts))
+                if (obstacle_states := self.obstacle_states()).count == 0
+                else self.metric.compute(
+                    cost,
+                    states=states,
+                    obstacle_states=obstacle_states,
+                    sampler=self.sampler,
+                ).array
+            )
         )
-
-        assert shape_of(costs, matches=(horizon, rollouts), name="collision costs")
-
-        return NumPySimpleCosts(costs)

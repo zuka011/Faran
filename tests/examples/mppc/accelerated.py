@@ -35,7 +35,7 @@ from faran.jax import (
     risk,
 )
 
-from numtypes import array, Array, Dim1
+from numtypes import array, Array
 from jaxtyping import Array as JaxArray, Float
 
 import numpy as np
@@ -151,10 +151,10 @@ class JaxMpccPlannerWeights:
     contouring: float = 50.0
     lag: float = 100.0
     progress: float = 1000.0
-    control_smoothing: Array[Dim1] = field(
+    control_smoothing: Float[Array, " 3"] = field(
         default_factory=lambda: array([5.0, 20.0, 5.0], shape=(3,))
     )
-    control_effort: Array[Dim1] = field(
+    control_effort: Float[Array, " 3"] = field(
         default_factory=lambda: array([0.1, 0.5, 0.1], shape=(3,))
     )
     collision: float = 1500.0
@@ -167,7 +167,7 @@ class JaxMpccPlannerWeights:
 
 @dataclass(frozen=True)
 class JaxSamplingOptions:
-    physical_standard_deviation: Array[Dim1] = field(
+    physical_standard_deviation: Float[Array, " 2"] = field(
         default_factory=lambda: array([0.5, 0.2], shape=(2,))
     )
     virtual_standard_deviation: float = 2.0

@@ -1,31 +1,30 @@
 from typing import Self
 from dataclasses import dataclass
 
-from faran.types import NumPyObstacleSimulator
+from faran.types import Array, jaxtyped, NumPyObstacleSimulator
 from faran.obstacles.basic import NumPyObstacle2dPosesForTimeStep
 
-from numtypes import Array, Dims, D, shape_of
+from jaxtyping import Float
 
 import numpy as np
 
 
+@jaxtyped
 @dataclass(kw_only=True)
-class NumPyDynamicObstacleSimulator[K: int](
-    NumPyObstacleSimulator[NumPyObstacle2dPosesForTimeStep[K]]
+class NumPyDynamicObstacleSimulator(
+    NumPyObstacleSimulator[NumPyObstacle2dPosesForTimeStep]
 ):
     """Simulates obstacles moving with constant velocity over the prediction horizon."""
 
-    last: NumPyObstacle2dPosesForTimeStep[K]
-    velocities: Array[Dims[K, D[2]]]
+    last: NumPyObstacle2dPosesForTimeStep
+    velocities: Float[Array, "K 2"]
 
     time_step: float | None = None
 
     @staticmethod
-    def create[K_: int](
-        *,
-        positions: Array[Dims[K_, D[2]]],
-        velocities: Array[Dims[K_, D[2]]],
-    ) -> "NumPyDynamicObstacleSimulator[K_]":
+    def create(
+        *, positions: Float[Array, "K 2"], velocities: Float[Array, "K 2"]
+    ) -> "NumPyDynamicObstacleSimulator":
         headings = headings_from(velocities)
 
         return NumPyDynamicObstacleSimulator(
@@ -40,7 +39,7 @@ class NumPyDynamicObstacleSimulator[K: int](
             last=self.last, velocities=self.velocities, time_step=time_step_size
         )
 
-    def step(self) -> NumPyObstacle2dPosesForTimeStep[K]:
+    def step(self) -> NumPyObstacle2dPosesForTimeStep:
         assert self.time_step is not None, (
             "Time step must be set to advance obstacle states."
         )
@@ -63,30 +62,23 @@ class NumPyDynamicObstacleSimulator[K: int](
         return self.last.count
 
 
-def step_obstacles[K: int](
+def step_obstacles(
     *,
-    x: Array[Dims[K]],
-    y: Array[Dims[K]],
-    velocities: Array[Dims[K, D[2]]],
+    x: Float[Array, " K"],
+    y: Float[Array, " K"],
+    velocities: Float[Array, "K 2"],
     time_step: float,
-) -> tuple[Array[Dims[K]], Array[Dims[K]]]:
-    K = x.shape[0]
+) -> tuple[Float[Array, " K"], Float[Array, " K"]]:
     new_x = x + velocities[:, 0] * time_step
     new_y = y + velocities[:, 1] * time_step
-
-    assert shape_of(new_x, matches=(K,))
-    assert shape_of(new_y, matches=(K,))
 
     return new_x, new_y
 
 
-def headings_from[K: int](velocities: Array[Dims[K, D[2]]]) -> Array[Dims[K]]:
-    K = velocities.shape[0]
+def headings_from(velocities: Float[Array, "K 2"]) -> Float[Array, " K"]:
     speed = np.linalg.norm(velocities, axis=1)
     heading = np.where(
         speed > 1e-6, np.arctan2(velocities[:, 1], velocities[:, 0]), 0.0
     )
-
-    assert shape_of(heading, matches=(K,))
 
     return heading

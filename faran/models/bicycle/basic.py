@@ -1,8 +1,10 @@
-from typing import Self, overload, cast, Sequence, Final, Any
+from typing import Self, cast, Sequence, Final
 from dataclasses import dataclass
 from functools import cached_property
 
 from faran.types import (
+    jaxtyped,
+    Array,
     DataType,
     NumPyState,
     NumPyStateSequence,
@@ -21,8 +23,6 @@ from faran.types import (
     BicycleD_u,
     BICYCLE_D_U,
     BicycleD_o,
-    BICYCLE_D_O,
-    PoseD_o,
     DynamicalModel,
     ObstacleModel,
     ObstacleStateEstimator,
@@ -39,7 +39,9 @@ from faran.obstacles import NumPyObstacle2dPoses
 from faran.models.common import SMALL_UNCERTAINTY, LARGE_UNCERTAINTY
 from faran.models.basic import invalid_obstacle_filter_from
 
-from numtypes import Array, Dims, D, shape_of, array
+from numtypes import D, array
+
+from jaxtyping import Float
 
 import numpy as np
 
@@ -52,34 +54,35 @@ BICYCLE_OBSERVATION_D_O: Final = 3
 type BicycleEstimationD_x = D[6]
 type BicycleObservationD_o = D[3]
 
-type StateArray = Array[Dims[BicycleD_x]]
-type ControlInputSequenceArray[T: int] = Array[Dims[T, BicycleD_u]]
-type StateBatchArray[T: int, M: int] = Array[Dims[T, BicycleD_x, M]]
-type ControlInputBatchArray[T: int, M: int] = Array[Dims[T, BicycleD_u, M]]
+type StateArray = Float[Array, " BicycleD_x"]
+type ControlInputSequenceArray = Float[Array, "T BicycleD_u"]
+type StateBatchArray = Float[Array, "T BicycleD_x M"]
+type ControlInputBatchArray = Float[Array, "T BicycleD_u M"]
 
-type StatesAtTimeStep[M: int] = Array[Dims[BicycleD_x, M]]
-type ControlInputsAtTimeStep[M: int] = Array[Dims[BicycleD_u, M]]
+type StatesAtTimeStep = Float[Array, "BicycleD_x M"]
+type ControlInputsAtTimeStep = Float[Array, "BicycleD_u M"]
 
-type EstimationStateCovarianceArray = Array[
-    Dims[BicycleEstimationD_x, BicycleEstimationD_x]
+type EstimationStateCovarianceArray = Float[
+    Array, "BicycleEstimationD_x BicycleEstimationD_x"
 ]
-type ProcessNoiseCovarianceArray = Array[
-    Dims[BicycleEstimationD_x, BicycleEstimationD_x]
+type ProcessNoiseCovarianceArray = Float[
+    Array, "BicycleEstimationD_x BicycleEstimationD_x"
 ]
-type ObservationNoiseCovarianceArray = Array[
-    Dims[BicycleObservationD_o, BicycleObservationD_o]
+type ObservationNoiseCovarianceArray = Float[
+    Array, "BicycleObservationD_o BicycleObservationD_o"
 ]
-type ObservationMatrix = Array[Dims[BicycleObservationD_o, BicycleEstimationD_x]]
+type ObservationMatrix = Float[Array, "BicycleObservationD_o BicycleEstimationD_x"]
 
-type BicycleGaussianBelief[K: int] = NumPyGaussianBelief[BicycleEstimationD_x, K]
-type NumPyBicycleObstacleCovariances[K: int] = Array[
-    Dims[BicycleEstimationD_x, BicycleEstimationD_x, K]
+type BicycleGaussianBelief = NumPyGaussianBelief
+type NumPyBicycleObstacleCovariances = Float[
+    Array, "BicycleEstimationD_x BicycleEstimationD_x K"
 ]
 type KalmanFilter = NumPyExtendedKalmanFilter | NumPyUnscentedKalmanFilter
 
 
+@jaxtyped
 @dataclass(frozen=True)
-class NumPyBicycleState(BicycleState, NumPyState[BicycleD_x]):
+class NumPyBicycleState(BicycleState, NumPyState):
     """Kinematic bicycle state: [x, y, heading, speed]."""
 
     _array: StateArray
@@ -95,7 +98,7 @@ class NumPyBicycleState(BicycleState, NumPyState[BicycleD_x]):
 
     @property
     def dimension(self) -> BicycleD_x:
-        return self.array.shape[0]
+        return cast(BicycleD_x, self.array.shape[0])
 
     @property
     def x(self) -> float:
@@ -119,134 +122,121 @@ class NumPyBicycleState(BicycleState, NumPyState[BicycleD_x]):
 
 
 @dataclass(kw_only=True, frozen=True)
-class NumPyBicycleStateSequence[T: int, M: int = Any](
-    BicycleStateSequence, NumPyStateSequence[T, BicycleD_x]
-):
-    batch: "NumPyBicycleStateBatch[T, M]"
+class NumPyBicycleStateSequence(BicycleStateSequence, NumPyStateSequence):
+    batch: "NumPyBicycleStateBatch"
     rollout: int
 
     @staticmethod
-    def of_states[T_: int = int](
-        states: Sequence[NumPyBicycleState], *, horizon: T_ | None = None
-    ) -> "NumPyBicycleStateSequence[T_, D[1]]":
+    def of_states(states: Sequence[NumPyBicycleState]) -> "NumPyBicycleStateSequence":
         assert len(states) > 0, "States sequence must not be empty."
 
-        horizon = horizon if horizon is not None else cast(T_, len(states))
         array = np.stack([state.array for state in states], axis=0)[:, :, np.newaxis]
-
-        assert shape_of(array, matches=(horizon, BICYCLE_D_X, 1))
 
         return NumPyBicycleStateSequence(
             batch=NumPyBicycleStateBatch.wrap(array), rollout=0
         )
 
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[T, BicycleD_x]]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "T BicycleD_x"]:
         return self.array
 
     def step(self, index: int) -> NumPyBicycleState:
         return NumPyBicycleState(self.array[index])
 
-    def batched(self) -> "NumPyBicycleStateBatch[T, D[1]]":
+    def batched(self) -> "NumPyBicycleStateBatch":
         return NumPyBicycleStateBatch.wrap(self.array[..., np.newaxis])
 
-    def x(self) -> Array[Dims[T]]:
+    def x(self) -> Float[Array, " T"]:
         return self.array[:, 0]
 
-    def y(self) -> Array[Dims[T]]:
+    def y(self) -> Float[Array, " T"]:
         return self.array[:, 1]
 
-    def heading(self) -> Array[Dims[T]]:
+    def heading(self) -> Float[Array, " T"]:
         return self.array[:, 2]
 
-    def speed(self) -> Array[Dims[T]]:
+    def speed(self) -> Float[Array, " T"]:
         return self.array[:, 3]
 
     @property
-    def horizon(self) -> T:
+    def horizon(self) -> int:
         return self.array.shape[0]
 
     @property
     def dimension(self) -> BicycleD_x:
-        return self.array.shape[1]
+        return cast(BicycleD_x, self.array.shape[1])
 
     @property
-    def array(self) -> Array[Dims[T, BicycleD_x]]:
+    def array(self) -> Float[Array, "T BicycleD_x"]:
         return self.batch.array[:, :, self.rollout]
 
 
+@jaxtyped
 @dataclass(frozen=True)
-class NumPyBicycleStateBatch[T: int, M: int](
-    BicycleStateBatch[T, M], NumPyStateBatch[T, BicycleD_x, M]
-):
-    _array: StateBatchArray[T, M]
+class NumPyBicycleStateBatch(BicycleStateBatch, NumPyStateBatch):
+    _array: StateBatchArray
 
     @staticmethod
-    def wrap[T_: int, M_: int](
-        array: StateBatchArray[T_, M_],
-    ) -> "NumPyBicycleStateBatch[T_, M_]":
+    def wrap(
+        array: StateBatchArray,
+    ) -> "NumPyBicycleStateBatch":
         return NumPyBicycleStateBatch(array)
 
     @staticmethod
-    def of_states[T_: int = int](
-        states: Sequence[NumPyBicycleState], *, horizon: T_ | None = None
-    ) -> "NumPyBicycleStateBatch[int, D[1]]":
+    def of_states(states: Sequence[NumPyBicycleState]) -> "NumPyBicycleStateBatch":
         assert len(states) > 0, "States sequence must not be empty."
 
-        horizon = horizon if horizon is not None else cast(T_, len(states))
         array = np.stack([state.array for state in states], axis=0)[:, :, np.newaxis]
-
-        assert shape_of(array, matches=(horizon, BICYCLE_D_X, 1))
 
         return NumPyBicycleStateBatch(array)
 
-    def __array__(self, dtype: DataType | None = None) -> StateBatchArray[T, M]:
+    def __array__(self, dtype: DataType | None = None) -> StateBatchArray:
         return self.array
 
-    def heading(self) -> Array[Dims[T, M]]:
+    def heading(self) -> Float[Array, "T M"]:
         return self.array[:, 2, :]
 
-    def speed(self) -> Array[Dims[T, M]]:
+    def speed(self) -> Float[Array, "T M"]:
         return self.array[:, 3, :]
 
-    def rollout(self, index: int) -> NumPyBicycleStateSequence[T, M]:
+    def rollout(self, index: int) -> NumPyBicycleStateSequence:
         return NumPyBicycleStateSequence(batch=self, rollout=index)
 
     @property
-    def horizon(self) -> T:
+    def horizon(self) -> int:
         return self.array.shape[0]
 
     @property
     def dimension(self) -> BicycleD_x:
-        return self.array.shape[1]
+        return cast(BicycleD_x, self.array.shape[1])
 
     @property
-    def rollout_count(self) -> M:
+    def rollout_count(self) -> int:
         return self.array.shape[2]
 
     @property
-    def positions(self) -> "NumPyBicyclePositions[T, M]":
+    def positions(self) -> "NumPyBicyclePositions":
         return NumPyBicyclePositions(batch=self)
 
     @property
-    def array(self) -> StateBatchArray[T, M]:
+    def array(self) -> StateBatchArray:
         return self._array
 
 
 @dataclass(frozen=True)
-class NumPyBicyclePositions[T: int, M: int](BicyclePositions[T, M]):
-    batch: NumPyBicycleStateBatch[T, M]
+class NumPyBicyclePositions(BicyclePositions):
+    batch: NumPyBicycleStateBatch
 
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[T, D[2], M]]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "T 2 M"]:
         return self.batch.array[:, :2, :]
 
-    def x(self) -> Array[Dims[T, M]]:
+    def x(self) -> Float[Array, "T M"]:
         return self.batch.array[:, 0, :]
 
-    def y(self) -> Array[Dims[T, M]]:
+    def y(self) -> Float[Array, "T M"]:
         return self.batch.array[:, 1, :]
 
     @property
-    def horizon(self) -> T:
+    def horizon(self) -> int:
         return self.batch.horizon
 
     @property
@@ -254,221 +244,194 @@ class NumPyBicyclePositions[T: int, M: int](BicyclePositions[T, M]):
         return 2
 
     @property
-    def rollout_count(self) -> M:
+    def rollout_count(self) -> int:
         return self.batch.rollout_count
 
 
+@jaxtyped
 @dataclass(frozen=True)
-class NumPyBicycleControlInputSequence[T: int](
-    BicycleControlInputSequence[T], NumPyControlInputSequence[T, BicycleD_u]
+class NumPyBicycleControlInputSequence(
+    BicycleControlInputSequence, NumPyControlInputSequence
 ):
     """Control inputs: [acceleration, steering_angle]."""
 
-    _array: ControlInputSequenceArray[T]
+    _array: ControlInputSequenceArray
 
     @staticmethod
-    def zeroes[T_: int](horizon: T_) -> "NumPyBicycleControlInputSequence[T_]":
+    def zeroes(horizon: int) -> "NumPyBicycleControlInputSequence":
         """Creates a zeroed control input sequence for the given horizon."""
-        array = np.zeros((horizon, BICYCLE_D_U))
+        return NumPyBicycleControlInputSequence(np.zeros((horizon, BICYCLE_D_U)))
 
-        assert shape_of(array, matches=(horizon, BICYCLE_D_U))
-
-        return NumPyBicycleControlInputSequence(array)
-
-    def __array__(self, dtype: DataType | None = None) -> ControlInputSequenceArray[T]:
+    def __array__(self, dtype: DataType | None = None) -> ControlInputSequenceArray:
         return self.array
 
-    @overload
-    def similar(self, *, array: Array[Dims[T, BicycleD_u]]) -> Self: ...
-
-    @overload
-    def similar[L: int](
-        self, *, array: Array[Dims[L, BicycleD_u]], length: L
-    ) -> "NumPyBicycleControlInputSequence[L]": ...
-
-    def similar[L: int](
-        self, *, array: Array[Dims[L, BicycleD_u]], length: L | None = None
-    ) -> "Self | NumPyBicycleControlInputSequence[L]":
-        # NOTE: "Wrong" cast to silence the type checker.
-        effective_length = cast(T, length if length is not None else array.shape[0])
-
-        assert shape_of(
-            array, matches=(effective_length, self.dimension), name="similar array"
-        )
-
+    def similar(self, *, array: Float[Array, "L BicycleD_u"]) -> Self:
         return self.__class__(array)
 
-    def accelerations(self) -> Array[Dims[T]]:
+    def accelerations(self) -> Float[Array, " T"]:
         return self.array[:, 0]
 
-    def steering_angles(self) -> Array[Dims[T]]:
+    def steering_angles(self) -> Float[Array, " T"]:
         return self.array[:, 1]
 
     @property
-    def horizon(self) -> T:
+    def horizon(self) -> int:
         return self.array.shape[0]
 
     @property
     def dimension(self) -> BicycleD_u:
-        return self.array.shape[1]
+        return cast(BicycleD_u, self.array.shape[1])
 
     @property
-    def array(self) -> ControlInputSequenceArray[T]:
+    def array(self) -> ControlInputSequenceArray:
         return self._array
 
 
+@jaxtyped
 @dataclass(frozen=True)
-class NumPyBicycleControlInputBatch[T: int, M: int](
-    BicycleControlInputBatch[T, M], NumPyControlInputBatch[T, BicycleD_u, M]
-):
-    _array: ControlInputBatchArray[T, M]
+class NumPyBicycleControlInputBatch(BicycleControlInputBatch, NumPyControlInputBatch):
+    _array: ControlInputBatchArray
 
     @staticmethod
-    def zero[T_: int, M_: int](
-        *, horizon: T_, rollout_count: M_ = 1
-    ) -> "NumPyBicycleControlInputBatch[T_, M_]":
-        array = np.zeros((horizon, BICYCLE_D_U, rollout_count))
+    def zero(
+        *, horizon: int, rollout_count: int = 1
+    ) -> "NumPyBicycleControlInputBatch":
+        return NumPyBicycleControlInputBatch(
+            np.zeros((horizon, BICYCLE_D_U, rollout_count))
+        )
 
-        assert shape_of(array, matches=(horizon, BICYCLE_D_U, rollout_count))
-
+    @staticmethod
+    def create(
+        *, array: Float[Array, "T BicycleD_u M"]
+    ) -> "NumPyBicycleControlInputBatch":
         return NumPyBicycleControlInputBatch(array)
 
     @staticmethod
-    def create[T_: int, M_: int](
-        *, array: Array[Dims[T_, BicycleD_u, M_]]
-    ) -> "NumPyBicycleControlInputBatch[T_, M_]":
+    def of(
+        sequence: NumPyBicycleControlInputSequence,
+    ) -> "NumPyBicycleControlInputBatch":
+        return NumPyBicycleControlInputBatch(sequence.array[..., np.newaxis])
 
-        return NumPyBicycleControlInputBatch(array)
-
-    @staticmethod
-    def of[T_: int](
-        sequence: NumPyBicycleControlInputSequence[T_],
-    ) -> "NumPyBicycleControlInputBatch[T_, D[1]]":
-        array = sequence.array[..., np.newaxis]
-
-        assert shape_of(array, matches=(sequence.horizon, BICYCLE_D_U, 1))
-
-        return NumPyBicycleControlInputBatch(array)
-
-    def __array__(self, dtype: DataType | None = None) -> ControlInputBatchArray[T, M]:
+    def __array__(self, dtype: DataType | None = None) -> ControlInputBatchArray:
         return self.array
 
     @property
-    def horizon(self) -> T:
+    def horizon(self) -> int:
         return self.array.shape[0]
 
     @property
     def dimension(self) -> BicycleD_u:
-        return self.array.shape[1]
+        return cast(BicycleD_u, self.array.shape[1])
 
     @property
-    def rollout_count(self) -> M:
+    def rollout_count(self) -> int:
         return self.array.shape[2]
 
     @property
-    def array(self) -> ControlInputBatchArray[T, M]:
+    def array(self) -> ControlInputBatchArray:
         return self._array
 
 
+@jaxtyped
 @dataclass(frozen=True)
-class NumPyBicycleObstacleStates[K: int]:
-    _array: Array[Dims[BicycleD_o, K]]
+class NumPyBicycleObstacleStates:
+    _array: Float[Array, "BicycleD_o K"]
 
     @staticmethod
-    def wrap[K_: int](
-        array: Array[Dims[BicycleD_o, K_]],
-    ) -> "NumPyBicycleObstacleStates[K_]":
+    def wrap(
+        array: Float[Array, "BicycleD_o K"],
+    ) -> "NumPyBicycleObstacleStates":
         return NumPyBicycleObstacleStates(array)
 
     @staticmethod
     def create(
         *,
-        x: Array[Dims[K]],
-        y: Array[Dims[K]],
-        heading: Array[Dims[K]],
-        speed: Array[Dims[K]],
-    ) -> "NumPyBicycleObstacleStates[K]":
-        array = np.stack([x, y, heading, speed], axis=0)
+        x: Float[Array, " K"],
+        y: Float[Array, " K"],
+        heading: Float[Array, " K"],
+        speed: Float[Array, " K"],
+    ) -> "NumPyBicycleObstacleStates":
+        return NumPyBicycleObstacleStates(np.stack([x, y, heading, speed], axis=0))
 
-        assert shape_of(array, matches=(BICYCLE_D_O, x.shape[0]))
-
-        return NumPyBicycleObstacleStates(array)
-
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[BicycleD_o, K]]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "BicycleD_o K"]:
         return self.array
 
-    def x(self) -> Array[Dims[K]]:
+    def x(self) -> Float[Array, " K"]:
         return self.array[0, :]
 
-    def y(self) -> Array[Dims[K]]:
+    def y(self) -> Float[Array, " K"]:
         return self.array[1, :]
 
-    def heading(self) -> Array[Dims[K]]:
+    def heading(self) -> Float[Array, " K"]:
         return self.array[2, :]
 
-    def speed(self) -> Array[Dims[K]]:
+    def speed(self) -> Float[Array, " K"]:
         return self.array[3, :]
 
     @property
     def dimension(self) -> BicycleD_o:
-        return self.array.shape[0]
+        return cast(BicycleD_o, self.array.shape[0])
 
     @property
-    def count(self) -> K:
+    def count(self) -> int:
         return self.array.shape[1]
 
     @property
-    def array(self) -> Array[Dims[BicycleD_o, K]]:
+    def array(self) -> Float[Array, "BicycleD_o K"]:
         return self._array
 
 
+@jaxtyped
 @dataclass(frozen=True)
-class NumPyBicycleObstacleStateSequences[T: int, K: int]:
-    _array: Array[Dims[T, BicycleEstimationD_x, K]]
-    _covariance: Array[Dims[T, BicycleEstimationD_x, BicycleEstimationD_x, K]]
+class NumPyBicycleObstacleStateSequences:
+    _array: Float[Array, "T BicycleEstimationD_x K"]
+    _covariance: Float[Array, "T BicycleEstimationD_x BicycleEstimationD_x K"]
 
     @staticmethod
-    def create[K_: int, T_: int = int](
-        predictions: Sequence[BicycleGaussianBelief[K_]],
-    ) -> "NumPyBicycleObstacleStateSequences[T_, K_]":
+    def create(
+        predictions: Sequence[BicycleGaussianBelief],
+    ) -> "NumPyBicycleObstacleStateSequences":
         assert len(predictions) > 0, "Predictions sequence must not be empty."
 
-        T = cast(T_, len(predictions))
-        K = predictions[0].mean.shape[1]
+        T_ = len(predictions)
+        K_ = predictions[0].mean.shape[1]
 
         array = np.stack([belief.mean for belief in predictions], axis=0)
         covariance = np.stack([belief.covariance for belief in predictions], axis=0)
 
-        assert shape_of(array, matches=(T, BICYCLE_ESTIMATION_D_X, K))
-        assert shape_of(
-            covariance, matches=(T, BICYCLE_ESTIMATION_D_X, BICYCLE_ESTIMATION_D_X, K)
+        assert array.shape == (T_, BICYCLE_ESTIMATION_D_X, K_)
+        assert covariance.shape == (
+            T_,
+            BICYCLE_ESTIMATION_D_X,
+            BICYCLE_ESTIMATION_D_X,
+            K_,
         )
 
         return NumPyBicycleObstacleStateSequences(array, covariance)
 
     def __array__(
         self, dtype: DataType | None = None
-    ) -> Array[Dims[T, BicycleEstimationD_x, K]]:
+    ) -> Float[Array, "T BicycleEstimationD_x K"]:
         return self.array
 
-    def x(self) -> Array[Dims[T, K]]:
+    def x(self) -> Float[Array, "T K"]:
         return self.array[:, 0, :]
 
-    def y(self) -> Array[Dims[T, K]]:
+    def y(self) -> Float[Array, "T K"]:
         return self.array[:, 1, :]
 
-    def heading(self) -> Array[Dims[T, K]]:
+    def heading(self) -> Float[Array, "T K"]:
         return self.array[:, 2, :]
 
     def covariance(
         self,
-    ) -> Array[Dims[T, BicycleEstimationD_x, BicycleEstimationD_x, K]]:
+    ) -> Float[Array, "T BicycleEstimationD_x BicycleEstimationD_x K"]:
         return self._covariance
 
-    def pose_covariance(self) -> Array[Dims[T, PoseD_o, PoseD_o, K]]:
+    def pose_covariance(self) -> Float[Array, "T PoseD_o PoseD_o K"]:
         return self._covariance[:, :3, :3, :]
 
-    def pose(self) -> NumPyObstacle2dPoses[T, K]:
+    def pose(self) -> NumPyObstacle2dPoses:
         return NumPyObstacle2dPoses.create(
             x=self.x(),
             y=self.y(),
@@ -477,31 +440,30 @@ class NumPyBicycleObstacleStateSequences[T: int, K: int]:
         )
 
     @property
-    def horizon(self) -> T:
+    def horizon(self) -> int:
         return self.array.shape[0]
 
     @property
     def dimension(self) -> BicycleEstimationD_x:
-        return self.array.shape[1]
+        return cast(BicycleEstimationD_x, self.array.shape[1])
 
     @property
-    def count(self) -> K:
+    def count(self) -> int:
         return self.array.shape[2]
 
     @property
-    def array(self) -> Array[Dims[T, BicycleEstimationD_x, K]]:
+    def array(self) -> Float[Array, "T BicycleEstimationD_x K"]:
         return self._array
 
 
+@jaxtyped
 @dataclass(frozen=True)
-class NumPyBicycleObstacleInputs[K: int]:
-    _accelerations: Array[Dims[K]]
-    _steering_angles: Array[Dims[K]]
+class NumPyBicycleObstacleInputs:
+    _accelerations: Float[Array, " K"]
+    _steering_angles: Float[Array, " K"]
 
     @staticmethod
-    def wrap[K_: int](
-        inputs: Array[Dims[BicycleD_u, K_]],
-    ) -> "NumPyBicycleObstacleInputs[K_]":
+    def wrap(inputs: Float[Array, "BicycleD_u K"]) -> "NumPyBicycleObstacleInputs":
         accelerations, steering_angles = inputs
         return NumPyBicycleObstacleInputs(
             _accelerations=accelerations, _steering_angles=steering_angles
@@ -509,25 +471,25 @@ class NumPyBicycleObstacleInputs[K: int]:
 
     @staticmethod
     def create(
-        *, accelerations: Array[Dims[K]], steering_angles: Array[Dims[K]]
-    ) -> "NumPyBicycleObstacleInputs[K]":
+        *, accelerations: Float[Array, " K"], steering_angles: Float[Array, " K"]
+    ) -> "NumPyBicycleObstacleInputs":
         return NumPyBicycleObstacleInputs(
             _accelerations=accelerations,
             _steering_angles=steering_angles,
         )
 
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[BicycleD_u, K]]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "BicycleD_u K"]:
         return self.array
 
-    def accelerations(self) -> Array[Dims[K]]:
+    def accelerations(self) -> Float[Array, " K"]:
         return self._accelerations
 
-    def steering_angles(self) -> Array[Dims[K]]:
+    def steering_angles(self) -> Float[Array, " K"]:
         return self._steering_angles
 
     def zeroed(
         self, *, acceleration: bool = False, steering_angle: bool = False
-    ) -> "NumPyBicycleObstacleInputs[K]":
+    ) -> "NumPyBicycleObstacleInputs":
         """Returns a version of the inputs with the specified components zeroed out."""
         return NumPyBicycleObstacleInputs(
             _accelerations=np.zeros_like(self._accelerations)
@@ -543,20 +505,16 @@ class NumPyBicycleObstacleInputs[K: int]:
         return BICYCLE_D_U
 
     @property
-    def count(self) -> K:
+    def count(self) -> int:
         return self._steering_angles.shape[0]
 
     @property
-    def array(self) -> Array[Dims[BicycleD_u, K]]:
+    def array(self) -> Float[Array, "BicycleD_u K"]:
         return self._array
 
     @cached_property
-    def _array(self) -> Array[Dims[BicycleD_u, K]]:
-        array = np.stack([self._accelerations, self._steering_angles], axis=0)
-
-        assert shape_of(array, matches=(BICYCLE_D_U, self.count))
-
-        return array
+    def _array(self) -> Float[Array, "BicycleD_u K"]:
+        return np.stack([self._accelerations, self._steering_angles], axis=0)
 
 
 @dataclass(kw_only=True, frozen=True)
@@ -599,11 +557,9 @@ class NumPyBicycleModel(
             else NO_LIMITS,
         )
 
-    def simulate[T: int, M: int](
-        self,
-        inputs: NumPyBicycleControlInputBatch[T, M],
-        initial_state: NumPyBicycleState,
-    ) -> NumPyBicycleStateBatch[T, M]:
+    def simulate(
+        self, inputs: NumPyBicycleControlInputBatch, initial_state: NumPyBicycleState
+    ) -> NumPyBicycleStateBatch:
         rollout_count = inputs.rollout_count
 
         initial = np.stack(
@@ -627,20 +583,11 @@ class NumPyBicycleModel(
             )
         )
 
-    def step[T: int](
-        self, inputs: NumPyBicycleControlInputSequence[T], state: NumPyBicycleState
+    def step(
+        self, inputs: NumPyBicycleControlInputSequence, state: NumPyBicycleState
     ) -> NumPyBicycleState:
         state_as_rollouts = state.array.reshape(-1, 1)
         first_input = inputs.array[0].reshape(-1, 1)
-
-        assert shape_of(
-            state_as_rollouts, matches=(BICYCLE_D_X, 1), name="state reshaped for step"
-        )
-        assert shape_of(
-            first_input,
-            matches=(BICYCLE_D_U, 1),
-            name="first control input reshaped for step",
-        )
 
         return NumPyBicycleState(
             step(
@@ -654,9 +601,9 @@ class NumPyBicycleModel(
             )[:, 0]
         )
 
-    def forward[T: int](
-        self, inputs: NumPyBicycleControlInputSequence[T], state: NumPyBicycleState
-    ) -> NumPyBicycleStateSequence[T]:
+    def forward(
+        self, inputs: NumPyBicycleControlInputSequence, state: NumPyBicycleState
+    ) -> NumPyBicycleStateSequence:
         return self.simulate(NumPyBicycleControlInputBatch.of(inputs), state).rollout(0)
 
     @property
@@ -709,9 +656,7 @@ class NumPyBicycleStateEstimationModel:
             ),
         )
 
-    def __call__[D_x: int, K: int](
-        self, state: Array[Dims[D_x, K]]
-    ) -> Array[Dims[D_x, K]]:
+    def __call__(self, state: Float[Array, "D_x K"]) -> Float[Array, "D_x K"]:
         dt = self.time_step_size
         x, y, theta, v, a, delta = state
 
@@ -726,9 +671,7 @@ class NumPyBicycleStateEstimationModel:
             ]
         )
 
-    def jacobian[D_x: int, K: int](
-        self, state: Array[Dims[D_x, K]]
-    ) -> Array[Dims[D_x, D_x, K]]:
+    def jacobian(self, state: Float[Array, "D_x K"]) -> Float[Array, "D_x D_x K"]:
         D_x, K = state.shape
         dt = self.time_step_size
         x, y, theta, v, a, delta = state
@@ -765,32 +708,26 @@ class NumPyBicycleStateEstimationModel:
         jacobian[4, 4, :] = 1  # ∂a_next/∂a
         jacobian[5, 5, :] = 1  # ∂delta_next/∂delta
 
-        assert shape_of(jacobian, matches=(D_x, D_x, K), name="jacobian")
-
         return jacobian
 
-    def observations_from[K: int, T: int = int](
-        self, history: NumPyBicycleObstacleStatesHistory[T, K]
-    ) -> Array[Dims[T, BicycleObservationD_o, K]]:
+    def observations_from(
+        self, history: NumPyBicycleObstacleStatesHistory
+    ) -> Float[Array, "T BicycleObservationD_o K"]:
         return np.stack([history.x(), history.y(), history.heading()], axis=1)
 
-    def states_from[K: int](
-        self, belief: BicycleGaussianBelief[K]
-    ) -> NumPyBicycleObstacleStates[K]:
+    def states_from(self, belief: BicycleGaussianBelief) -> NumPyBicycleObstacleStates:
         return NumPyBicycleObstacleStates.wrap(belief.mean[:4, :])
 
-    def inputs_from[K: int](
-        self, belief: BicycleGaussianBelief[K]
-    ) -> NumPyBicycleObstacleInputs[K]:
+    def inputs_from(self, belief: BicycleGaussianBelief) -> NumPyBicycleObstacleInputs:
         return NumPyBicycleObstacleInputs.wrap(belief.mean[4:, :])
 
-    def initial_belief_from[K: int](
+    def initial_belief_from(
         self,
         *,
-        states: NumPyBicycleObstacleStates[K],
-        inputs: NumPyBicycleObstacleInputs[K],
-        covariances: NumPyBicycleObstacleCovariances[K] | None = None,
-    ) -> BicycleGaussianBelief[K]:
+        states: NumPyBicycleObstacleStates,
+        inputs: NumPyBicycleObstacleInputs,
+        covariances: NumPyBicycleObstacleCovariances | None = None,
+    ) -> BicycleGaussianBelief:
         augmented = np.concatenate([states.array, inputs.array], axis=0)
 
         if covariances is None:
@@ -799,17 +736,6 @@ class NumPyBicycleStateEstimationModel:
                 np.eye(BICYCLE_ESTIMATION_D_X)[:, :, np.newaxis] * SMALL_UNCERTAINTY,
                 (BICYCLE_ESTIMATION_D_X, BICYCLE_ESTIMATION_D_X, states.count),
             ).copy()
-
-        assert shape_of(
-            augmented,
-            matches=(BICYCLE_ESTIMATION_D_X, states.count),
-            name="augmented state",
-        )
-        assert shape_of(
-            covariances,
-            matches=(BICYCLE_ESTIMATION_D_X, BICYCLE_ESTIMATION_D_X, states.count),
-            name="initial state covariance",
-        )
 
         return NumPyGaussianBelief(mean=augmented, covariance=covariances)
 
@@ -846,9 +772,7 @@ class NumPyBicycleObstacleModel(
         *,
         time_step_size: float,
         wheelbase: float = 1.0,
-        process_noise_covariance: NumPyNoiseCovarianceDescription[
-            BicycleEstimationD_x
-        ] = 1e-3,
+        process_noise_covariance: NumPyNoiseCovarianceDescription = 1e-3,
         sigma_point_spread: float = 1.0,
         prior_knowledge: float = 2.0,
     ) -> "NumPyBicycleObstacleModel":
@@ -879,14 +803,14 @@ class NumPyBicycleObstacleModel(
             ),
         )
 
-    def forward[T: int, K: int](
+    def forward(
         self,
         *,
-        states: NumPyBicycleObstacleStates[K],
-        inputs: NumPyBicycleObstacleInputs[K],
-        covariances: NumPyBicycleObstacleCovariances[K] | None,
-        horizon: T,
-    ) -> NumPyBicycleObstacleStateSequences[T, K]:
+        states: NumPyBicycleObstacleStates,
+        inputs: NumPyBicycleObstacleInputs,
+        covariances: NumPyBicycleObstacleCovariances | None,
+        horizon: int,
+    ) -> NumPyBicycleObstacleStateSequences:
         beliefs = []
         last = self.model.initial_belief_from(
             states=states, inputs=inputs, covariances=covariances
@@ -895,7 +819,7 @@ class NumPyBicycleObstacleModel(
         for _ in range(horizon):
             beliefs.append(
                 last := self.predictor.predict(
-                    belief=last,  # type: ignore
+                    belief=last,
                     state_transition=self.model,
                     process_noise_covariance=self.process_noise_covariance,
                 )
@@ -923,10 +847,10 @@ class NumPyFiniteDifferenceBicycleStateEstimator(
             time_step_size=time_step_size, wheelbase=wheelbase
         )
 
-    def estimate_from[K: int, T: int = int](
-        self, history: NumPyBicycleObstacleStatesHistory[T, K]
+    def estimate_from(
+        self, history: NumPyBicycleObstacleStatesHistory
     ) -> EstimatedObstacleStates[
-        NumPyBicycleObstacleStates[K], NumPyBicycleObstacleInputs[K], None
+        NumPyBicycleObstacleStates, NumPyBicycleObstacleInputs, None
     ]:
         """Estimates current states and inputs from pose history using finite differences. Zeros
         are assumed for states that cannot be estimated due to insufficient history length.
@@ -972,9 +896,9 @@ class NumPyFiniteDifferenceBicycleStateEstimator(
             covariance=None,
         )
 
-    def invalid_obstacle_mask_from[K: int, T: int = int](
-        self, history: NumPyBicycleObstacleStatesHistory[T, K]
-    ) -> Array[Dims[K]]:
+    def invalid_obstacle_mask_from(
+        self, history: NumPyBicycleObstacleStatesHistory
+    ) -> Float[Array, " K"]:
         return np.any(
             np.isnan(history.x()[-3:])
             | np.isnan(history.y()[-3:])
@@ -982,11 +906,11 @@ class NumPyFiniteDifferenceBicycleStateEstimator(
             axis=0,
         )
 
-    def estimate_speeds_from[K: int, T: int = int](
-        self, history: NumPyBicycleObstacleStatesHistory[T, K]
-    ) -> Array[Dims[K]]:
+    def estimate_speeds_from(
+        self, history: NumPyBicycleObstacleStatesHistory
+    ) -> Float[Array, " K"]:
         if history.horizon < 2:
-            return cast(Array[Dims[K]], np.zeros((history.count,)))
+            return np.zeros((history.count,))
 
         x = history.x()
         y = history.y()
@@ -1000,14 +924,14 @@ class NumPyFiniteDifferenceBicycleStateEstimator(
             heading_current=heading[-1],
         )
 
-    def estimate_accelerations_from[K: int, T: int = int](
+    def estimate_accelerations_from(
         self,
-        history: NumPyBicycleObstacleStatesHistory[T, K],
+        history: NumPyBicycleObstacleStatesHistory,
         *,
-        speeds: Array[Dims[K]],
-    ) -> Array[Dims[K]]:
+        speeds: Float[Array, " K"],
+    ) -> Float[Array, " K"]:
         if history.horizon < 3:
-            return cast(Array[Dims[K]], np.zeros((history.count,)))
+            return np.zeros((history.count,))
 
         x = history.x()
         y = history.y()
@@ -1024,14 +948,11 @@ class NumPyFiniteDifferenceBicycleStateEstimator(
             ),
         )
 
-    def estimate_steering_angles_from[K: int, T: int = int](
-        self,
-        history: NumPyBicycleObstacleStatesHistory[T, K],
-        *,
-        speeds: Array[Dims[K]],
-    ) -> Array[Dims[K]]:
+    def estimate_steering_angles_from(
+        self, history: NumPyBicycleObstacleStatesHistory, *, speeds: Float[Array, " K"]
+    ) -> Float[Array, " K"]:
         if history.horizon < 2:
-            return cast(Array[Dims[K]], np.zeros((history.count,)))
+            return np.zeros((history.count,))
 
         heading = history.heading()
 
@@ -1039,15 +960,15 @@ class NumPyFiniteDifferenceBicycleStateEstimator(
             heading_current=heading[-1], heading_previous=heading[-2], speeds=speeds
         )
 
-    def _estimate_speeds_from[K: int](
+    def _estimate_speeds_from(
         self,
         *,
-        x_current: Array[Dims[K]],
-        y_current: Array[Dims[K]],
-        x_previous: Array[Dims[K]],
-        y_previous: Array[Dims[K]],
-        heading_current: Array[Dims[K]],
-    ) -> Array[Dims[K]]:
+        x_current: Float[Array, " K"],
+        y_current: Float[Array, " K"],
+        x_previous: Float[Array, " K"],
+        y_previous: Float[Array, " K"],
+        heading_current: Float[Array, " K"],
+    ) -> Float[Array, " K"]:
         delta_x = x_current - x_previous
         delta_y = y_current - y_previous
 
@@ -1055,30 +976,22 @@ class NumPyFiniteDifferenceBicycleStateEstimator(
             delta_x * np.cos(heading_current) + delta_y * np.sin(heading_current)
         ) / self.time_step_size
 
-        assert shape_of(speeds, matches=(x_current.shape[0],), name="estimated speeds")
+        assert speeds.shape == (x_current.shape[0],)
 
         return speeds
 
-    def _estimate_accelerations_from[K: int](
-        self, *, speeds_current: Array[Dims[K]], speeds_previous: Array[Dims[K]]
-    ) -> Array[Dims[K]]:
-        accelerations = (speeds_current - speeds_previous) / self.time_step_size
+    def _estimate_accelerations_from(
+        self, *, speeds_current: Float[Array, " K"], speeds_previous: Float[Array, " K"]
+    ) -> Float[Array, " K"]:
+        return (speeds_current - speeds_previous) / self.time_step_size
 
-        assert shape_of(
-            accelerations,
-            matches=(speeds_current.shape[0],),
-            name="estimated accelerations",
-        )
-
-        return accelerations
-
-    def _estimate_steering_angles_from[K: int](
+    def _estimate_steering_angles_from(
         self,
         *,
-        heading_current: Array[Dims[K]],
-        heading_previous: Array[Dims[K]],
-        speeds: Array[Dims[K]],
-    ) -> Array[Dims[K]]:
+        heading_current: Float[Array, " K"],
+        heading_previous: Float[Array, " K"],
+        speeds: Float[Array, " K"],
+    ) -> Float[Array, " K"]:
         heading_velocity = (heading_current - heading_previous) / self.time_step_size
 
         with np.errstate(invalid="ignore"):
@@ -1087,12 +1000,6 @@ class NumPyFiniteDifferenceBicycleStateEstimator(
                 np.arctan(heading_velocity * self.wheelbase / speeds),
                 0.0,
             )
-
-        assert shape_of(
-            steering_angles,
-            matches=(heading_current.shape[0],),
-            name="estimated steering angles",
-        )
 
         return steering_angles
 
@@ -1118,10 +1025,8 @@ class NumPyKfBicycleStateEstimator(
         *,
         time_step_size: float,
         wheelbase: float,
-        process_noise_covariance: NumPyNoiseCovarianceDescription[BicycleEstimationD_x],
-        observation_noise_covariance: NumPyNoiseCovarianceDescription[
-            BicycleObservationD_o
-        ],
+        process_noise_covariance: NumPyNoiseCovarianceDescription,
+        observation_noise_covariance: NumPyNoiseCovarianceDescription,
         initial_state_covariance: EstimationStateCovarianceArray | None = None,
     ) -> "NumPyKfBicycleStateEstimator":
         """Creates an EKF state estimator for the bicycle model with the specified noise
@@ -1158,10 +1063,8 @@ class NumPyKfBicycleStateEstimator(
         *,
         time_step_size: float,
         wheelbase: float,
-        process_noise_covariance: NumPyNoiseCovarianceDescription[BicycleEstimationD_x],
-        observation_noise_covariance: NumPyNoiseCovarianceDescription[
-            BicycleObservationD_o
-        ],
+        process_noise_covariance: NumPyNoiseCovarianceDescription,
+        observation_noise_covariance: NumPyNoiseCovarianceDescription,
         initial_state_covariance: EstimationStateCovarianceArray | None = None,
     ) -> "NumPyKfBicycleStateEstimator":
         """Creates a UKF state estimator for the bicycle model with the specified noise
@@ -1193,15 +1096,15 @@ class NumPyKfBicycleStateEstimator(
             estimator=NumPyUnscentedKalmanFilter.create(),
         )
 
-    def estimate_from[K: int, T: int = int](
-        self, history: NumPyBicycleObstacleStatesHistory[T, K]
+    def estimate_from(
+        self, history: NumPyBicycleObstacleStatesHistory
     ) -> EstimatedObstacleStates[
-        NumPyBicycleObstacleStates[K],
-        NumPyBicycleObstacleInputs[K],
-        NumPyBicycleObstacleCovariances[K],
+        NumPyBicycleObstacleStates,
+        NumPyBicycleObstacleInputs,
+        NumPyBicycleObstacleCovariances,
     ]:
         estimate = cast(
-            BicycleGaussianBelief[K],
+            BicycleGaussianBelief,
             self.estimator.filter(
                 self.model.observations_from(history),
                 initial_state_covariance=self.model.initial_state_covariance,
@@ -1219,16 +1122,16 @@ class NumPyKfBicycleStateEstimator(
         )
 
 
-def simulate[T: int, N: int](
-    inputs: ControlInputBatchArray[T, N],
-    initial: StatesAtTimeStep[N],
+def simulate(
+    inputs: ControlInputBatchArray,
+    initial: StatesAtTimeStep,
     *,
     time_step_size: float,
     wheelbase: float,
     speed_limits: tuple[float, float],
     steering_limits: tuple[float, float],
     acceleration_limits: tuple[float, float],
-) -> StateBatchArray[T, N]:
+) -> StateBatchArray:
     horizon = inputs.shape[0]
     rollout_count = inputs.shape[2]
     states = np.zeros((horizon, BICYCLE_D_X, rollout_count))
@@ -1246,23 +1149,19 @@ def simulate[T: int, N: int](
         )
         states[t] = current
 
-    assert shape_of(
-        states, matches=(horizon, BICYCLE_D_X, rollout_count), name="simulated states"
-    )
-
     return states
 
 
-def step[M: int](
-    state: StatesAtTimeStep[M],
-    control: ControlInputsAtTimeStep[M],
+def step(
+    state: StatesAtTimeStep,
+    control: ControlInputsAtTimeStep,
     *,
     time_step_size: float,
     wheelbase: float,
     speed_limits: tuple[float, float],
     steering_limits: tuple[float, float],
     acceleration_limits: tuple[float, float],
-) -> StatesAtTimeStep[M]:
+) -> StatesAtTimeStep:
     x, y, theta, v = state[0], state[1], state[2], state[3]
     a, delta = control[0], control[1]
     acceleration = np.clip(a, *acceleration_limits)

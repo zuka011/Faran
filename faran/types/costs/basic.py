@@ -1,9 +1,10 @@
 from typing import Protocol
 
+from faran.types.array import Array
 from faran.types.trajectories import NumPyPathParameters, NumPyPositions, NumPyHeadings
 from faran.types.costs.common import PositionExtractor
 
-from numtypes import Array, Dim2
+from jaxtyping import Float
 
 
 class NumPyPathParameterExtractor[StateBatchT](Protocol):
@@ -13,7 +14,7 @@ class NumPyPathParameterExtractor[StateBatchT](Protocol):
 
 
 class NumPyPathVelocityExtractor[InputBatchT](Protocol):
-    def __call__(self, inputs: InputBatchT, /) -> Array[Dim2]:
+    def __call__(self, inputs: InputBatchT, /) -> Float[Array, "T M"]:
         """Extracts path velocities from a batch of control inputs."""
         ...
 

@@ -1,8 +1,9 @@
 from typing import Protocol, Final
 
-from faran.types.array import DataType
+from faran.types.array import Array, DataType
 
-from numtypes import Array, Dims, D
+from jaxtyping import Float
+from numtypes import D
 
 BICYCLE_D_X: Final = 4
 BICYCLE_D_U: Final = 2
@@ -19,7 +20,9 @@ type BicycleD_o = D[4]
 
 
 class BicycleState(Protocol):
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[BicycleD_x]]:
+    def __array__(
+        self, dtype: DataType | None = None
+    ) -> Float[Array, f"{BICYCLE_D_X}"]:
         """Returns the state as a NumPy array."""
         ...
 
@@ -55,16 +58,18 @@ class BicycleStateSequence(Protocol):
         ...
 
 
-class BicycleStateBatch[T: int, M: int](Protocol):
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[T, BicycleD_x, M]]:
+class BicycleStateBatch(Protocol):
+    def __array__(
+        self, dtype: DataType | None = None
+    ) -> Float[Array, f"T {BICYCLE_D_X} M"]:
         """Returns the states as a NumPy array."""
         ...
 
-    def heading(self) -> Array[Dims[T, M]]:
+    def heading(self) -> Float[Array, "T M"]:
         """Returns the headings (orientations) of the states in the batch."""
         ...
 
-    def speed(self) -> Array[Dims[T, M]]:
+    def speed(self) -> Float[Array, "T M"]:
         """Returns the speeds of the states in the batch."""
         ...
 
@@ -73,32 +78,34 @@ class BicycleStateBatch[T: int, M: int](Protocol):
         ...
 
     @property
-    def positions(self) -> "BicyclePositions[T, M] ":
+    def positions(self) -> "BicyclePositions":
         """Returns the positions of the states in the batch."""
         ...
 
 
-class BicyclePositions[T: int, M: int](Protocol):
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[T, D[2], M]]:
+class BicyclePositions(Protocol):
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "T 2 M"]:
         """Returns the positions as a NumPy array."""
         ...
 
-    def x(self) -> Array[Dims[T, M]]:
+    def x(self) -> Float[Array, "T M"]:
         """Returns the x positions."""
         ...
 
-    def y(self) -> Array[Dims[T, M]]:
+    def y(self) -> Float[Array, "T M"]:
         """Returns the y positions."""
         ...
 
 
-class BicycleControlInputSequence[T: int](Protocol):
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[T, BicycleD_u]]:
+class BicycleControlInputSequence(Protocol):
+    def __array__(
+        self, dtype: DataType | None = None
+    ) -> Float[Array, f"T {BICYCLE_D_U}"]:
         """Returns the control input sequence as a NumPy array."""
         ...
 
     @property
-    def horizon(self) -> T:
+    def horizon(self) -> int:
         """Time horizon of the control input sequence."""
         ...
 
@@ -108,17 +115,19 @@ class BicycleControlInputSequence[T: int](Protocol):
         ...
 
 
-class BicycleControlInputBatch[T: int, M: int](Protocol):
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[T, BicycleD_u, M]]:
+class BicycleControlInputBatch(Protocol):
+    def __array__(
+        self, dtype: DataType | None = None
+    ) -> Float[Array, f"T {BICYCLE_D_U} M"]:
         """Returns the control inputs as a NumPy array."""
         ...
 
     @property
-    def rollout_count(self) -> M:
+    def rollout_count(self) -> int:
         """Number of rollouts in the batch."""
         ...
 
     @property
-    def horizon(self) -> T:
+    def horizon(self) -> int:
         """Time horizon of the control inputs."""
         ...

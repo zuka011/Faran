@@ -1,6 +1,8 @@
 from typing import Protocol, runtime_checkable
 
-from numtypes import Dims, Array
+from faran.types.array import Array
+
+from jaxtyping import Float
 
 import numpy as np
 
@@ -8,12 +10,12 @@ from faran.filters.kf import NumPyGaussianBelief, numpy_kalman_filter
 
 
 @runtime_checkable
-class StateTransitionFunction[D_x: int, K: int](Protocol):
-    def __call__(self, state: Array[Dims[D_x, K]]) -> Array[Dims[D_x, K]]:
+class StateTransitionFunction(Protocol):
+    def __call__(self, state: Float[Array, "D_x K"]) -> Float[Array, "D_x K"]:
         """Applies the state transition function to the state."""
         ...
 
-    def jacobian(self, state: Array[Dims[D_x, K]]) -> Array[Dims[D_x, D_x, K]]:
+    def jacobian(self, state: Float[Array, "D_x K"]) -> Float[Array, "D_x D_x K"]:
         """Returns the Jacobian of the state transition function at the given state."""
         ...
 
@@ -25,16 +27,16 @@ class NumPyExtendedKalmanFilter:
     def create() -> "NumPyExtendedKalmanFilter":
         return NumPyExtendedKalmanFilter()
 
-    def filter[T: int, D_x: int, D_z: int, K: int](
+    def filter(
         self,
-        observations: Array[Dims[T, D_z, K]],
+        observations: Float[Array, "T D_z K"],
         *,
-        initial_state_covariance: Array[Dims[D_x, D_x]],
-        state_transition: StateTransitionFunction[D_x, K],
-        process_noise_covariance: Array[Dims[D_x, D_x]],
-        observation_noise_covariance: Array[Dims[D_z, D_z]],
-        observation_matrix: Array[Dims[D_z, D_x]],
-    ) -> NumPyGaussianBelief[D_x, K]:
+        initial_state_covariance: Float[Array, "D_x D_x"],
+        state_transition: StateTransitionFunction,
+        process_noise_covariance: Float[Array, "D_x D_x"],
+        observation_noise_covariance: Float[Array, "D_z D_z"],
+        observation_matrix: Float[Array, "D_z D_x"],
+    ) -> NumPyGaussianBelief:
         """Run the EKF over a sequence of observations.
 
         Args:
@@ -65,13 +67,13 @@ class NumPyExtendedKalmanFilter:
 
         return belief
 
-    def predict[D_x: int, K: int](
+    def predict(
         self,
         *,
-        belief: NumPyGaussianBelief[D_x, K],
-        state_transition: StateTransitionFunction[D_x, K],
-        process_noise_covariance: Array[Dims[D_x, D_x]],
-    ) -> NumPyGaussianBelief[D_x, K]:
+        belief: NumPyGaussianBelief,
+        state_transition: StateTransitionFunction,
+        process_noise_covariance: Float[Array, "D_x D_x"],
+    ) -> NumPyGaussianBelief:
         """Performs the prediction step of the EKF from the existing belief.
 
         Args:
@@ -94,15 +96,15 @@ class NumPyExtendedKalmanFilter:
             mean=state_transition(mu), covariance=predicted_covariance
         )
 
-    def update[D_x: int, D_z: int, K: int](
+    def update(
         self,
-        observation: Array[Dims[D_z, K]],
+        observation: Float[Array, "D_z K"],
         *,
-        prediction: NumPyGaussianBelief[D_x, K],
-        observation_matrix: Array[Dims[D_z, D_x]],
-        observation_noise_covariance: Array[Dims[D_z, D_z]],
-        initial_state_covariance: Array[Dims[D_x, D_x]],
-    ) -> NumPyGaussianBelief[D_x, K]:
+        prediction: NumPyGaussianBelief,
+        observation_matrix: Float[Array, "D_z D_x"],
+        observation_noise_covariance: Float[Array, "D_z D_z"],
+        initial_state_covariance: Float[Array, "D_x D_x"],
+    ) -> NumPyGaussianBelief:
         """Performs the update step of the EKF using a new observation.
 
         Args:
@@ -120,12 +122,12 @@ class NumPyExtendedKalmanFilter:
             initial_state_covariance=initial_state_covariance,
         )
 
-    def initial_belief_from[T: int, D_x: int, D_z: int, K: int](
+    def initial_belief_from(
         self,
-        observations: Array[Dims[T, D_z, K]],
+        observations: Float[Array, "T D_z K"],
         *,
-        initial_state_covariance: Array[Dims[D_x, D_x]],
-    ) -> NumPyGaussianBelief[D_x, K]:
+        initial_state_covariance: Float[Array, "D_x D_x"],
+    ) -> NumPyGaussianBelief:
         """Initializes the belief state from the first observation using a pseudo-inverse.
 
         Args:

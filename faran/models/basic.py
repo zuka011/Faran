@@ -1,32 +1,34 @@
-from typing import Protocol, overload, cast
+from typing import Protocol, overload
 
-from numtypes import Array, Dims
+from faran.types.array import Array
+
+from jaxtyping import Float
 
 import numpy as np
 
 
-class HistoryWithArray[T: int, D_o: int, K: int](Protocol):
+class HistoryWithArray(Protocol):
     @property
-    def array(self) -> Array[Dims[T, D_o, K]]:
+    def array(self) -> Float[Array, "T D_o K"]:
         """Returns the history as a Numpy array."""
         ...
 
 
-class EstimationFilter[D_o: int, K: int](Protocol):
+class EstimationFilter(Protocol):
     @overload
-    def __call__(self, array: Array[Dims[K]], /) -> Array[Dims[K]]:
+    def __call__(self, array: Float[Array, " K"], /) -> Float[Array, " K"]:
         """Filters out invalid estimates from the given array."""
         ...
 
     @overload
-    def __call__(self, array: Array[Dims[D_o, K]], /) -> Array[Dims[D_o, K]]:
+    def __call__(self, array: Float[Array, "D_o K"], /) -> Float[Array, "D_o K"]:  # pyright: ignore[reportOverlappingOverload]
         """Filters out invalid estimates from the given array."""
         ...
 
 
-def invalid_obstacle_filter_from[D_o: int, K: int, T: int = int](
-    history: HistoryWithArray[T, D_o, K], *, check_recent: int
-) -> EstimationFilter[D_o, K]:
+def invalid_obstacle_filter_from(
+    history: HistoryWithArray, *, check_recent: int
+) -> "EstimationFilter":
     """Returns a filter for invalid estimates based on the given history.
 
     Args:
@@ -42,4 +44,4 @@ def invalid_obstacle_filter_from[D_o: int, K: int, T: int = int](
     def filter_invalid(array: Array) -> Array:
         return np.where(invalid, np.nan, array)
 
-    return cast(EstimationFilter[D_o, K], filter_invalid)
+    return filter_invalid

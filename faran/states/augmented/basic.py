@@ -1,8 +1,9 @@
-from typing import Self, Sequence, overload, cast
+from typing import Self, Sequence, cast
 from dataclasses import dataclass
 
 from faran.types import (
     DataType,
+    Array,
     NumPyState,
     NumPyStateSequence,
     NumPyStateBatch,
@@ -25,7 +26,7 @@ from faran.states.augmented.base import (
     BaseAugmentedControlInputBatch,
 )
 
-from numtypes import Array, Dim1, Dim2, Dim3
+from jaxtyping import Float
 
 import numpy as np
 
@@ -46,7 +47,7 @@ class NumPyAugmentedState[P: NumPyState, V: NumPyState](
             BaseAugmentedState.of(physical=physical, virtual=virtual)
         )
 
-    def __array__(self, dtype: DataType | None = None) -> Array[Dim1]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, " D_x"]:
         return np.asarray(self.inner)
 
     @property
@@ -62,7 +63,7 @@ class NumPyAugmentedState[P: NumPyState, V: NumPyState](
         return self.inner.dimension
 
     @property
-    def array(self) -> Array[Dim1]:
+    def array(self) -> Float[Array, " D_x"]:
         return np.concatenate(
             [self.inner.physical.array, self.inner.virtual.array], axis=0
         )
@@ -112,7 +113,7 @@ class NumPyAugmentedStateSequence[P: NumPyStateSequence, V: NumPyStateSequence](
 
         return creator
 
-    def __array__(self, dtype: DataType | None = None) -> Array[Dim2]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "T D_x"]:
         return self.inner.__array__(dtype=dtype)
 
     def batched(self) -> "NumPyAugmentedStateBatch ":
@@ -135,7 +136,7 @@ class NumPyAugmentedStateSequence[P: NumPyStateSequence, V: NumPyStateSequence](
         return self.inner.dimension
 
     @property
-    def array(self) -> Array[Dim2]:
+    def array(self) -> Float[Array, "T D_x"]:
         return np.concatenate(
             [self.inner.physical.array, self.inner.virtual.array], axis=1
         )
@@ -157,7 +158,7 @@ class NumPyAugmentedStateBatch[P: NumPyStateBatch, V: NumPyStateBatch](
             BaseAugmentedStateBatch.of(physical=physical, virtual=virtual)
         )
 
-    def __array__(self, dtype: DataType | None = None) -> Array[Dim3]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "T D_x M"]:
         return self.inner.__array__(dtype=dtype)
 
     @property
@@ -181,7 +182,7 @@ class NumPyAugmentedStateBatch[P: NumPyStateBatch, V: NumPyStateBatch](
         return self.inner.rollout_count
 
     @property
-    def array(self) -> Array[Dim3]:
+    def array(self) -> Float[Array, "T D_x M"]:
         return np.concatenate(
             [self.inner.physical.array, self.inner.virtual.array], axis=1
         )
@@ -209,25 +210,10 @@ class NumPyAugmentedControlInputSequence[
             BaseAugmentedControlInputSequence.of(physical=physical, virtual=virtual)
         )
 
-    def __array__(self, dtype: DataType | None = None) -> Array[Dim2]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "T D_u"]:
         return self.inner.__array__(dtype=dtype)
 
-    @overload
-    def similar(self, *, array: Array[Dim2]) -> Self: ...
-
-    @overload
-    def similar(
-        self, *, array: Array[Dim2], length: int
-    ) -> "NumPyAugmentedControlInputSequence[P, V]": ...
-
-    def similar(
-        self, *, array: Array[Dim2], length: int | None = None
-    ) -> "Self | NumPyAugmentedControlInputSequence[P, V]":
-        assert length is None or length == array.shape[0], (
-            f"Length mismatch in {self.__class__.__name__}.similar: "
-            f"got {array.shape[0]} but expected {length}"
-        )
-
+    def similar(self, *, array: Float[Array, "T D_u"]) -> Self:
         return self.__class__(
             cast(
                 BaseAugmentedControlInputSequence[P, V],
@@ -259,7 +245,7 @@ class NumPyAugmentedControlInputSequence[
         return self.inner.dimension
 
     @property
-    def array(self) -> Array[Dim2]:
+    def array(self) -> Float[Array, "T D_u"]:
         return np.concatenate(
             [self.inner.physical.array, self.inner.virtual.array], axis=1
         )
@@ -287,7 +273,7 @@ class NumPyAugmentedControlInputBatch[
             BaseAugmentedControlInputBatch.of(physical=physical, virtual=virtual)
         )
 
-    def __array__(self, dtype: DataType | None = None) -> Array[Dim3]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "T D_u M"]:
         return self.inner.__array__(dtype=dtype)
 
     @property
@@ -311,7 +297,7 @@ class NumPyAugmentedControlInputBatch[
         return self.inner.rollout_count
 
     @property
-    def array(self) -> Array[Dim3]:
+    def array(self) -> Float[Array, "T D_u M"]:
         return np.concatenate(
             [self.inner.physical.array, self.inner.virtual.array], axis=1
         )

@@ -20,7 +20,7 @@ import jax.numpy as jnp
 
 
 @dataclass(frozen=True)
-class JaxCircleDistanceExtractor[StateT, SampledObstacleStatesT, V: int, C: int](
+class JaxCircleDistanceExtractor[StateT, SampledObstacleStatesT](
     DistanceExtractor[StateT, SampledObstacleStatesT, JaxDistance]
 ):
     """
@@ -29,24 +29,24 @@ class JaxCircleDistanceExtractor[StateT, SampledObstacleStatesT, V: int, C: int]
     """
 
     ego_origins: Float[JaxArray, "V 2"]
-    ego_radii: Float[JaxArray, "V"]
+    ego_radii: Float[JaxArray, " V"]
     obstacle_origins: Float[JaxArray, "C 2"]
-    obstacle_radii: Float[JaxArray, "C"]
+    obstacle_radii: Float[JaxArray, " C"]
     positions_from: JaxPositionExtractor[StateT]
     headings_from: JaxHeadingExtractor[StateT]
     obstacle_positions_from: JaxSampledObstaclePositionExtractor[SampledObstacleStatesT]
     obstacle_headings_from: JaxSampledObstacleHeadingExtractor[SampledObstacleStatesT]
 
     @staticmethod
-    def create[S, SOS, V_: int, C_: int](
+    def create[S, SOS](
         *,
-        ego: Circles[V_],
-        obstacle: Circles[C_],
+        ego: Circles,
+        obstacle: Circles,
         position_extractor: JaxPositionExtractor[S],
         heading_extractor: JaxHeadingExtractor[S],
         obstacle_position_extractor: JaxSampledObstaclePositionExtractor[SOS],
         obstacle_heading_extractor: JaxSampledObstacleHeadingExtractor[SOS],
-    ) -> "JaxCircleDistanceExtractor[S, SOS, V_, C_]":
+    ) -> "JaxCircleDistanceExtractor[S, SOS]":
         return JaxCircleDistanceExtractor(
             ego_origins=jnp.asarray(ego.origins),
             ego_radii=jnp.asarray(ego.radii),
@@ -58,9 +58,9 @@ class JaxCircleDistanceExtractor[StateT, SampledObstacleStatesT, V: int, C: int]
             obstacle_headings_from=obstacle_heading_extractor,
         )
 
-    def __call__[T: int = int, N: int = int, M: int = int](
+    def __call__(
         self, *, states: StateT, obstacle_states: SampledObstacleStatesT
-    ) -> JaxDistance[T, V, M, N]:
+    ) -> JaxDistance:
         ego_positions = self.positions_from(states)
         ego_headings = self.headings_from(states)
         obstacle_positions = self.obstacle_positions_from(obstacle_states)
@@ -107,12 +107,12 @@ def compute_circle_distances(
     ego_y: Float[JaxArray, "T M"],
     ego_heading: Float[JaxArray, "T M"],
     ego_origins: Float[JaxArray, "V 2"],
-    ego_radii: Float[JaxArray, "V"],
+    ego_radii: Float[JaxArray, " V"],
     obstacle_x: Float[JaxArray, "T K N"],
     obstacle_y: Float[JaxArray, "T K N"],
     obstacle_heading: Float[JaxArray, "T K N"],
     obstacle_origins: Float[JaxArray, "C 2"],
-    obstacle_radii: Float[JaxArray, "C"],
+    obstacle_radii: Float[JaxArray, " C"],
 ) -> Float[JaxArray, "T V M N"]:
     ego_global_x, ego_global_y = to_global_positions(
         x=ego_x, y=ego_y, heading=ego_heading, local_origins=ego_origins
@@ -141,9 +141,9 @@ def compute_circle_distances(
 @jaxtyped
 def to_global_positions(
     *,
-    x: Float[JaxArray, "T *S"],
-    y: Float[JaxArray, "T *S"],
-    heading: Float[JaxArray, "T *S"],
+    x: Float[JaxArray, " T *S"],
+    y: Float[JaxArray, " T *S"],
+    heading: Float[JaxArray, " T *S"],
     local_origins: Float[JaxArray, "L 2"],
 ) -> tuple[Float[JaxArray, "L T *S"], Float[JaxArray, "L T *S"]]:
     x, y, heading = replace_missing(x=x, y=y, heading=heading)
@@ -166,10 +166,10 @@ def pairwise_distances(
     *,
     ego_x: Float[JaxArray, "V T M"],
     ego_y: Float[JaxArray, "V T M"],
-    ego_radii: Float[JaxArray, "V"],
+    ego_radii: Float[JaxArray, " V"],
     obstacle_x: Float[JaxArray, "C T K N"],
     obstacle_y: Float[JaxArray, "C T K N"],
-    obstacle_radii: Float[JaxArray, "C"],
+    obstacle_radii: Float[JaxArray, " C"],
 ) -> Float[JaxArray, "V C T M K N"]:
     dx = ego_x[:, None, :, :, None, None] - obstacle_x[None, :, :, None, :, :]
     dy = ego_y[:, None, :, :, None, None] - obstacle_y[None, :, :, None, :, :]

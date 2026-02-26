@@ -107,7 +107,7 @@ class JaxUnscentedKalmanFilter(NamedTuple):
             *,
             mean: Float[JaxArray, "D_x K"],
             covariance: Float[JaxArray, "D_x D_x K"],
-        ) -> Float[JaxArray, "K"]:
+        ) -> Float[JaxArray, " K"]:
             return jnp.any(jnp.isnan(covariance), axis=(0, 1)) | jnp.any(
                 jnp.isnan(mean), axis=0
             )
@@ -154,7 +154,7 @@ class JaxUnscentedKalmanFilter(NamedTuple):
 
         def restore_missing(
             *,
-            skip_mask: Float[JaxArray, "K"],
+            skip_mask: Float[JaxArray, " K"],
             predicted_mean: Float[JaxArray, "D_x K"],
             predicted_covariance: Float[JaxArray, "D_x D_x K"],
         ) -> JaxGaussianBelief:

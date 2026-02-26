@@ -46,9 +46,7 @@ class JaxBoundaryCost[StateT](CostFunction[ControlInputBatch, StateT, JaxCosts])
             weight=jnp.array(weight),
         )
 
-    def __call__[T: int, M: int](
-        self, *, inputs: ControlInputBatch[T, int, M], states: StateT
-    ) -> JaxCosts[T, M]:
+    def __call__(self, *, inputs: ControlInputBatch, states: StateT) -> JaxCosts:
         return JaxSimpleCosts(
             boundary_cost(
                 distance=self.distance(states=states).array,
@@ -112,7 +110,7 @@ class JaxFixedWidthBoundary[StateT](
             boundary_distance(lateral=lateral.array, left=self._left, right=self._right)
         )
 
-    def left[L: int](self, *, sample_count: L = 100) -> BoundaryPoints[L]:
+    def left(self, *, sample_count: int = 100) -> BoundaryPoints:
         s = JaxPathParameters(
             jnp.linspace(0, self.reference.path_length, sample_count).reshape(-1, 1)
         )
@@ -124,7 +122,7 @@ class JaxFixedWidthBoundary[StateT](
             )[..., 0]
         )
 
-    def right[L: int](self, *, sample_count: L = 100) -> BoundaryPoints[L]:
+    def right(self, *, sample_count: int = 100) -> BoundaryPoints:
         s = JaxPathParameters(
             jnp.linspace(0, self.reference.path_length, sample_count).reshape(-1, 1)
         )
@@ -147,9 +145,9 @@ class JaxPiecewiseFixedWidthBoundary[StateT](
         JaxPathParameters, JaxReferencePoints, JaxPositions, JaxLateralPositions
     ]
     position_extractor: JaxPositionExtractor[StateT]
-    breakpoints: Float[JaxArray, "B"]
-    left_widths: Float[JaxArray, "B"]
-    right_widths: Float[JaxArray, "B"]
+    breakpoints: Float[JaxArray, " B"]
+    left_widths: Float[JaxArray, " B"]
+    right_widths: Float[JaxArray, " B"]
 
     @staticmethod
     def create[S](
@@ -196,7 +194,7 @@ class JaxPiecewiseFixedWidthBoundary[StateT](
             )
         )
 
-    def left[L: int](self, *, sample_count: L = 100) -> BoundaryPoints[L]:
+    def left(self, *, sample_count: int = 100) -> BoundaryPoints:
         s_values = jnp.linspace(0, self.reference.path_length, sample_count)
         s = JaxPathParameters(s_values.reshape(-1, 1))
 
@@ -210,7 +208,7 @@ class JaxPiecewiseFixedWidthBoundary[StateT](
             )
         )
 
-    def right[L: int](self, *, sample_count: L = 100) -> BoundaryPoints[L]:
+    def right(self, *, sample_count: int = 100) -> BoundaryPoints:
         s_values = jnp.linspace(0, self.reference.path_length, sample_count)
         s = JaxPathParameters(s_values.reshape(-1, 1))
 
@@ -250,9 +248,9 @@ def piecewise_boundary_distance(
     *,
     lateral: Float[JaxArray, "T M"],
     longitudinal: Float[JaxArray, "T M"],
-    breakpoints: Float[JaxArray, "N"],
-    left_widths: Float[JaxArray, "N"],
-    right_widths: Float[JaxArray, "N"],
+    breakpoints: Float[JaxArray, " N"],
+    left_widths: Float[JaxArray, " N"],
+    right_widths: Float[JaxArray, " N"],
 ) -> Float[JaxArray, "T M"]:
     segment_indices = jnp.searchsorted(breakpoints, longitudinal, side="right") - 1
     segment_indices = jnp.clip(segment_indices, 0, len(breakpoints) - 1)
@@ -272,9 +270,9 @@ def piecewise_left_boundary_points(
     *,
     positions: Float[JaxArray, "N 2 1"],
     normals: Float[JaxArray, "N 2 1"],
-    s_values: Float[JaxArray, "N"],
-    breakpoints: Float[JaxArray, "K"],
-    left_widths: Float[JaxArray, "K"],
+    s_values: Float[JaxArray, " N"],
+    breakpoints: Float[JaxArray, " K"],
+    left_widths: Float[JaxArray, " K"],
 ) -> Float[JaxArray, "N 2"]:
     segment_indices = jnp.searchsorted(breakpoints, s_values, side="right") - 1
     segment_indices = jnp.clip(segment_indices, 0, len(breakpoints) - 1)
@@ -289,9 +287,9 @@ def piecewise_right_boundary_points(
     *,
     positions: Float[JaxArray, "N 2 1"],
     normals: Float[JaxArray, "N 2 1"],
-    s_values: Float[JaxArray, "N"],
-    breakpoints: Float[JaxArray, "K"],
-    right_widths: Float[JaxArray, "K"],
+    s_values: Float[JaxArray, " N"],
+    breakpoints: Float[JaxArray, " K"],
+    right_widths: Float[JaxArray, " K"],
 ) -> Float[JaxArray, "N 2"]:
     segment_indices = jnp.searchsorted(breakpoints, s_values, side="right") - 1
     segment_indices = jnp.clip(segment_indices, 0, len(breakpoints) - 1)

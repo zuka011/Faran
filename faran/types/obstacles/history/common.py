@@ -1,80 +1,80 @@
 from typing import Protocol
 
-from faran.types.array import DataType
+from faran.types.array import Array, DataType
 
-from numtypes import Array, Dims
+from jaxtyping import Float
 
 
-class ObstaclePositionsForTimeStep[D_p: int, K: int](Protocol):
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[D_p, K]]:
+class ObstaclePositionsForTimeStep(Protocol):
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "D_p K"]:
         """Returns the obstacle positions for a single time step as a NumPy array."""
         ...
 
     @property
-    def dimension(self) -> D_p:
+    def dimension(self) -> int:
         """The dimension of the obstacle positions."""
         ...
 
     @property
-    def count(self) -> K:
+    def count(self) -> int:
         """The number of obstacles."""
         ...
 
 
-class ObstaclePositions[T: int, D_p: int, K: int](Protocol):
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[T, D_p, K]]:
+class ObstaclePositions(Protocol):
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "T D_p K"]:
         """Returns the obstacle positions as a NumPy array."""
         ...
 
     @property
-    def horizon(self) -> T:
+    def horizon(self) -> int:
         """The time horizon of the obstacle positions."""
         ...
 
     @property
-    def dimension(self) -> D_p:
+    def dimension(self) -> int:
         """The dimension of the obstacle positions."""
         ...
 
     @property
-    def count(self) -> K:
+    def count(self) -> int:
         """The number of obstacles."""
         ...
 
 
-class ObstacleOrientationsForTimeStep[D_o: int, K: int](Protocol):
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[D_o, K]]:
+class ObstacleOrientationsForTimeStep(Protocol):
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "D_o K"]:
         """Returns the obstacle orientations for a single time step as a NumPy array."""
         ...
 
     @property
-    def dimension(self) -> D_o:
+    def dimension(self) -> int:
         """The dimension of the obstacle orientations."""
         ...
 
     @property
-    def count(self) -> K:
+    def count(self) -> int:
         """The number of obstacles."""
         ...
 
 
-class ObstacleOrientations[T: int, D_o: int, K: int](Protocol):
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[T, D_o, K]]:
+class ObstacleOrientations(Protocol):
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "T D_o K"]:
         """Returns the obstacle orientations as a NumPy array."""
         ...
 
     @property
-    def horizon(self) -> T:
+    def horizon(self) -> int:
         """The time horizon of the obstacle orientations."""
         ...
 
     @property
-    def dimension(self) -> D_o:
+    def dimension(self) -> int:
         """The dimension of the obstacle orientations."""
         ...
 
     @property
-    def count(self) -> K:
+    def count(self) -> int:
         """The number of obstacles."""
         ...
 

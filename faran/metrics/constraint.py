@@ -3,6 +3,8 @@ from dataclasses import dataclass
 from functools import cached_property
 
 from faran.types import (
+    jaxtyped,
+    Array,
     StateSequence,
     SimulationData,
     Metric,
@@ -15,20 +17,21 @@ from faran.types import (
 )
 from faran.collectors import access
 
-from numtypes import Array, BoolArray, Dims
+from jaxtyping import Float, Bool
 
 import numpy as np
 
 
+@jaxtyped
 @dataclass(kw_only=True, frozen=True)
-class ConstraintViolationMetricResult[T: int = int]:
+class ConstraintViolationMetricResult:
     """Results of the constraint violation metric, including boundary distances."""
 
-    lateral_deviations: Array[Dims[T]]
-    boundary_distances: Array[Dims[T]]
+    lateral_deviations: Float[Array, " T"]
+    boundary_distances: Float[Array, " T"]
 
     @cached_property
-    def violations(self) -> BoolArray[Dims[T]]:
+    def violations(self) -> Bool[Array, " T"]:
         return self.boundary_distances <= 0
 
     @cached_property
@@ -38,7 +41,7 @@ class ConstraintViolationMetricResult[T: int = int]:
 
 @dataclass(kw_only=True, frozen=True)
 class ConstraintViolationMetric[StateBatchT, PositionsT, LateralT, BoundaryDistanceT](
-    Metric[ConstraintViolationMetricResult[Any]]
+    Metric[ConstraintViolationMetricResult]
 ):
     """Metric evaluating lateral deviations and boundary constraint violations."""
 
@@ -59,12 +62,8 @@ class ConstraintViolationMetric[StateBatchT, PositionsT, LateralT, BoundaryDista
             position_extractor=position_extractor,
         )
 
-    def compute[T: int = int](
-        self, data: SimulationData
-    ) -> ConstraintViolationMetricResult[T]:
-        states = data(
-            access.states.assume(StateSequence[T, Any, StateBatchT]).require()
-        )
+    def compute(self, data: SimulationData) -> ConstraintViolationMetricResult:
+        states = data(access.states.assume(StateSequence[StateBatchT]).require())
         state_batch = states.batched()
 
         positions = self.position_extractor(state_batch)

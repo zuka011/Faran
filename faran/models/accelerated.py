@@ -19,7 +19,7 @@ class HistoryWithArray(Protocol):
 
 @runtime_checkable
 class EstimationFilter(Protocol):
-    def __call__(self, array: Float[JaxArray, "K"], /) -> Float[JaxArray, "K"]:
+    def __call__(self, array: Float[JaxArray, " K"], /) -> Float[JaxArray, " K"]:
         """Filters out invalid estimates from the given array."""
         ...
 
@@ -33,7 +33,7 @@ def verify_check_recent(check_recent: int) -> None:
 @jaxtyped
 def invalid_obstacle_filter_from(
     *history: Float[JaxArray, "T K"] | Float[JaxArray, "T D_o K"], check_recent: int
-) -> EstimationFilter:
+) -> "EstimationFilter":
     """Returns a filter for invalid estimates based on the given history.
 
     Args:
@@ -42,7 +42,7 @@ def invalid_obstacle_filter_from(
     """
     jax.debug.callback(verify_check_recent, check_recent)
 
-    def invalid_mask(array: JaxArray) -> Float[JaxArray, "K"]:
+    def invalid_mask(array: JaxArray) -> Float[JaxArray, " K"]:
         recent = array[-check_recent:]
 
         axes = tuple(range(recent.ndim - 1))
@@ -50,7 +50,7 @@ def invalid_obstacle_filter_from(
 
     invalid = reduce(jnp.logical_or, map(invalid_mask, history))
 
-    def filter_invalid(array: Float[JaxArray, "K"]) -> Float[JaxArray, "K"]:
+    def filter_invalid(array: Float[JaxArray, " K"]) -> Float[JaxArray, " K"]:
         return jnp.where(invalid, jnp.nan, array)
 
     return filter_invalid

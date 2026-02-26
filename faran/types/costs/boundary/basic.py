@@ -1,10 +1,10 @@
 from typing import Protocol
 from dataclasses import dataclass
 
-from faran.types.array import DataType
+from faran.types.array import Array, DataType, jaxtyped
 from faran.types.costs.boundary.common import BoundaryDistanceExtractor
 
-from numtypes import Array, Dims
+from jaxtyping import Float
 
 
 class NumPyBoundaryDistanceExtractor[StateBatchT, DistanceT](
@@ -12,28 +12,27 @@ class NumPyBoundaryDistanceExtractor[StateBatchT, DistanceT](
 ): ...
 
 
+@jaxtyped
 @dataclass(frozen=True)
-class NumPyBoundaryDistance[T: int, M: int]:
-    _array: Array[Dims[T, M]]
+class NumPyBoundaryDistance:
+    _array: Float[Array, "T M"]
 
     @staticmethod
-    def create[T_: int, M_: int](
-        *, array: Array[Dims[T_, M_]]
-    ) -> "NumPyBoundaryDistance[T_, M_]":
+    def create(*, array: Float[Array, "T M"]) -> "NumPyBoundaryDistance":
         """Creates a NumPy boundary distance from the given array."""
         return NumPyBoundaryDistance(array)
 
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[T, M]]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "T M"]:
         return self._array
 
     @property
-    def horizon(self) -> T:
+    def horizon(self) -> int:
         return self._array.shape[0]
 
     @property
-    def rollout_count(self) -> M:
+    def rollout_count(self) -> int:
         return self._array.shape[1]
 
     @property
-    def array(self) -> Array[Dims[T, M]]:
+    def array(self) -> Float[Array, "T M"]:
         return self._array

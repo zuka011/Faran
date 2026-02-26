@@ -1,5 +1,6 @@
 from typing import Protocol
 
+from faran.types.array import Array
 from faran.types.predictors import ObstacleStatesHistory
 from faran.types.models.integrator.common import (
     IntegratorState,
@@ -9,60 +10,50 @@ from faran.types.models.integrator.common import (
     IntegratorControlInputBatch,
 )
 
-from numtypes import Array, Dims
+from jaxtyping import Float
 
 
-class NumPyIntegratorState[D_x: int](IntegratorState[D_x], Protocol):
+class NumPyIntegratorState(IntegratorState, Protocol):
     @property
-    def array(self) -> Array[Dims[D_x]]:
+    def array(self) -> Float[Array, " D_x"]:
         """Returns the underlying NumPy array representing the integrator state."""
         ...
 
 
-class NumPyIntegratorStateSequence[T: int, D_x: int](
-    IntegratorStateSequence[T, D_x], Protocol
-):
+class NumPyIntegratorStateSequence(IntegratorStateSequence, Protocol):
     @property
-    def array(self) -> Array[Dims[T, D_x]]:
+    def array(self) -> Float[Array, "T D_x"]:
         """Returns the underlying NumPy array representing the integrator state sequence."""
         ...
 
 
-class NumPyIntegratorStateBatch[T: int, D_x: int, M: int](
-    IntegratorStateBatch[T, D_x, M], Protocol
-):
+class NumPyIntegratorStateBatch(IntegratorStateBatch, Protocol):
     @property
-    def array(self) -> Array[Dims[T, D_x, M]]:
+    def array(self) -> Float[Array, "T D_x M"]:
         """Returns the underlying NumPy array representing the integrator state batch."""
         ...
 
 
-class NumPyIntegratorControlInputSequence[T: int, D_u: int](
-    IntegratorControlInputSequence[T, D_u], Protocol
-):
+class NumPyIntegratorControlInputSequence(IntegratorControlInputSequence, Protocol):
     @property
-    def array(self) -> Array[Dims[T, D_u]]:
+    def array(self) -> Float[Array, "T D_u"]:
         """Returns the underlying NumPy array representing the integrator control input
         sequence.
         """
         ...
 
 
-class NumPyIntegratorControlInputBatch[T: int, D_u: int, M: int](
-    IntegratorControlInputBatch[T, D_u, M], Protocol
-):
+class NumPyIntegratorControlInputBatch(IntegratorControlInputBatch, Protocol):
     @property
-    def array(self) -> Array[Dims[T, D_u, M]]:
+    def array(self) -> Float[Array, "T D_u M"]:
         """Returns the underlying NumPy array representing the integrator control input
         batch.
         """
         ...
 
 
-class NumPyIntegratorObstacleStatesHistory[T: int, D_o: int, K: int](
-    ObstacleStatesHistory[T, D_o, K], Protocol
-):
+class NumPyIntegratorObstacleStatesHistory(ObstacleStatesHistory, Protocol):
     @property
-    def array(self) -> Array[Dims[T, D_o, K]]:
+    def array(self) -> Float[Array, "T D_o K"]:
         """Returns the obstacle history as a NumPy array."""
         ...

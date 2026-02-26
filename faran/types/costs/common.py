@@ -1,12 +1,12 @@
 from typing import Protocol
 
-from faran.types.array import DataType
+from faran.types.array import Array, DataType
 
-from numtypes import Array, Dims
+from jaxtyping import Float
 
 
-class Error[T: int, M: int](Protocol):
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[T, M]]:
+class Error(Protocol):
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "T M"]:
         """Returns the error as a NumPy array."""
         ...
 

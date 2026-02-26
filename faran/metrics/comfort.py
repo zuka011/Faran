@@ -2,6 +2,8 @@ from typing import Any
 from dataclasses import dataclass
 
 from faran.types import (
+    jaxtyped,
+    Array,
     StateSequence,
     SimulationData,
     Metric,
@@ -12,23 +14,22 @@ from faran.types import (
 )
 from faran.collectors import access
 
-from numtypes import Array, Dims, shape_of
+from jaxtyping import Float
 
 import numpy as np
 
 
+@jaxtyped
 @dataclass(kw_only=True, frozen=True)
-class ComfortMetricResult[T: int = int]:
+class ComfortMetricResult:
     """Results of the comfort metric, including lateral acceleration and jerk."""
 
-    lateral_acceleration: Array[Dims[T]]
-    lateral_jerk: Array[Dims[T]]
+    lateral_acceleration: Float[Array, " T"]
+    lateral_jerk: Float[Array, " T"]
 
 
 @dataclass(kw_only=True, frozen=True)
-class ComfortMetric[StateBatchT, PositionsT, LateralT](
-    Metric[ComfortMetricResult[Any]]
-):
+class ComfortMetric[StateBatchT, PositionsT, LateralT](Metric[ComfortMetricResult]):
     """Metric evaluating lateral acceleration and jerk relative to a reference trajectory."""
 
     reference: Trajectory[Any, Any, PositionsT, LateralT]
@@ -52,10 +53,8 @@ class ComfortMetric[StateBatchT, PositionsT, LateralT](
             position_extractor=position_extractor,
         )
 
-    def compute[T: int = int](self, data: SimulationData) -> ComfortMetricResult[Any]:
-        states = data(
-            access.states.assume(StateSequence[T, Any, StateBatchT]).require()
-        )
+    def compute(self, data: SimulationData) -> ComfortMetricResult:
+        states = data(access.states.assume(StateSequence[StateBatchT]).require())
         state_batch = states.batched()
 
         positions = self.position_extractor(state_batch)
@@ -75,12 +74,8 @@ class ComfortMetric[StateBatchT, PositionsT, LateralT](
         return "comfort"
 
 
-def checked_gradient[L: int](y: Array[Dims[L]], dx: float) -> Array[Dims[L]]:
-    if (points := y.shape[0]) < 2:
+def checked_gradient(y: Float[Array, " L"], dx: float) -> Float[Array, " L"]:
+    if y.shape[0] < 2:
         return np.zeros_like(y)
 
-    gradient = np.gradient(y, dx)
-
-    assert shape_of(gradient, matches=(points,), name="gradient")
-
-    return gradient
+    return np.gradient(y, dx)

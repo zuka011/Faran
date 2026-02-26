@@ -1,8 +1,9 @@
-from typing import Any
 from dataclasses import dataclass
 from functools import cached_property
 
 from faran.types import (
+    jaxtyped,
+    Array,
     Distance,
     DistanceExtractor,
     StateSequence,
@@ -12,24 +13,25 @@ from faran.types import (
 )
 from faran.collectors import access
 
-from numtypes import Array, BoolArray, Dims, shape_of
+from jaxtyping import Float, Bool
 
 import numpy as np
 
 
+@jaxtyped
 @dataclass(kw_only=True, frozen=True)
-class CollisionMetricResult[T: int = int, V: int = int]:
+class CollisionMetricResult:
     """Results of the collision metric, including distances and collision flags."""
 
-    distances: Array[Dims[T, V]]
+    distances: Float[Array, "T V"]
     distance_threshold: float
 
     @cached_property
-    def min_distances(self) -> Array[Dims[V]]:
+    def min_distances(self) -> Float[Array, " V"]:
         return self.distances.min(axis=0)
 
     @cached_property
-    def collisions(self) -> BoolArray[Dims[T, V]]:
+    def collisions(self) -> Bool[Array, "T V"]:
         return self.distances <= self.distance_threshold
 
     @cached_property
@@ -39,7 +41,7 @@ class CollisionMetricResult[T: int = int, V: int = int]:
 
 @dataclass(kw_only=True, frozen=True)
 class CollisionMetric[StateBatchT, SampledObstacleStatesT](
-    Metric[CollisionMetricResult[Any]]
+    Metric[CollisionMetricResult]
 ):
     """Metric evaluating minimum distances between the ego vehicle and obstacles."""
 
@@ -54,13 +56,11 @@ class CollisionMetric[StateBatchT, SampledObstacleStatesT](
     ) -> "CollisionMetric":
         return CollisionMetric(distance=distance, distance_threshold=distance_threshold)
 
-    def compute[T: int = int](self, data: SimulationData) -> CollisionMetricResult[T]:
-        states = data(
-            access.states.assume(StateSequence[T, Any, StateBatchT]).require()
-        )
+    def compute(self, data: SimulationData) -> CollisionMetricResult:
+        states = data(access.states.assume(StateSequence[StateBatchT]).require())
         obstacle_states = data(
             access.obstacle_states.assume(
-                ObstacleStates[T, Any, Any, SampledObstacleStatesT]
+                ObstacleStates[SampledObstacleStatesT]
             ).require()
         )
 
@@ -69,10 +69,6 @@ class CollisionMetric[StateBatchT, SampledObstacleStatesT](
         )
 
         distances = np.asarray(measured_distances).reshape(states.horizon, -1)
-
-        assert shape_of(
-            distances, matches=(states.horizon, measured_distances.vehicle_parts)
-        )
 
         return CollisionMetricResult(
             distances=distances, distance_threshold=self.distance_threshold

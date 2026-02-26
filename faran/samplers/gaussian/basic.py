@@ -2,13 +2,14 @@ from typing import Final
 from dataclasses import dataclass
 
 from faran.types import (
+    Array,
     NumPyControlInputBatchCreator,
     NumPyControlInputSequence,
     NumPyControlInputBatch,
     NumPySampler,
 )
 
-from numtypes import Array, Dims
+from jaxtyping import Float
 
 import numpy as np
 
@@ -16,25 +17,23 @@ import numpy as np
 @dataclass(frozen=True)
 class NumPyGaussianSampler[
     BatchT: NumPyControlInputBatch,
-    D_u: int = int,
-    M: int = int,
 ](NumPySampler[NumPyControlInputSequence, BatchT]):
     """Perturbs a nominal control sequence with zero-mean Gaussian noise."""
 
-    standard_deviation: Final[Array[Dims[D_u]]]
-    to_batch: Final[NumPyControlInputBatchCreator[BatchT, D_u, M]]
+    standard_deviation: Final[Float[Array, " D_u"]]
+    to_batch: Final[NumPyControlInputBatchCreator[BatchT]]
     rng: np.random.Generator
 
-    _rollout_count: Final[M]
+    _rollout_count: Final[int]
 
     @staticmethod
-    def create[B: NumPyControlInputBatch, D_u_: int, M_: int](
+    def create[B: NumPyControlInputBatch](
         *,
-        standard_deviation: Array[Dims[D_u_]],
-        rollout_count: M_,
-        to_batch: NumPyControlInputBatchCreator[B, D_u_, M_],
+        standard_deviation: Float[Array, " D_u"],
+        rollout_count: int,
+        to_batch: NumPyControlInputBatchCreator,
         seed: int,
-    ) -> "NumPyGaussianSampler[B, D_u_, M_]":
+    ) -> "NumPyGaussianSampler":
         """Creates a sampler generating Gaussian noise around the specified control input
         sequence.
         """
@@ -55,5 +54,5 @@ class NumPyGaussianSampler[
         return self.to_batch(array=samples)
 
     @property
-    def rollout_count(self) -> M:
+    def rollout_count(self) -> int:
         return self._rollout_count

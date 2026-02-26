@@ -35,7 +35,8 @@ from faran.numpy import (
     risk,
 )
 
-from numtypes import array, Array, Dim1, Dim2
+from numtypes import array, Array
+from jaxtyping import Float
 
 import numpy as np
 
@@ -89,7 +90,7 @@ def path_parameter(states: VirtualStateBatch) -> types.PathParameters:
     return types.path_parameters(states.array[:, 0, :])
 
 
-def path_velocity(inputs: VirtualInputBatch) -> Array[Dim2]:
+def path_velocity(inputs: VirtualInputBatch) -> Float[Array, "T M"]:
     return inputs.array[:, 0, :]
 
 
@@ -150,10 +151,10 @@ class NumPyMpccPlannerWeights:
     contouring: float = 50.0
     lag: float = 100.0
     progress: float = 1000.0
-    control_smoothing: Array[Dim1] = field(
+    control_smoothing: Float[Array, " 3"] = field(
         default_factory=lambda: array([5.0, 20.0, 5.0], shape=(3,))
     )
-    control_effort: Array[Dim1] = field(
+    control_effort: Float[Array, " 3"] = field(
         default_factory=lambda: array([0.1, 0.5, 0.1], shape=(3,))
     )
     collision: float = 1500.0
@@ -162,7 +163,7 @@ class NumPyMpccPlannerWeights:
 
 @dataclass(frozen=True)
 class NumPySamplingOptions:
-    physical_standard_deviation: Array[Dim1] = field(
+    physical_standard_deviation: Float[Array, " 2"] = field(
         default_factory=lambda: array([0.5, 0.2], shape=(2,))
     )
     virtual_standard_deviation: float = 2.0

@@ -1,8 +1,9 @@
-from typing import Final, overload, cast
+from typing import Final, overload
 from dataclasses import dataclass
 
 from faran.types import (
     jaxtyped,
+    Array,
     JaxControlInputBatchCreator,
     JaxControlInputSequence,
     JaxControlInputBatch,
@@ -10,7 +11,6 @@ from faran.types import (
 )
 
 from jaxtyping import Array as JaxArray, Float, PRNGKeyArray
-from numtypes import Array, Dims
 
 import jax
 import jax.random as jrandom
@@ -18,29 +18,29 @@ import jax.numpy as jnp
 
 
 @dataclass(kw_only=True)
-class JaxGaussianSampler[BatchT: JaxControlInputBatch, D_u: int = int, M: int = int](
+class JaxGaussianSampler[BatchT: JaxControlInputBatch](
     JaxSampler[JaxControlInputSequence, BatchT]
 ):
     """Perturbs a nominal control sequence with zero-mean Gaussian noise."""
 
-    standard_deviation: Final[Float[JaxArray, "D_u"]]
+    standard_deviation: Final[Float[JaxArray, " D_u"]]
     to_batch: Final[JaxControlInputBatchCreator[BatchT]]
 
-    _control_dimension: Final[D_u]
-    _rollout_count: Final[M]
+    _control_dimension: Final[int]
+    _rollout_count: Final[int]
 
     key: PRNGKeyArray
 
     @overload
     @staticmethod
-    def create[B: JaxControlInputBatch, D_u_: int, M_: int](
+    def create[B: JaxControlInputBatch](
         *,
-        standard_deviation: Array[Dims[D_u_]],
-        rollout_count: M_,
-        to_batch: JaxControlInputBatchCreator[B],
+        standard_deviation: Float[Array, " D_u"],
+        rollout_count: int,
+        to_batch: JaxControlInputBatchCreator,
         key: PRNGKeyArray | None = None,
         seed: int | None = None,
-    ) -> "JaxGaussianSampler[B, D_u_, M_]":
+    ) -> "JaxGaussianSampler":
         """Creates a sampler generating Gaussian noise around the specified control input
         sequence.
         """
@@ -48,30 +48,30 @@ class JaxGaussianSampler[BatchT: JaxControlInputBatch, D_u: int = int, M: int = 
 
     @overload
     @staticmethod
-    def create[B: JaxControlInputBatch, D_u_: int, M_: int](
+    def create[B: JaxControlInputBatch](
         *,
-        standard_deviation: Float[JaxArray, "D_u"],
-        control_dimension: D_u_ | None = None,
-        rollout_count: M_,
-        to_batch: JaxControlInputBatchCreator[B],
+        standard_deviation: Float[JaxArray, " D_u"],
+        control_dimension: int | None = None,
+        rollout_count: int,
+        to_batch: JaxControlInputBatchCreator,
         key: PRNGKeyArray | None = None,
         seed: int | None = None,
-    ) -> "JaxGaussianSampler[B, D_u_, M_]":
+    ) -> "JaxGaussianSampler":
         """Creates a sampler generating Gaussian noise around the specified control input
         sequence.
         """
         ...
 
     @staticmethod
-    def create[B: JaxControlInputBatch, D_u_: int, M_: int](
+    def create[B: JaxControlInputBatch](
         *,
-        standard_deviation: Array[Dims[D_u_]] | Float[JaxArray, "D_u"],
-        control_dimension: D_u_ | None = None,
-        rollout_count: M_,
-        to_batch: JaxControlInputBatchCreator[B],
+        standard_deviation: Float[Array, " D_u"] | Float[JaxArray, " D_u"],
+        control_dimension: int | None = None,
+        rollout_count: int,
+        to_batch: JaxControlInputBatchCreator,
         key: PRNGKeyArray | None = None,
         seed: int | None = None,
-    ) -> "JaxGaussianSampler[B, D_u_, M_]":
+    ) -> "JaxGaussianSampler":
         """Creates a sampler generating Gaussian noise around the specified control input
         sequence.
         """
@@ -81,7 +81,7 @@ class JaxGaussianSampler[BatchT: JaxControlInputBatch, D_u: int = int, M: int = 
             _control_dimension=(
                 control_dimension
                 if control_dimension is not None
-                else cast(D_u_, standard_deviation.shape[0])
+                else standard_deviation.shape[0]
             ),
             _rollout_count=rollout_count,
             key=key if key is not None else jrandom.key(seed or 0),
@@ -104,11 +104,11 @@ class JaxGaussianSampler[BatchT: JaxControlInputBatch, D_u: int = int, M: int = 
         return self.to_batch(array=samples)
 
     @property
-    def control_dimension(self) -> D_u:
+    def control_dimension(self) -> int:
         return self._control_dimension
 
     @property
-    def rollout_count(self) -> M:
+    def rollout_count(self) -> int:
         return self._rollout_count
 
 
@@ -118,7 +118,7 @@ def sample(
     key: PRNGKeyArray,
     *,
     around: Float[JaxArray, "T D_u"],
-    standard_deviation: Float[JaxArray, "D_u"],
+    standard_deviation: Float[JaxArray, " D_u"],
     rollout_count: int,
 ) -> tuple[PRNGKeyArray, Float[JaxArray, "T D_u M"]]:
     time_horizon, control_dimension = around.shape

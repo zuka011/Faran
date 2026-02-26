@@ -3,6 +3,7 @@ from dataclasses import dataclass
 
 from faran.types import (
     DistanceExtractor,
+    Array,
     NumPyHeadings,
     NumPyPositions,
     NumPyPositionExtractor,
@@ -16,17 +17,17 @@ from faran.costs.collision import NumPyDistance
 from faran.costs.distance.basic import replace_missing
 from faran.costs.distance.circles.common import Circles
 
-from numtypes import Array, Dims, D, shape_of
+from jaxtyping import Float
 
 import numpy as np
 
 
-type OriginsArray[N: int = int] = Array[Dims[N, D[2]]]
-type RadiiArray[N: int = int] = Array[Dims[N]]
+type OriginsArray = Float[Array, "N 2"]
+type RadiiArray = Float[Array, " N"]
 
 
 @dataclass(frozen=True)
-class NumPyCircleDistanceExtractor[StateT, SampledObstacleStatesT, V: int, C: int](
+class NumPyCircleDistanceExtractor[StateT, SampledObstacleStatesT](
     DistanceExtractor[StateT, SampledObstacleStatesT, NumPyDistance]
 ):
     """
@@ -34,8 +35,8 @@ class NumPyCircleDistanceExtractor[StateT, SampledObstacleStatesT, V: int, C: in
     and the obstacles are represented as collections of circles.
     """
 
-    ego: Circles[V]
-    obstacle: Circles[C]
+    ego: Circles
+    obstacle: Circles
     positions_from: NumPyPositionExtractor[StateT]
     headings_from: NumPyHeadingExtractor[StateT]
     obstacle_positions_from: NumPySampledObstaclePositionExtractor[
@@ -44,15 +45,15 @@ class NumPyCircleDistanceExtractor[StateT, SampledObstacleStatesT, V: int, C: in
     obstacle_headings_from: NumPySampledObstacleHeadingExtractor[SampledObstacleStatesT]
 
     @staticmethod
-    def create[S, SOS, V_: int, C_: int](
+    def create[S, SOS](
         *,
-        ego: Circles[V_],
-        obstacle: Circles[C_],
+        ego: Circles,
+        obstacle: Circles,
         position_extractor: NumPyPositionExtractor[S],
         heading_extractor: NumPyHeadingExtractor[S],
         obstacle_position_extractor: NumPySampledObstaclePositionExtractor[SOS],
         obstacle_heading_extractor: NumPySampledObstacleHeadingExtractor[SOS],
-    ) -> "NumPyCircleDistanceExtractor[S, SOS, V_, C_]":
+    ) -> "NumPyCircleDistanceExtractor[S, SOS]":
         return NumPyCircleDistanceExtractor(
             ego=ego,
             obstacle=obstacle,
@@ -62,9 +63,9 @@ class NumPyCircleDistanceExtractor[StateT, SampledObstacleStatesT, V: int, C: in
             obstacle_headings_from=obstacle_heading_extractor,
         )
 
-    def __call__[T: int = int, N: int = int, M: int = int](
+    def __call__(
         self, *, states: StateT, obstacle_states: SampledObstacleStatesT
-    ) -> NumPyDistance[T, V, M, N]:
+    ) -> NumPyDistance:
         obstacle_positions, obstacle_headings = replace_missing(
             positions=self.obstacle_positions_from(obstacle_states),
             headings=self.obstacle_headings_from(obstacle_states),
@@ -82,15 +83,15 @@ class NumPyCircleDistanceExtractor[StateT, SampledObstacleStatesT, V: int, C: in
         )
 
 
-def compute_circle_distances[T: int, M: int, V: int, C: int, K: int, N: int](
+def compute_circle_distances(
     *,
-    ego_positions: NumPyPositions[T, M],
-    ego_headings: NumPyHeadings[T, M],
-    ego: Circles[V],
-    obstacle_positions: NumPySampledObstaclePositions[T, K, N],
-    obstacle_headings: NumPySampledObstacleHeadings[T, K, N],
-    obstacle: Circles[C],
-) -> Array[Dims[T, V, M, N]]:
+    ego_positions: NumPyPositions,
+    ego_headings: NumPyHeadings,
+    ego: Circles,
+    obstacle_positions: NumPySampledObstaclePositions,
+    obstacle_headings: NumPySampledObstacleHeadings,
+    obstacle: Circles,
+) -> Float[Array, "T V M N"]:
     ego_global_x, ego_global_y = to_global_positions(
         x=ego_positions.x(),
         y=ego_positions.y(),
@@ -118,34 +119,34 @@ def compute_circle_distances[T: int, M: int, V: int, C: int, K: int, N: int](
 
 
 @overload
-def to_global_positions[T: int, M: int, V: int](
+def to_global_positions(
     *,
-    x: Array[Dims[T, M]],
-    y: Array[Dims[T, M]],
-    heading: Array[Dims[T, M]],
-    local_origins: OriginsArray[V],
-) -> tuple[Array[Dims[V, T, M]], Array[Dims[V, T, M]]]: ...
+    x: Float[Array, "T M"],
+    y: Float[Array, "T M"],
+    heading: Float[Array, "T M"],
+    local_origins: OriginsArray,
+) -> tuple[Float[Array, "V T M"], Float[Array, "V T M"]]: ...
 
 
 @overload
-def to_global_positions[T: int, K: int, N: int, C: int](
+def to_global_positions(  # pyright: ignore[reportOverlappingOverload]
     *,
-    x: Array[Dims[T, K, N]],
-    y: Array[Dims[T, K, N]],
-    heading: Array[Dims[T, K, N]],
-    local_origins: OriginsArray[C],
-) -> tuple[Array[Dims[C, T, K, N]], Array[Dims[C, T, K, N]]]: ...
+    x: Float[Array, "T K N"],
+    y: Float[Array, "T K N"],
+    heading: Float[Array, "T K N"],
+    local_origins: OriginsArray,
+) -> tuple[Float[Array, "C T K N"], Float[Array, "C T K N"]]: ...
 
 
-def to_global_positions[T: int, M: int, K: int, N: int, V: int, C: int](
+def to_global_positions(
     *,
-    x: Array[Dims[T, M]] | Array[Dims[T, K, N]],
-    y: Array[Dims[T, M]] | Array[Dims[T, K, N]],
-    heading: Array[Dims[T, M]] | Array[Dims[T, K, N]],
-    local_origins: OriginsArray[V] | OriginsArray[C],
+    x: Float[Array, "T M"] | Float[Array, "T K N"],
+    y: Float[Array, "T M"] | Float[Array, "T K N"],
+    heading: Float[Array, "T M"] | Float[Array, "T K N"],
+    local_origins: OriginsArray | OriginsArray,
 ) -> (
-    tuple[Array[Dims[V, T, M]], Array[Dims[V, T, M]]]
-    | tuple[Array[Dims[C, T, K, N]], Array[Dims[C, T, K, N]]]
+    tuple[Float[Array, "V T M"], Float[Array, "V T M"]]
+    | tuple[Float[Array, "C T K N"], Float[Array, "C T K N"]]
 ):
     local_xy = local_origins.reshape((-1, 2) + (1,) * x.ndim)
     local_x, local_y = local_xy[:, 0], local_xy[:, 1]
@@ -158,14 +159,14 @@ def to_global_positions[T: int, M: int, K: int, N: int, V: int, C: int](
     )
 
 
-def pairwise_min_distances[T: int, M: int, V: int, C: int, K: int, N: int](
-    ego_x: Array[Dims[V, T, M]],
-    ego_y: Array[Dims[V, T, M]],
-    ego_radii: RadiiArray[V],
-    obstacle_x: Array[Dims[C, T, K, N]],
-    obstacle_y: Array[Dims[C, T, K, N]],
-    obstacle_radii: RadiiArray[C],
-) -> Array[Dims[V, C, T, M, K, N]]:
+def pairwise_min_distances(
+    ego_x: Float[Array, "V T M"],
+    ego_y: Float[Array, "V T M"],
+    ego_radii: RadiiArray,
+    obstacle_x: Float[Array, "C T K N"],
+    obstacle_y: Float[Array, "C T K N"],
+    obstacle_radii: RadiiArray,
+) -> Float[Array, "V C T M K N"]:
     dx = (
         ego_x[:, np.newaxis, :, :, np.newaxis, np.newaxis]
         - obstacle_x[np.newaxis, :, :, np.newaxis, :, :]
@@ -184,17 +185,13 @@ def pairwise_min_distances[T: int, M: int, V: int, C: int, K: int, N: int](
     return center_distances - radii_sum
 
 
-def min_distance_per_ego_part[T: int, M: int, V: int, C: int, K: int, N: int](
-    pairwise_distances: Array[Dims[V, C, T, M, K, N]],
-) -> Array[Dims[T, V, M, N]]:
+def min_distance_per_ego_part(
+    pairwise_distances: Float[Array, "V C T M K N"],
+) -> Float[Array, "T V M N"]:
     V, C, T, M, K, N = pairwise_distances.shape
 
     if C == 0 or K == 0:
-        distances = np.full((T, V, M, N), np.inf)
-
-        assert shape_of(distances, matches=(T, V, M, N))
-
-        return distances
+        return np.full((T, V, M, N), np.inf)
 
     min_over_obstacles = np.min(pairwise_distances, axis=(1, 4))
     return np.transpose(min_over_obstacles, (1, 0, 2, 3))

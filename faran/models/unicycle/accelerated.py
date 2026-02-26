@@ -1,9 +1,10 @@
-from typing import cast, overload, Self, Sequence, Final, Any, NamedTuple
+from typing import cast, Self, Sequence, Final, NamedTuple
 from dataclasses import dataclass
 from functools import cached_property
 
 from faran.types import (
     jaxtyped,
+    Array,
     DataType,
     JaxState,
     JaxStateSequence,
@@ -41,7 +42,7 @@ from faran.models.common import SMALL_UNCERTAINTY, LARGE_UNCERTAINTY
 from faran.models.accelerated import invalid_obstacle_filter_from
 
 from jaxtyping import Array as JaxArray, Float, Scalar
-from numtypes import Array, Dims, D
+from numtypes import D
 
 import jax
 import jax.numpy as jnp
@@ -56,12 +57,12 @@ type UnicycleEstimationD_x = D[5]
 type UnicycleObservationD_o = D[3]
 
 type StateArray = Float[JaxArray, f"{UNICYCLE_D_X}"]
-type ControlInputSequenceArray[T: int] = Float[JaxArray, f"T {UNICYCLE_D_U}"]
-type StateBatchArray[T: int, M: int] = Float[JaxArray, f"T {UNICYCLE_D_X} M"]
-type ControlInputBatchArray[T: int, M: int] = Float[JaxArray, f"T {UNICYCLE_D_U} M"]
+type ControlInputSequenceArray = Float[JaxArray, f"T {UNICYCLE_D_U}"]
+type StateBatchArray = Float[JaxArray, f"T {UNICYCLE_D_X} M"]
+type ControlInputBatchArray = Float[JaxArray, f"T {UNICYCLE_D_U} M"]
 
-type StatesAtTimeStep[M: int] = Float[JaxArray, f"{UNICYCLE_D_X} M"]
-type ControlInputsAtTimeStep[M: int] = Float[JaxArray, f"{UNICYCLE_D_U} M"]
+type StatesAtTimeStep = Float[JaxArray, f"{UNICYCLE_D_X} M"]
+type ControlInputsAtTimeStep = Float[JaxArray, f"{UNICYCLE_D_U} M"]
 
 type EstimationStateCovarianceArray = Float[
     JaxArray, f"{UNICYCLE_ESTIMATION_D_X} {UNICYCLE_ESTIMATION_D_X}"
@@ -76,8 +77,8 @@ type ObservationMatrix = Float[
     JaxArray, f"{UNICYCLE_OBSERVATION_D_O} {UNICYCLE_ESTIMATION_D_X}"
 ]
 
-type UnicycleGaussianBelief[K: int] = JaxGaussianBelief
-type JaxUnicycleObstacleCovariances[K: int] = Float[
+type UnicycleGaussianBelief = JaxGaussianBelief
+type JaxUnicycleObstacleCovariances = Float[
     JaxArray, f"{UNICYCLE_ESTIMATION_D_X} {UNICYCLE_ESTIMATION_D_X} K"
 ]
 type KalmanFilter = JaxExtendedKalmanFilter | JaxUnscentedKalmanFilter
@@ -85,7 +86,7 @@ type KalmanFilter = JaxExtendedKalmanFilter | JaxUnscentedKalmanFilter
 
 @jaxtyped
 @dataclass(frozen=True)
-class JaxUnicycleState(UnicycleState, JaxState[UnicycleD_x]):
+class JaxUnicycleState(UnicycleState, JaxState):
     """Kinematic unicycle state: [x, y, heading]."""
 
     _array: StateArray
@@ -99,7 +100,7 @@ class JaxUnicycleState(UnicycleState, JaxState[UnicycleD_x]):
     ) -> "JaxUnicycleState":
         return JaxUnicycleState(jnp.array([x, y, heading]))
 
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[UnicycleD_x]]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, " UnicycleD_x"]:
         return np.asarray(self.array)
 
     @property
@@ -136,50 +137,41 @@ class JaxUnicycleState(UnicycleState, JaxState[UnicycleD_x]):
 
 
 @dataclass(kw_only=True, frozen=True)
-class JaxUnicycleStateSequence[T: int, M: int = Any](
-    UnicycleStateSequence, JaxStateSequence[T, UnicycleD_x]
-):
-    batch: "JaxUnicycleStateBatch[T, M]"
+class JaxUnicycleStateSequence(UnicycleStateSequence, JaxStateSequence):
+    batch: "JaxUnicycleStateBatch"
     rollout: int
 
     @staticmethod
-    def of_states[T_: int = int](
-        states: Sequence[JaxUnicycleState], *, horizon: T_ | None = None
-    ) -> "JaxUnicycleStateSequence[T_, D[1]]":
+    def of_states(states: Sequence[JaxUnicycleState]) -> "JaxUnicycleStateSequence":
         assert len(states) > 0, "States sequence must not be empty."
 
-        horizon = horizon if horizon is not None else cast(T_, len(states))
         array = jnp.stack([state.array for state in states], axis=0)[:, :, jnp.newaxis]
-
-        assert array.shape == (horizon, UNICYCLE_D_X, 1), (
-            f"Array shape {array.shape} does not match expected shape {(horizon, UNICYCLE_D_X, 1)}."
-        )
 
         return JaxUnicycleStateSequence(
             batch=JaxUnicycleStateBatch.wrap(array), rollout=0
         )
 
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[T, UnicycleD_x]]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "T UnicycleD_x"]:
         return np.asarray(self.array)
 
     def step(self, index: int) -> JaxUnicycleState:
         return JaxUnicycleState(self.array[index])
 
-    def batched(self) -> "JaxUnicycleStateBatch[T, D[1]]":
+    def batched(self) -> "JaxUnicycleStateBatch":
         return JaxUnicycleStateBatch.wrap(self.array[..., jnp.newaxis])
 
-    def x(self) -> Array[Dims[T]]:
+    def x(self) -> Float[Array, " T"]:
         return np.asarray(self.array[:, 0])
 
-    def y(self) -> Array[Dims[T]]:
+    def y(self) -> Float[Array, " T"]:
         return np.asarray(self.array[:, 1])
 
-    def heading(self) -> Array[Dims[T]]:
+    def heading(self) -> Float[Array, " T"]:
         return np.asarray(self.array[:, 2])
 
     @property
-    def horizon(self) -> T:
-        return cast(T, self.array.shape[0])
+    def horizon(self) -> int:
+        return self.array.shape[0]
 
     @property
     def dimension(self) -> UnicycleD_x:
@@ -192,61 +184,52 @@ class JaxUnicycleStateSequence[T: int, M: int = Any](
 
 @jaxtyped
 @dataclass(frozen=True)
-class JaxUnicycleStateBatch[T: int, M: int](
-    UnicycleStateBatch[T, M], JaxStateBatch[T, UnicycleD_x, M]
-):
-    _array: StateBatchArray[T, M]
+class JaxUnicycleStateBatch(UnicycleStateBatch, JaxStateBatch):
+    _array: StateBatchArray
 
     @staticmethod
-    def wrap[T_: int, M_: int](
-        array: StateBatchArray[T_, M_],
-    ) -> "JaxUnicycleStateBatch[T_, M_]":
+    def wrap(
+        array: StateBatchArray,
+    ) -> "JaxUnicycleStateBatch":
         return JaxUnicycleStateBatch(array)
 
     @staticmethod
-    def of_states[T_: int = int](
-        states: Sequence[JaxUnicycleState], *, horizon: T_ | None = None
-    ) -> "JaxUnicycleStateBatch[T_, int]":
+    def of_states(states: Sequence[JaxUnicycleState]) -> "JaxUnicycleStateBatch":
         assert len(states) > 0, "States sequence must not be empty."
 
-        horizon = horizon if horizon is not None else cast(T_, len(states))
         array = jnp.stack([state.array for state in states], axis=0)[:, :, jnp.newaxis]
-
-        assert array.shape == (expected := (horizon, UNICYCLE_D_X, 1)), (
-            f"Array shape {array.shape} does not match expected shape {expected}."
-        )
 
         return JaxUnicycleStateBatch(array)
 
     def __array__(
         self, dtype: DataType | None = None
-    ) -> Array[Dims[T, UnicycleD_x, M]]:
+    ) -> Float[Array, "T UnicycleD_x M"]:
         return np.asarray(self.array)
 
-    def heading(self) -> Array[Dims[T, M]]:
+    def heading(self) -> Float[Array, "T M"]:
         return np.asarray(self.array[:, 2, :])
 
-    def rollout(self, index: int) -> JaxUnicycleStateSequence[T, M]:
+    def rollout(self, index: int) -> JaxUnicycleStateSequence:
         return JaxUnicycleStateSequence(batch=self, rollout=index)
 
     @property
-    def horizon(self) -> T:
-        return cast(T, self.array.shape[0])
+    def horizon(self) -> int:
+        return self.array.shape[0]
 
     @property
     def dimension(self) -> UnicycleD_x:
         return cast(UnicycleD_x, self.array.shape[1])
 
     @property
-    def rollout_count(self) -> M:
-        return cast(M, self.array.shape[2])
+    def rollout_count(self) -> int:
+        return self.array.shape[2]
 
     @property
-    def positions(self) -> "JaxUnicyclePositions[T, M]":
+    def positions(self) -> "JaxUnicyclePositions":
         return JaxUnicyclePositions(self)
 
     @property
-    def array(self) -> StateBatchArray[T, M]:
+    def array(self) -> StateBatchArray:
         return self._array
 
     @property
@@ -256,16 +239,16 @@ class JaxUnicycleStateBatch[T: int, M: int](
 
 @jaxtyped
 @dataclass(frozen=True)
-class JaxUnicyclePositions[T: int, M: int](UnicyclePositions[T, M]):
-    batch: JaxUnicycleStateBatch[T, M]
+class JaxUnicyclePositions(UnicyclePositions):
+    batch: JaxUnicycleStateBatch
 
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[T, D[2], M]]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "T 2 M"]:
         return self._numpy_array
 
-    def x(self) -> Array[Dims[T, M]]:
+    def x(self) -> Float[Array, "T M"]:
         return self._numpy_array[:, 0, :]
 
-    def y(self) -> Array[Dims[T, M]]:
+    def y(self) -> Float[Array, "T M"]:
         return self._numpy_array[:, 1, :]
 
     @property
@@ -277,7 +260,7 @@ class JaxUnicyclePositions[T: int, M: int](UnicyclePositions[T, M]):
         return self.batch.array[:, 1, :]
 
     @property
-    def horizon(self) -> T:
+    def horizon(self) -> int:
         return self.batch.horizon
 
     @property
@@ -285,166 +268,140 @@ class JaxUnicyclePositions[T: int, M: int](UnicyclePositions[T, M]):
         return 2
 
     @property
-    def rollout_count(self) -> M:
+    def rollout_count(self) -> int:
         return self.batch.rollout_count
 
     @cached_property
-    def _numpy_array(self) -> Array[Dims[T, D[2], M]]:
+    def _numpy_array(self) -> Float[Array, "T 2 M"]:
         return np.asarray(self.batch.array[:, :2, :])
 
 
 @jaxtyped
 @dataclass(frozen=True)
-class JaxUnicycleControlInputSequence[T: int](
-    UnicycleControlInputSequence[T], JaxControlInputSequence[T, UnicycleD_u]
+class JaxUnicycleControlInputSequence(
+    UnicycleControlInputSequence, JaxControlInputSequence
 ):
     """Control inputs: [linear velocity, angular velocity]."""
 
-    _array: ControlInputSequenceArray[T]
+    _array: ControlInputSequenceArray
 
     @staticmethod
-    def zeroes[T_: int](horizon: T_) -> "JaxUnicycleControlInputSequence[T_]":
+    def zeroes(horizon: int) -> "JaxUnicycleControlInputSequence":
         return JaxUnicycleControlInputSequence(jnp.zeros((horizon, UNICYCLE_D_U)))
 
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[T, UnicycleD_u]]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "T UnicycleD_u"]:
         return self._numpy_array
 
-    @overload
-    def similar(self, *, array: Float[JaxArray, "T D_u"]) -> Self: ...
-
-    @overload
-    def similar[L: int](
-        self, *, array: Float[JaxArray, "L D_u"], length: L
-    ) -> "JaxUnicycleControlInputSequence[L]": ...
-
-    def similar[L: int](
-        self, *, array: Float[JaxArray, "L D_u"], length: L | None = None
-    ) -> Self | "JaxUnicycleControlInputSequence[L]":
-        expected_length = length if length is not None else array.shape[0]
-
-        assert array.shape == (expected := (expected_length, UNICYCLE_D_U)), (
-            f"Array shape {array.shape} does not match expected shape {expected}."
-        )
+    def similar(self, *, array: Float[JaxArray, "L D_u"]) -> Self:
 
         return self.__class__(array)
 
     @property
-    def horizon(self) -> T:
-        return cast(T, self.array.shape[0])
+    def horizon(self) -> int:
+        return self.array.shape[0]
 
     @property
     def dimension(self) -> UnicycleD_u:
         return cast(UnicycleD_u, self.array.shape[1])
 
     @property
-    def array(self) -> ControlInputSequenceArray[T]:
+    def array(self) -> ControlInputSequenceArray:
         return self._array
 
     @property
-    def linear_velocity_array(self) -> Float[JaxArray, "T"]:
+    def linear_velocity_array(self) -> Float[JaxArray, " T"]:
         return self.array[:, 0]
 
     @property
-    def angular_velocity_array(self) -> Float[JaxArray, "T"]:
+    def angular_velocity_array(self) -> Float[JaxArray, " T"]:
         return self.array[:, 1]
 
     @cached_property
-    def _numpy_array(self) -> Array[Dims[T, UnicycleD_u]]:
+    def _numpy_array(self) -> Float[Array, "T UnicycleD_u"]:
         return np.asarray(self.array)
 
 
 @jaxtyped
 @dataclass(frozen=True)
-class JaxUnicycleControlInputBatch[T: int, M: int](
-    UnicycleControlInputBatch[T, M], JaxControlInputBatch[T, UnicycleD_u, M]
-):
-    _array: ControlInputBatchArray[T, M]
+class JaxUnicycleControlInputBatch(UnicycleControlInputBatch, JaxControlInputBatch):
+    _array: ControlInputBatchArray
 
     @staticmethod
-    def zero[T_: int, M_: int](
-        *, horizon: T_, rollout_count: M_ = 1
-    ) -> "JaxUnicycleControlInputBatch[T_, M_]":
+    def zero(*, horizon: int, rollout_count: int = 1) -> "JaxUnicycleControlInputBatch":
         array = jnp.zeros((horizon, UNICYCLE_D_U, rollout_count))
 
         return JaxUnicycleControlInputBatch(array)
 
     @staticmethod
-    def create[T_: int = int, M_: int = int](
-        *, array: Array[Dims[T_, UnicycleD_u, M_]] | ControlInputBatchArray[T_, M_]
-    ) -> "JaxUnicycleControlInputBatch[T_, M_]":
+    def create(
+        *, array: Float[Array, "T UnicycleD_u M"] | ControlInputBatchArray
+    ) -> "JaxUnicycleControlInputBatch":
         return JaxUnicycleControlInputBatch(jnp.asarray(array))
 
     @staticmethod
-    def of[T_: int = int](
-        sequence: JaxUnicycleControlInputSequence[T_],
-    ) -> "JaxUnicycleControlInputBatch[T_, D[1]]":
-        array = sequence.array[..., jnp.newaxis]
+    def of(sequence: JaxUnicycleControlInputSequence) -> "JaxUnicycleControlInputBatch":
 
-        assert array.shape == (expected := (sequence.horizon, UNICYCLE_D_U, 1)), (
-            f"Array shape {array.shape} does not match expected shape {expected}."
-        )
-
-        return JaxUnicycleControlInputBatch(array)
+        return JaxUnicycleControlInputBatch(sequence.array[..., jnp.newaxis])
 
     def __array__(
         self, dtype: DataType | None = None
-    ) -> Array[Dims[T, UnicycleD_u, M]]:
+    ) -> Float[Array, "T UnicycleD_u M"]:
         return self._numpy_array
 
-    def linear_velocity(self) -> Array[Dims[T, M]]:
+    def linear_velocity(self) -> Float[Array, "T M"]:
         return self._numpy_array[:, 0, :]
 
     @property
-    def horizon(self) -> T:
-        return cast(T, self.array.shape[0])
+    def horizon(self) -> int:
+        return self.array.shape[0]
 
     @property
     def dimension(self) -> UnicycleD_u:
         return cast(UnicycleD_u, self.array.shape[1])
 
     @property
-    def rollout_count(self) -> M:
-        return cast(M, self.array.shape[2])
+    def rollout_count(self) -> int:
+        return self.array.shape[2]
 
     @property
-    def array(self) -> ControlInputBatchArray[T, M]:
+    def array(self) -> ControlInputBatchArray:
         return self._array
 
     @cached_property
-    def _numpy_array(self) -> Array[Dims[T, UnicycleD_u, M]]:
+    def _numpy_array(self) -> Float[Array, "T UnicycleD_u M"]:
         return np.asarray(self.array)
 
 
 @jaxtyped
 @dataclass(frozen=True)
-class JaxUnicycleObstacleStates[K: int]:
+class JaxUnicycleObstacleStates:
     _array: Float[JaxArray, f"{UNICYCLE_D_O} K"]
 
     @staticmethod
-    def wrap[K_: int](
-        array: Array[Dims[UnicycleD_o, K_]] | Float[JaxArray, f"{UNICYCLE_D_O} K"],
-    ) -> "JaxUnicycleObstacleStates[K_]":
+    def wrap(
+        array: Float[Array, "UnicycleD_o K"] | Float[JaxArray, f"{UNICYCLE_D_O} K"],
+    ) -> "JaxUnicycleObstacleStates":
         return JaxUnicycleObstacleStates(jnp.asarray(array))
 
     @staticmethod
-    def create[K_: int](
+    def create(
         *,
-        x: Array[Dims[K_]] | Float[JaxArray, "K_"],
-        y: Array[Dims[K_]] | Float[JaxArray, "K_"],
-        heading: Array[Dims[K_]] | Float[JaxArray, "K_"],
-    ) -> "JaxUnicycleObstacleStates[K_]":
+        x: Float[Array, " K"] | Float[JaxArray, " K"],
+        y: Float[Array, " K"] | Float[JaxArray, " K"],
+        heading: Float[Array, " K"] | Float[JaxArray, " K"],
+    ) -> "JaxUnicycleObstacleStates":
         return JaxUnicycleObstacleStates(jnp.stack([x, y, heading], axis=0))
 
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[UnicycleD_o, K]]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "UnicycleD_o K"]:
         return self._numpy_array
 
-    def x(self) -> Array[Dims[K]]:
+    def x(self) -> Float[Array, " K"]:
         return self._numpy_array[0, :]
 
-    def y(self) -> Array[Dims[K]]:
+    def y(self) -> Float[Array, " K"]:
         return self._numpy_array[1, :]
 
-    def heading(self) -> Array[Dims[K]]:
+    def heading(self) -> Float[Array, " K"]:
         return self._numpy_array[2, :]
 
     @property
@@ -452,67 +409,48 @@ class JaxUnicycleObstacleStates[K: int]:
         return cast(UnicycleD_o, self.array.shape[0])
 
     @property
-    def count(self) -> K:
-        return cast(K, self.array.shape[1])
+    def count(self) -> int:
+        return self.array.shape[1]
 
     @property
     def array(self) -> Float[JaxArray, f"{UNICYCLE_D_O} K"]:
         return self._array
 
     @cached_property
-    def _numpy_array(self) -> Array[Dims[UnicycleD_o, K]]:
+    def _numpy_array(self) -> Float[Array, "UnicycleD_o K"]:
         return np.asarray(self.array)
 
 
 @jaxtyped
 @dataclass(frozen=True)
-class JaxUnicycleObstacleStateSequences[T: int, K: int]:
+class JaxUnicycleObstacleStateSequences:
     _array: Float[JaxArray, f"T {UNICYCLE_ESTIMATION_D_X} K"]
     _covariance: Float[
         JaxArray, f"T {UNICYCLE_ESTIMATION_D_X} {UNICYCLE_ESTIMATION_D_X} K"
     ]
 
     @staticmethod
-    def wrap[T_: int, K_: int](
+    def wrap(
         *,
         array: Float[JaxArray, f"T {UNICYCLE_ESTIMATION_D_X} K"],
         covariance: Float[
             JaxArray, f"T {UNICYCLE_ESTIMATION_D_X} {UNICYCLE_ESTIMATION_D_X} K"
         ],
-        horizon: T_ | None = None,
-        count: K_ | None = None,
-    ) -> "JaxUnicycleObstacleStateSequences[T_, K_]":
-        horizon = horizon if horizon is not None else cast(T_, array.shape[0])
-        count = count if count is not None else cast(K_, array.shape[2])
-
-        assert array.shape == (expected := (horizon, UNICYCLE_ESTIMATION_D_X, count)), (
-            f"Array shape {array.shape} does not match expected shape {expected}."
-        )
-        assert covariance.shape == (
-            expected := (
-                horizon,
-                UNICYCLE_ESTIMATION_D_X,
-                UNICYCLE_ESTIMATION_D_X,
-                count,
-            )
-        ), (
-            f"Covariance shape {covariance.shape} does not match expected shape {expected}."
-        )
-
+    ) -> "JaxUnicycleObstacleStateSequences":
         return JaxUnicycleObstacleStateSequences(array, covariance)
 
     def __array__(
         self, dtype: DataType | None = None
-    ) -> Array[Dims[T, UnicycleEstimationD_x, K]]:
+    ) -> Float[Array, "T UnicycleEstimationD_x K"]:
         return self._numpy_array
 
-    def x(self) -> Array[Dims[T, K]]:
+    def x(self) -> Float[Array, "T K"]:
         return self._numpy_array[:, 0, :]
 
-    def y(self) -> Array[Dims[T, K]]:
+    def y(self) -> Float[Array, "T K"]:
         return self._numpy_array[:, 1, :]
 
-    def heading(self) -> Array[Dims[T, K]]:
+    def heading(self) -> Float[Array, "T K"]:
         return self._numpy_array[:, 2, :]
 
     def covariance(
@@ -520,7 +458,7 @@ class JaxUnicycleObstacleStateSequences[T: int, K: int]:
     ) -> Float[JaxArray, f"T {UNICYCLE_ESTIMATION_D_X} {UNICYCLE_ESTIMATION_D_X} K"]:
         return self._covariance
 
-    def pose(self) -> JaxObstacle2dPoses[T, K]:
+    def pose(self) -> JaxObstacle2dPoses:
         return JaxObstacle2dPoses.create(
             x=self.x_array,
             y=self.y_array,
@@ -529,16 +467,16 @@ class JaxUnicycleObstacleStateSequences[T: int, K: int]:
         )
 
     @property
-    def horizon(self) -> T:
-        return cast(T, self._array.shape[0])
+    def horizon(self) -> int:
+        return self._array.shape[0]
 
     @property
     def dimension(self) -> UnicycleEstimationD_x:
         return cast(UnicycleEstimationD_x, self._array.shape[1])
 
     @property
-    def count(self) -> K:
-        return cast(K, self._array.shape[2])
+    def count(self) -> int:
+        return self._array.shape[2]
 
     @property
     def array(self) -> Float[JaxArray, f"T {UNICYCLE_ESTIMATION_D_X} K"]:
@@ -567,20 +505,20 @@ class JaxUnicycleObstacleStateSequences[T: int, K: int]:
         return self.covariance_array[:, :3, :3, :]
 
     @cached_property
-    def _numpy_array(self) -> Array[Dims[T, UnicycleEstimationD_x, K]]:
+    def _numpy_array(self) -> Float[Array, "T UnicycleEstimationD_x K"]:
         return np.asarray(self.array)
 
 
 @jaxtyped
 @dataclass(frozen=True)
-class JaxUnicycleObstacleInputs[K: int]:
-    _linear_velocities: Float[JaxArray, "K"]
-    _angular_velocities: Float[JaxArray, "K"]
+class JaxUnicycleObstacleInputs:
+    _linear_velocities: Float[JaxArray, " K"]
+    _angular_velocities: Float[JaxArray, " K"]
 
     @staticmethod
-    def wrap[K_: int](
-        array: Float[JaxArray, f"{UNICYCLE_D_U} K"] | Array[Dims[UnicycleD_u, K_]],
-    ) -> "JaxUnicycleObstacleInputs[K_]":
+    def wrap(
+        array: Float[JaxArray, f"{UNICYCLE_D_U} K"] | Float[Array, "UnicycleD_u K"],
+    ) -> "JaxUnicycleObstacleInputs":
         linear, angular = jnp.asarray(array)
         return JaxUnicycleObstacleInputs(
             _linear_velocities=linear, _angular_velocities=angular
@@ -589,26 +527,26 @@ class JaxUnicycleObstacleInputs[K: int]:
     @staticmethod
     def create(
         *,
-        linear_velocities: Float[JaxArray, "K"] | Array[Dims[K]],
-        angular_velocities: Float[JaxArray, "K"] | Array[Dims[K]],
-    ) -> "JaxUnicycleObstacleInputs[int]":
+        linear_velocities: Float[JaxArray, " K"] | Float[Array, " K"],
+        angular_velocities: Float[JaxArray, " K"] | Float[Array, " K"],
+    ) -> "JaxUnicycleObstacleInputs":
         return JaxUnicycleObstacleInputs(
             _linear_velocities=jnp.asarray(linear_velocities),
             _angular_velocities=jnp.asarray(angular_velocities),
         )
 
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[UnicycleD_u, K]]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "UnicycleD_u K"]:
         return self._numpy_array
 
-    def linear_velocities(self) -> Array[Dims[K]]:
+    def linear_velocities(self) -> Float[Array, " K"]:
         return self._numpy_array[0, :]
 
-    def angular_velocities(self) -> Array[Dims[K]]:
+    def angular_velocities(self) -> Float[Array, " K"]:
         return self._numpy_array[1, :]
 
     def zeroed(
         self, *, linear_velocity: bool = False, angular_velocity: bool = False
-    ) -> "JaxUnicycleObstacleInputs[K]":
+    ) -> "JaxUnicycleObstacleInputs":
         """Returns a version of the inputs with the specified components zeroed out."""
         return JaxUnicycleObstacleInputs(
             _linear_velocities=jnp.zeros_like(self.linear_velocities())
@@ -624,15 +562,15 @@ class JaxUnicycleObstacleInputs[K: int]:
         return UNICYCLE_D_U
 
     @property
-    def count(self) -> K:
-        return cast(K, self._linear_velocities.shape[0])
+    def count(self) -> int:
+        return self._linear_velocities.shape[0]
 
     @property
-    def linear_velocities_array(self) -> Float[JaxArray, "K"]:
+    def linear_velocities_array(self) -> Float[JaxArray, " K"]:
         return self._linear_velocities
 
     @property
-    def angular_velocities_array(self) -> Float[JaxArray, "K"]:
+    def angular_velocities_array(self) -> Float[JaxArray, " K"]:
         return self._angular_velocities
 
     @property
@@ -640,7 +578,7 @@ class JaxUnicycleObstacleInputs[K: int]:
         return jnp.stack([self._linear_velocities, self._angular_velocities], axis=0)
 
     @cached_property
-    def _numpy_array(self) -> Array[Dims[UnicycleD_u, K]]:
+    def _numpy_array(self) -> Float[Array, "UnicycleD_u K"]:
         return np.asarray(self.array)
 
 
@@ -678,11 +616,11 @@ class JaxUnicycleModel(
             else NO_LIMITS,
         )
 
-    def simulate[T: int, M: int](
+    def simulate(
         self,
-        inputs: JaxUnicycleControlInputBatch[T, M],
+        inputs: JaxUnicycleControlInputBatch,
         initial_state: JaxUnicycleState,
-    ) -> JaxUnicycleStateBatch[T, M]:
+    ) -> JaxUnicycleStateBatch:
         rollout_count = inputs.rollout_count
 
         initial = jnp.stack(
@@ -703,8 +641,8 @@ class JaxUnicycleModel(
             )
         )
 
-    def step[T: int](
-        self, inputs: JaxUnicycleControlInputSequence[T], state: JaxUnicycleState
+    def step(
+        self, inputs: JaxUnicycleControlInputSequence, state: JaxUnicycleState
     ) -> JaxUnicycleState:
         return JaxUnicycleState(
             step(
@@ -716,9 +654,9 @@ class JaxUnicycleModel(
             )[:, 0]
         )
 
-    def forward[T: int](
-        self, inputs: JaxUnicycleControlInputSequence[T], state: JaxUnicycleState
-    ) -> JaxUnicycleStateSequence[T]:
+    def forward(
+        self, inputs: JaxUnicycleControlInputSequence, state: JaxUnicycleState
+    ) -> JaxUnicycleStateSequence:
         return self.simulate(JaxUnicycleControlInputBatch.of(inputs), state).rollout(0)
 
     @property
@@ -736,8 +674,8 @@ class JaxUnicycleStateEstimationModel(NamedTuple):
     def create(
         *,
         time_step_size: float,
-        initial_state_covariance: Array[
-            Dims[UnicycleEstimationD_x, UnicycleEstimationD_x]
+        initial_state_covariance: Float[
+            Array, "UnicycleEstimationD_x UnicycleEstimationD_x"
         ]
         | EstimationStateCovarianceArray
         | None = None,
@@ -779,7 +717,7 @@ class JaxUnicycleStateEstimationModel(NamedTuple):
 
     @jax.jit
     @jaxtyped
-    def step(self, state: Float[JaxArray, "D_x"]) -> Float[JaxArray, "D_x"]:
+    def step(self, state: Float[JaxArray, " D_x"]) -> Float[JaxArray, " D_x"]:
         dt = self.time_step_size
         x, y, theta, v, omega = state
         return jnp.array(
@@ -792,33 +730,29 @@ class JaxUnicycleStateEstimationModel(NamedTuple):
             ]
         )
 
-    def observations_from[T: int = int, K: int = int](
-        self, history: JaxUnicycleObstacleStatesHistory[T, K]
+    def observations_from(
+        self, history: JaxUnicycleObstacleStatesHistory
     ) -> Float[JaxArray, "T D_z K"]:
         return jnp.stack(
             [history.x_array, history.y_array, history.heading_array], axis=1
         )
 
-    def states_from[K: int = int](
-        self, belief: UnicycleGaussianBelief[K]
-    ) -> JaxUnicycleObstacleStates[K]:
+    def states_from(self, belief: UnicycleGaussianBelief) -> JaxUnicycleObstacleStates:
         return JaxUnicycleObstacleStates.wrap(belief.mean[:3, :])
 
-    def inputs_from[K: int = int](
-        self, belief: UnicycleGaussianBelief[K]
-    ) -> JaxUnicycleObstacleInputs[K]:
+    def inputs_from(self, belief: UnicycleGaussianBelief) -> JaxUnicycleObstacleInputs:
         return cast(
-            JaxUnicycleObstacleInputs[K],
+            JaxUnicycleObstacleInputs,
             JaxUnicycleObstacleInputs.wrap(belief.mean[3:, :]),
         )
 
-    def initial_belief_from[K: int](
+    def initial_belief_from(
         self,
         *,
-        states: JaxUnicycleObstacleStates[K],
-        inputs: JaxUnicycleObstacleInputs[K],
-        covariances: JaxUnicycleObstacleCovariances[K] | None = None,
-    ) -> UnicycleGaussianBelief[K]:
+        states: JaxUnicycleObstacleStates,
+        inputs: JaxUnicycleObstacleInputs,
+        covariances: JaxUnicycleObstacleCovariances | None = None,
+    ) -> UnicycleGaussianBelief:
         augmented = jnp.concatenate([states.array, inputs.array], axis=0)
 
         if covariances is None:
@@ -893,14 +827,14 @@ class JaxUnicycleObstacleModel(
             ),
         )
 
-    def forward[T: int, K: int](
+    def forward(
         self,
         *,
-        states: JaxUnicycleObstacleStates[K],
-        inputs: JaxUnicycleObstacleInputs[K],
-        covariances: JaxUnicycleObstacleCovariances[K] | None,
-        horizon: T,
-    ) -> JaxUnicycleObstacleStateSequences[T, K]:
+        states: JaxUnicycleObstacleStates,
+        inputs: JaxUnicycleObstacleInputs,
+        covariances: JaxUnicycleObstacleCovariances | None,
+        horizon: int,
+    ) -> JaxUnicycleObstacleStateSequences:
         means, covariance = forward(
             initial=self.model.initial_belief_from(
                 states=states, inputs=inputs, covariances=covariances
@@ -932,10 +866,10 @@ class JaxFiniteDifferenceUnicycleStateEstimator(
             time_step_size=jnp.asarray(time_step_size)
         )
 
-    def estimate_from[K: int](
-        self, history: JaxUnicycleObstacleStatesHistory[int, K]
+    def estimate_from(
+        self, history: JaxUnicycleObstacleStatesHistory
     ) -> EstimatedObstacleStates[
-        JaxUnicycleObstacleStates[K], JaxUnicycleObstacleInputs[K], None
+        JaxUnicycleObstacleStates, JaxUnicycleObstacleInputs, None
     ]:
         """Estimates current states and inputs from position/heading history using finite differences.
 
@@ -967,12 +901,9 @@ class JaxFiniteDifferenceUnicycleStateEstimator(
                 y=estimated.y,
                 heading=estimated.heading,
             ),
-            inputs=cast(
-                JaxUnicycleObstacleInputs[K],
-                JaxUnicycleObstacleInputs.create(
-                    linear_velocities=estimated.linear_velocities,
-                    angular_velocities=estimated.angular_velocities,
-                ),
+            inputs=JaxUnicycleObstacleInputs.create(
+                linear_velocities=estimated.linear_velocities,
+                angular_velocities=estimated.angular_velocities,
             ),
             covariance=None,
         )
@@ -998,12 +929,10 @@ class JaxKfUnicycleStateEstimator(
     def ekf(
         *,
         time_step_size: float,
-        process_noise_covariance: JaxNoiseCovarianceDescription[UnicycleEstimationD_x],
-        observation_noise_covariance: JaxNoiseCovarianceDescription[
-            UnicycleObservationD_o
-        ],
-        initial_state_covariance: Array[
-            Dims[UnicycleEstimationD_x, UnicycleEstimationD_x]
+        process_noise_covariance: JaxNoiseCovarianceDescription,
+        observation_noise_covariance: JaxNoiseCovarianceDescription,
+        initial_state_covariance: Float[
+            Array, "UnicycleEstimationD_x UnicycleEstimationD_x"
         ]
         | EstimationStateCovarianceArray
         | None = None,
@@ -1039,12 +968,10 @@ class JaxKfUnicycleStateEstimator(
     def ukf(
         *,
         time_step_size: float,
-        process_noise_covariance: JaxNoiseCovarianceDescription[UnicycleEstimationD_x],
-        observation_noise_covariance: JaxNoiseCovarianceDescription[
-            UnicycleObservationD_o
-        ],
-        initial_state_covariance: Array[
-            Dims[UnicycleEstimationD_x, UnicycleEstimationD_x]
+        process_noise_covariance: JaxNoiseCovarianceDescription,
+        observation_noise_covariance: JaxNoiseCovarianceDescription,
+        initial_state_covariance: Float[
+            Array, "UnicycleEstimationD_x UnicycleEstimationD_x"
         ]
         | EstimationStateCovarianceArray
         | None = None,
@@ -1076,12 +1003,12 @@ class JaxKfUnicycleStateEstimator(
             estimator=JaxUnscentedKalmanFilter.create(),
         )
 
-    def estimate_from[K: int, T: int = int](
-        self, history: JaxUnicycleObstacleStatesHistory[T, K]
+    def estimate_from(
+        self, history: JaxUnicycleObstacleStatesHistory
     ) -> EstimatedObstacleStates[
-        JaxUnicycleObstacleStates[K],
-        JaxUnicycleObstacleInputs[K],
-        JaxUnicycleObstacleCovariances[K],
+        JaxUnicycleObstacleStates,
+        JaxUnicycleObstacleInputs,
+        JaxUnicycleObstacleCovariances,
     ]:
         estimate = self.estimator.filter(
             self.model.observations_from(history),
@@ -1100,11 +1027,11 @@ class JaxKfUnicycleStateEstimator(
 
 
 class EstimatedUnicycleObstacleStates(NamedTuple):
-    x: Float[JaxArray, "K"]
-    y: Float[JaxArray, "K"]
-    heading: Float[JaxArray, "K"]
-    linear_velocities: Float[JaxArray, "K"]
-    angular_velocities: Float[JaxArray, "K"]
+    x: Float[JaxArray, " K"]
+    y: Float[JaxArray, " K"]
+    heading: Float[JaxArray, " K"]
+    linear_velocities: Float[JaxArray, " K"]
+    angular_velocities: Float[JaxArray, " K"]
 
 
 def wrap(limits: tuple[float, float]) -> tuple[Scalar, Scalar]:
@@ -1167,7 +1094,7 @@ def estimate_states(
     y_history: Float[JaxArray, "T K"],
     heading_history: Float[JaxArray, "T K"],
     time_step_size: Scalar,
-) -> EstimatedUnicycleObstacleStates:
+) -> "EstimatedUnicycleObstacleStates":
     filter_invalid = invalid_obstacle_filter_from(
         x_history, y_history, heading_history, check_recent=2
     )
@@ -1201,18 +1128,18 @@ def estimate_linear_velocities(
     y_history: Float[JaxArray, "T K"],
     heading_history: Float[JaxArray, "T K"],
     time_step_size: Scalar,
-) -> Float[JaxArray, "K"]:
+) -> Float[JaxArray, " K"]:
     horizon = x_history.shape[0]
     obstacle_count = x_history.shape[1]
 
     def estimate(
         *,
-        x_current: Float[JaxArray, "K"],
-        y_current: Float[JaxArray, "K"],
-        x_previous: Float[JaxArray, "K"],
-        y_previous: Float[JaxArray, "K"],
-        heading: Float[JaxArray, "K"],
-    ) -> Float[JaxArray, "K"]:
+        x_current: Float[JaxArray, " K"],
+        y_current: Float[JaxArray, " K"],
+        x_previous: Float[JaxArray, " K"],
+        y_previous: Float[JaxArray, " K"],
+        heading: Float[JaxArray, " K"],
+    ) -> Float[JaxArray, " K"]:
         delta_x = x_current - x_previous
         delta_y = y_current - y_previous
 
@@ -1238,13 +1165,15 @@ def estimate_angular_velocities(
     *,
     heading_history: Float[JaxArray, "T K"],
     time_step_size: Scalar,
-) -> Float[JaxArray, "K"]:
+) -> Float[JaxArray, " K"]:
     horizon = heading_history.shape[0]
     obstacle_count = heading_history.shape[1]
 
     def estimate(
-        *, heading_current: Float[JaxArray, "K"], heading_previous: Float[JaxArray, "K"]
-    ) -> Float[JaxArray, "K"]:
+        *,
+        heading_current: Float[JaxArray, " K"],
+        heading_previous: Float[JaxArray, " K"],
+    ) -> Float[JaxArray, " K"]:
         return (heading_current - heading_previous) / time_step_size
 
     if horizon < 2:

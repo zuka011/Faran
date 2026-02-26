@@ -1,4 +1,4 @@
-from typing import Any, cast
+from typing import cast
 from dataclasses import dataclass
 
 from faran.types import (
@@ -22,11 +22,7 @@ class StaticPredictor:
         return StaticPredictor(horizon=horizon)
 
     def predict[PredictionT](
-        self,
-        *,
-        history: ObstacleStatesHistory[
-            Any, Any, Any, ObstacleStatesForTimeStep[Any, Any, PredictionT]
-        ],
+        self, *, history: ObstacleStatesHistory[ObstacleStatesForTimeStep[PredictionT]]
     ) -> PredictionT:
         assert history.horizon > 0, (
             "There should be at least one observation in history."

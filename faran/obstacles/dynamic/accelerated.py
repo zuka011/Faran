@@ -11,29 +11,19 @@ import jax.numpy as jnp
 
 
 @dataclass(kw_only=True)
-class JaxDynamicObstacleSimulator[K: int](
-    JaxObstacleSimulator[JaxObstacle2dPosesForTimeStep[K]]
-):
+class JaxDynamicObstacleSimulator(JaxObstacleSimulator[JaxObstacle2dPosesForTimeStep]):
     """Simulates obstacles moving with constant velocity over the prediction horizon."""
 
-    last: JaxObstacle2dPosesForTimeStep[K]
+    last: JaxObstacle2dPosesForTimeStep
     velocities: Float[JaxArray, "K 2"]
 
     time_step: Scalar | None = None
 
     @staticmethod
-    def create[K_: int = int](
-        *,
-        positions: Float[JaxArray, "K 2"],
-        velocities: Float[JaxArray, "K 2"],
-        obstacle_count: K_ | None = None,
-    ) -> "JaxDynamicObstacleSimulator[K_]":
+    def create(
+        *, positions: Float[JaxArray, "K 2"], velocities: Float[JaxArray, "K 2"]
+    ) -> "JaxDynamicObstacleSimulator":
         headings = headings_from(velocities)
-        count = positions.shape[0]
-
-        assert obstacle_count is None or obstacle_count == count, (
-            f"Expected {obstacle_count} obstacles, but got {count}."
-        )
 
         return JaxDynamicObstacleSimulator(
             last=JaxObstacle2dPosesForTimeStep.create(
@@ -49,7 +39,7 @@ class JaxDynamicObstacleSimulator[K: int](
             time_step=jnp.asarray(time_step_size),
         )
 
-    def step(self) -> JaxObstacle2dPosesForTimeStep[K]:
+    def step(self) -> JaxObstacle2dPosesForTimeStep:
         assert self.time_step is not None, (
             "Time step must be set to advance obstacle states."
         )
@@ -76,11 +66,11 @@ class JaxDynamicObstacleSimulator[K: int](
 @jaxtyped
 def step_obstacles(
     *,
-    x: Float[JaxArray, "K"],
-    y: Float[JaxArray, "K"],
+    x: Float[JaxArray, " K"],
+    y: Float[JaxArray, " K"],
     velocities: Float[JaxArray, "K 2"],
     time_step: Scalar,
-) -> tuple[Float[JaxArray, "K"], Float[JaxArray, "K"]]:
+) -> tuple[Float[JaxArray, " K"], Float[JaxArray, " K"]]:
     new_x = x + velocities[:, 0] * time_step
     new_y = y + velocities[:, 1] * time_step
     return new_x, new_y
@@ -88,6 +78,6 @@ def step_obstacles(
 
 @jax.jit
 @jaxtyped
-def headings_from(velocities: Float[JaxArray, "K 2"]) -> Float[JaxArray, "K"]:
+def headings_from(velocities: Float[JaxArray, "K 2"]) -> Float[JaxArray, " K"]:
     speed = jnp.linalg.norm(velocities, axis=1)
     return jnp.where(speed > 1e-6, jnp.arctan2(velocities[:, 1], velocities[:, 0]), 0.0)

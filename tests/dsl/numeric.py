@@ -1,15 +1,16 @@
 from typing import Any, Protocol, cast
 from dataclasses import dataclass
 
-from numtypes import Array, Shape, Dims, shape_of
+from numtypes import Array, Shape, shape_of
+from jaxtyping import Float
 
 import numpy as np
 
 
 @dataclass(frozen=True)
-class DisplacementEstimates[ShapeT: Shape]:
-    delta_x: Array[ShapeT]
-    delta_y: Array[ShapeT]
+class DisplacementEstimates:
+    delta_x: Float[Array, "..."]
+    delta_y: Float[Array, "..."]
 
 
 class ArrayConvertible(Protocol):
@@ -25,26 +26,26 @@ class HasObstacleCount(ArrayConvertible, Protocol):
         ...
 
 
-class ObstacleStatesWrapper[StatesT, D_o: int = Any, K: int = Any](Protocol):
-    def __call__(self, states: Array[Dims[D_o, K]]) -> StatesT:
+class ObstacleStatesWrapper[StatesT](Protocol):
+    def __call__(self, states: Float[Array, "D_o K"]) -> StatesT:
         """Wraps a raw obstacle state array into the type expected by the obstacle model."""
         ...
 
 
-class ObstacleInputsWrapper[InputsT, D_u: int = Any, K: int = Any](Protocol):
-    def __call__(self, inputs: Array[Dims[D_u, K]]) -> InputsT:
+class ObstacleInputsWrapper[InputsT](Protocol):
+    def __call__(self, inputs: Float[Array, "D_u K"]) -> InputsT:
         """Wraps a raw control input array into the type expected by the obstacle model."""
         ...
 
 
 class estimate:
     @staticmethod
-    def displacements[T: int, M: int](
+    def displacements(
         *,
-        velocities: Array[Dims[T, M]],
-        heading: Array[Dims[T, M]],
+        velocities: Float[Array, "T M"],
+        heading: Float[Array, "T M"],
         time_step_size: float,
-    ) -> DisplacementEstimates[Dims[int, M]]:
+    ) -> "DisplacementEstimates":
         """
         Estimate displacement using the trapezoidal rule.
 
@@ -67,9 +68,7 @@ class estimate:
 
 class compute:
     @staticmethod
-    def condition_number[D: int = int](
-        matrix: Array[Dims[D, D]],
-    ) -> float:
+    def condition_number(matrix: Float[Array, "D D"]) -> float:
         """Computes the condition number (ratio of max to min eigenvalue) of a symmetric matrix."""
         eigenvalues = np.linalg.eigvalsh(matrix)
         return eigenvalues.max() / eigenvalues.min()
@@ -98,8 +97,8 @@ class compute:
 
 class check:
     @staticmethod
-    def is_spd[T: int = int, D: int = int, K: int = int](
-        matrices: Array[Dims[T, D, D, K]] | Array[Dims[D, D, K]], atol: float = 1e-6
+    def is_spd(
+        matrices: Float[Array, "T D D K"] | Float[Array, "D D K"], atol: float = 1e-6
     ) -> bool:
         """Check if matrices are symmetric positive semi-definite."""
         if matrices.ndim == 3:
@@ -122,8 +121,8 @@ class check:
         return True
 
     @staticmethod
-    def has_diagonal_padding[T: int = int, D: int = int, K: int = int](
-        matrices: Array[Dims[T, D, D, K]],
+    def has_diagonal_padding(
+        matrices: Float[Array, "T D D K"],
         *,
         from_dimension: int,
         epsilon: float,

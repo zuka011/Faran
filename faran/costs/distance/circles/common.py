@@ -1,17 +1,20 @@
 from dataclasses import dataclass
 
-from numtypes import Array, Dims, D
+from faran.types.array import Array, jaxtyped
 
-type OriginsArray[V: int] = Array[Dims[V, D[2]]]
-type RadiiArray[V: int] = Array[Dims[V]]
+from jaxtyping import Float
+
+type OriginsArray = Float[Array, "V 2"]
+type RadiiArray = Float[Array, " V"]
 
 
+@jaxtyped
 @dataclass(frozen=True)
-class Circles[V: int]:
+class Circles:
     """Describes circles approximating parts of an object for distance computation."""
 
-    origins: OriginsArray[V]
+    origins: OriginsArray
     """The local (x, y) offset of the circle center from the object center."""
 
-    radii: RadiiArray[V]
+    radii: RadiiArray
     """The radius of the circle."""

@@ -133,9 +133,8 @@ extend-select = ["RUF018"]
 "tests/conftest.py" = [
     "E402", # Ignore module level import not at top of file
 ]
-"**/accelerated.py" = [
+"**/*.py" = [
     "F722", # Ignore syntax error in forward references for jaxtyping types
-    "F821", # Ignore undefined names in JIT-compiled functions
 ]
 "**/namespace.py" = [
     "F811", # Ignore redefinition of imported names (ruff bug)

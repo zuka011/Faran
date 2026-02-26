@@ -1,6 +1,9 @@
 from typing import Protocol, Final, Any
 
-from numtypes import Array, Dims, D
+from faran.types.array import Array
+
+from jaxtyping import Float
+from numtypes import D
 
 D_R: Final = 3
 
@@ -8,126 +11,126 @@ type D_r = D[3]
 """Dimensionality of reference points (x, y, heading)."""
 
 
-class Positions[T: int, M: int](Protocol):
-    def __array__(self) -> Array[Dims[T, D[2], M]]:
+class Positions(Protocol):
+    def __array__(self) -> Float[Array, "T 2 M"]:
         """Returns the positions as a NumPy array."""
         ...
 
-    def x(self) -> Array[Dims[T, M]]:
+    def x(self) -> Float[Array, "T M"]:
         """Returns the x coordinates of the positions."""
         ...
 
-    def y(self) -> Array[Dims[T, M]]:
+    def y(self) -> Float[Array, "T M"]:
         """Returns the y coordinates of the positions."""
         ...
 
     @property
-    def horizon(self) -> T:
+    def horizon(self) -> int:
         """Returns the time horizon of the positions."""
         ...
 
     @property
-    def rollout_count(self) -> M:
+    def rollout_count(self) -> int:
         """Returns the rollout count of the positions."""
         ...
 
 
-class LateralPositions[T: int, M: int](Protocol):
-    def __array__(self) -> Array[Dims[T, M]]:
+class LateralPositions(Protocol):
+    def __array__(self) -> Float[Array, "T M"]:
         """Returns the lateral positions as a NumPy array."""
         ...
 
     @property
-    def horizon(self) -> T:
+    def horizon(self) -> int:
         """Returns the time horizon of the lateral positions."""
         ...
 
     @property
-    def rollout_count(self) -> M:
+    def rollout_count(self) -> int:
         """Returns the rollout count of the lateral positions."""
         ...
 
 
-class LongitudinalPositions[T: int, M: int](Protocol):
-    def __array__(self) -> Array[Dims[T, M]]:
+class LongitudinalPositions(Protocol):
+    def __array__(self) -> Float[Array, "T M"]:
         """Returns the longitudinal positions as a NumPy array."""
         ...
 
     @property
-    def horizon(self) -> T:
+    def horizon(self) -> int:
         """Returns the time horizon of the longitudinal positions."""
         ...
 
     @property
-    def rollout_count(self) -> M:
+    def rollout_count(self) -> int:
         """Returns the rollout count of the longitudinal positions."""
         ...
 
 
-class PathParameters[T: int, M: int](Protocol):
-    def __array__(self) -> Array[Dims[T, M]]:
+class PathParameters(Protocol):
+    def __array__(self) -> Float[Array, "T M"]:
         """Returns the path parameters as a NumPy array."""
         ...
 
     @property
-    def horizon(self) -> T:
+    def horizon(self) -> int:
         """Returns the time horizon of the path parameters."""
         ...
 
     @property
-    def rollout_count(self) -> M:
+    def rollout_count(self) -> int:
         """Returns the rollout count of the path parameters."""
         ...
 
 
-class ReferencePoints[T: int, M: int](Protocol):
-    def __array__(self) -> Array[Dims[T, D_r, M]]:
+class ReferencePoints(Protocol):
+    def __array__(self) -> Float[Array, f"T {D_R} M"]:
         """Returns the reference points as a NumPy array."""
         ...
 
-    def x(self) -> Array[Dims[T, M]]:
+    def x(self) -> Float[Array, "T M"]:
         """Returns the x coordinates of the reference points."""
         ...
 
-    def y(self) -> Array[Dims[T, M]]:
+    def y(self) -> Float[Array, "T M"]:
         """Returns the y coordinates of the reference points."""
         ...
 
-    def heading(self) -> Array[Dims[T, M]]:
+    def heading(self) -> Float[Array, "T M"]:
         """Returns the heading angles of the reference points."""
         ...
 
     @property
-    def horizon(self) -> T:
+    def horizon(self) -> int:
         """Returns the time horizon of the reference points."""
         ...
 
     @property
-    def rollout_count(self) -> M:
+    def rollout_count(self) -> int:
         """Returns the rollout count of the reference points."""
         ...
 
 
-class Normals[T: int, M: int](Protocol):
-    def __array__(self) -> Array[Dims[T, D[2], M]]:
+class Normals(Protocol):
+    def __array__(self) -> Float[Array, "T 2 M"]:
         """Returns the normal vectors as a NumPy array."""
         ...
 
-    def x(self) -> Array[Dims[T, M]]:
+    def x(self) -> Float[Array, "T M"]:
         """Returns the x components of the normal vectors."""
         ...
 
-    def y(self) -> Array[Dims[T, M]]:
+    def y(self) -> Float[Array, "T M"]:
         """Returns the y components of the normal vectors."""
         ...
 
     @property
-    def horizon(self) -> T:
+    def horizon(self) -> int:
         """Returns the time horizon of the normal vectors."""
         ...
 
     @property
-    def rollout_count(self) -> M:
+    def rollout_count(self) -> int:
         """Returns the rollout count of the normal vectors."""
         ...
 

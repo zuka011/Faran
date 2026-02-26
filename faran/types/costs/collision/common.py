@@ -1,8 +1,9 @@
 from typing import Protocol, Final
 
-from faran.types.array import DataType
+from faran.types.array import Array, DataType
 
-from numtypes import Array, Dims, D
+from jaxtyping import Float
+from numtypes import D
 
 POSE_D_O: Final = 3
 
@@ -10,8 +11,8 @@ type PoseD_o = D[3]
 """Dimension of a single obstacle pose state (x, y, heading)."""
 
 
-class SampledObstacleStates[T: int, D_o: int, K: int, N: int](Protocol):
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[T, D_o, K, N]]:
+class SampledObstacleStates(Protocol):
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "T D_o K N"]:
         """Returns the sampled states of obstacles as a NumPy array."""
         ...
 
@@ -36,62 +37,62 @@ class SampledObstacleStates[T: int, D_o: int, K: int, N: int](Protocol):
         ...
 
 
-class SampledObstaclePositions[T: int, K: int, N: int](Protocol):
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[T, D[2], K, N]]:
+class SampledObstaclePositions(Protocol):
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "T 2 K N"]:
         """Returns the sampled positions of obstacles as a NumPy array."""
         ...
 
-    def x(self) -> Array[Dims[T, K, N]]:
+    def x(self) -> Float[Array, "T K N"]:
         """Returns the x positions of obstacles over time and samples."""
         ...
 
-    def y(self) -> Array[Dims[T, K, N]]:
+    def y(self) -> Float[Array, "T K N"]:
         """Returns the y positions of obstacles over time and samples."""
         ...
 
     @property
-    def horizon(self) -> T:
+    def horizon(self) -> int:
         """The time horizon over which the positions are defined."""
         ...
 
     @property
-    def count(self) -> K:
+    def count(self) -> int:
         """The number of obstacles."""
         ...
 
     @property
-    def sample_count(self) -> N:
+    def sample_count(self) -> int:
         """The number of samples per obstacle."""
         ...
 
 
-class SampledObstacleHeadings[T: int, K: int, N: int](Protocol):
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[T, K, N]]:
+class SampledObstacleHeadings(Protocol):
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "T K N"]:
         """Returns the sampled headings of obstacles as a NumPy array."""
         ...
 
-    def heading(self) -> Array[Dims[T, K, N]]:
+    def heading(self) -> Float[Array, "T K N"]:
         """Returns the headings of obstacles over time and samples."""
         ...
 
     @property
-    def horizon(self) -> T:
+    def horizon(self) -> int:
         """The time horizon over which the headings are defined."""
         ...
 
     @property
-    def count(self) -> K:
+    def count(self) -> int:
         """The number of obstacles."""
         ...
 
     @property
-    def sample_count(self) -> N:
+    def sample_count(self) -> int:
         """The number of samples per obstacle."""
         ...
 
 
-class ObstacleStatesForTimeStep[D_o: int, K: int, ObstacleStatesT](Protocol):
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[D_o, K]]:
+class ObstacleStatesForTimeStep[ObstacleStatesT](Protocol):
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "D_o K"]:
         """Returns the mean states of obstacles at a single time step as a NumPy array."""
         ...
 
@@ -100,22 +101,22 @@ class ObstacleStatesForTimeStep[D_o: int, K: int, ObstacleStatesT](Protocol):
         ...
 
     @property
-    def dimension(self) -> D_o:
+    def dimension(self) -> int:
         """The dimension of a single obstacle state."""
         ...
 
     @property
-    def count(self) -> K:
+    def count(self) -> int:
         """The number of obstacles."""
         ...
 
 
-class ObstacleStates[T: int, D_o: int, K: int, SingleSampleT](Protocol):
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[T, D_o, K]]:
+class ObstacleStates[SingleSampleT](Protocol):
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "T D_o K"]:
         """Returns the mean states of obstacles as a NumPy array."""
         ...
 
-    def covariance(self) -> Array[Dims[T, D_o, D_o, K]] | None:
+    def covariance(self) -> Float[Array, "T D_o D_o K"] | None:
         """Returns the covariance matrices for the obstacle states x, y, heading over time, if
         one exists."""
         ...
@@ -125,17 +126,17 @@ class ObstacleStates[T: int, D_o: int, K: int, SingleSampleT](Protocol):
         ...
 
     @property
-    def horizon(self) -> T:
+    def horizon(self) -> int:
         """The time horizon over which the obstacle states are defined."""
         ...
 
     @property
-    def dimension(self) -> D_o:
+    def dimension(self) -> int:
         """The dimension of a single obstacle state."""
         ...
 
     @property
-    def count(self) -> K:
+    def count(self) -> int:
         """The number of obstacles."""
         ...
 
@@ -154,28 +155,28 @@ class ObstacleStateSampler[ObstacleStatesT, SampledObstacleStatesT](Protocol):
         ...
 
 
-class Distance[T: int, V: int, M: int, N: int](Protocol):
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[T, V, M, N]]:
+class Distance(Protocol):
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "T V M N"]:
         """Returns the distances between ego parts and obstacles as a NumPy array."""
         ...
 
     @property
-    def horizon(self) -> T:
+    def horizon(self) -> int:
         """The time horizon over which the distances are computed."""
         ...
 
     @property
-    def vehicle_parts(self) -> V:
+    def vehicle_parts(self) -> int:
         """The number of ego vehicle parts for which distances are computed."""
         ...
 
     @property
-    def rollout_count(self) -> M:
+    def rollout_count(self) -> int:
         """The number of rollouts for which distances are computed."""
         ...
 
     @property
-    def sample_count(self) -> N:
+    def sample_count(self) -> int:
         """The number of obstacle samples for which distances are computed."""
         ...
 
@@ -209,8 +210,8 @@ class SampleCostFunction[StateBatchT, SampledObstacleStatesT, CostsT](Protocol):
         ...
 
 
-class Risk[T: int, M: int](Protocol):
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[T, M]]:
+class Risk(Protocol):
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "T M"]:
         """Returns the risk values as a NumPy array."""
         ...
 

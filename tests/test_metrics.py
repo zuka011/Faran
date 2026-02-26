@@ -15,7 +15,8 @@ from faran import (
     trajectory,
 )
 
-from numtypes import Array, BoolArray, array
+from numtypes import Array, array
+from jaxtyping import Bool
 
 import numpy as np
 
@@ -136,7 +137,7 @@ class test_that_collision_is_detected_when_distance_is_below_threshold:
         obstacle_states_at: Callable[[int], ObstacleStatesForTimeStepT],
         expected_distances: Array,
         expected_min_distances: Array,
-        expected_collisions: BoolArray,
+        expected_collisions: Bool[Array, "..."],
         expected_collision_detected: bool,
         subtests: SubTests,
     ) -> None:
@@ -285,8 +286,8 @@ class test_that_metrics_are_recomputed_when_new_data_is_collected:
         nominal_input: InputSequenceT,
         states_at: Callable[[int], StateT],
         obstacle_states_at: Callable[[int], ObstacleStatesForTimeStepT],
-        expected_initial_collisions: BoolArray,
-        expected_final_collisions: BoolArray,
+        expected_initial_collisions: Bool[Array, "..."],
+        expected_final_collisions: Bool[Array, "..."],
     ) -> None:
         for step in range(horizon - 1):
             mppi.step(

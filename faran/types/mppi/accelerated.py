@@ -1,4 +1,4 @@
-from typing import Protocol, Self, Any, overload
+from typing import Protocol, Self, Any
 
 from faran.types.mppi.common import (
     State,
@@ -18,43 +18,32 @@ from faran.types.mppi.common import (
 from jaxtyping import Array as JaxArray, Float
 
 
-class JaxState[D_x: int](State[D_x], Protocol):
+class JaxState(State, Protocol):
     @property
-    def array(self) -> Float[JaxArray, "D_x"]:
+    def array(self) -> Float[JaxArray, " D_x"]:
         """Returns the underlying JAX array representing the state."""
         ...
 
 
-class JaxStateSequence[T: int, D_x: int, StateBatchT = Any](
-    StateSequence[T, D_x, StateBatchT], Protocol
-):
+class JaxStateSequence[StateBatchT = Any](StateSequence[StateBatchT], Protocol):
     @property
     def array(self) -> Float[JaxArray, "T D_x"]:
         """Returns the underlying JAX array representing the state sequence."""
         ...
 
 
-class JaxStateBatch[T: int, D_x: int, M: int](StateBatch[T, D_x, M], Protocol):
+class JaxStateBatch(StateBatch, Protocol):
     @property
     def array(self) -> Float[JaxArray, "T D_x M"]:
         """Returns the underlying JAX array representing the state batch."""
         ...
 
 
-class JaxControlInputSequence[T: int, D_u: int](ControlInputSequence[T, D_u], Protocol):
-    @overload
+class JaxControlInputSequence(ControlInputSequence, Protocol):
     def similar(self, *, array: Float[JaxArray, "T D_u"]) -> Self:
         """Creates a new control input sequence similar to this one but with the given
         array as its data.
         """
-        ...
-
-    @overload
-    def similar[L: int](
-        self, *, array: Float[JaxArray, "L D_u"], length: L
-    ) -> "JaxControlInputSequence[L, D_u]":
-        """Returns a new control input sequence similar to this one but using the provided array.
-        The length of the new sequence may differ from the original."""
         ...
 
     @property
@@ -63,16 +52,14 @@ class JaxControlInputSequence[T: int, D_u: int](ControlInputSequence[T, D_u], Pr
         ...
 
 
-class JaxControlInputBatch[T: int, D_u: int, M: int](
-    ControlInputBatch[T, D_u, M], Protocol
-):
+class JaxControlInputBatch(ControlInputBatch, Protocol):
     @property
     def array(self) -> Float[JaxArray, "T D_u M"]:
         """Returns the underlying JAX array representing the control input batch."""
         ...
 
 
-class JaxCosts[T: int, M: int](Costs[T, M], Protocol):
+class JaxCosts(Costs, Protocol):
     def similar(self, *, array: Float[JaxArray, "T M"]) -> Self:
         """Creates new costs similar to this one but with the given array as its data."""
         ...

@@ -1,41 +1,36 @@
-from typing import Self, cast
+from typing import Self
 from dataclasses import dataclass
 
-from faran.types import NumPyObstacleSimulator
+from faran.types import Array, jaxtyped, NumPyObstacleSimulator
 from faran.obstacles.basic import NumPyObstacle2dPosesForTimeStep
 
-from numtypes import Array, Dims, D, shape_of
+from jaxtyping import Float
 
 import numpy as np
 
 
+@jaxtyped
 @dataclass(frozen=True)
-class NumPyStaticObstacleSimulator[K: int](
-    NumPyObstacleSimulator[NumPyObstacle2dPosesForTimeStep[K]]
+class NumPyStaticObstacleSimulator(
+    NumPyObstacleSimulator[NumPyObstacle2dPosesForTimeStep]
 ):
     """Simulates stationary obstacles by replicating fixed positions over the horizon."""
 
-    positions: Array[Dims[K, D[2]]]
-    headings: Array[Dims[K]]
+    positions: Float[Array, "K 2"]
+    headings: Float[Array, " K"]
 
     @staticmethod
-    def empty() -> "NumPyStaticObstacleSimulator[D[0]]":
+    def empty() -> "NumPyStaticObstacleSimulator":
         positions = np.empty((0, 2))
-
-        assert shape_of(positions, matches=(0, 2))
 
         return NumPyStaticObstacleSimulator.create(positions=positions)
 
     @staticmethod
-    def create[K_: int](
-        *, positions: Array[Dims[K_, D[2]]], headings: Array[Dims[K_]] | None = None
-    ) -> "NumPyStaticObstacleSimulator[K_]":
+    def create(
+        *, positions: Float[Array, "K 2"], headings: Float[Array, " K"] | None = None
+    ) -> "NumPyStaticObstacleSimulator":
         count = positions.shape[0]
-        headings = (
-            headings
-            if headings is not None
-            else cast(Array[Dims[K_]], np.zeros(shape=(count,)))
-        )
+        headings = headings if headings is not None else np.zeros(shape=(count,))
 
         return NumPyStaticObstacleSimulator(positions=positions, headings=headings)
 
@@ -43,7 +38,7 @@ class NumPyStaticObstacleSimulator[K: int](
         # Time step does not matter.
         return self
 
-    def step(self) -> NumPyObstacle2dPosesForTimeStep[K]:
+    def step(self) -> NumPyObstacle2dPosesForTimeStep:
         return NumPyObstacle2dPosesForTimeStep.create(
             x=self.positions[:, 0],
             y=self.positions[:, 1],

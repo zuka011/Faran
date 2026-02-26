@@ -1,8 +1,9 @@
-from typing import Final, overload, cast
+from typing import Final, overload
 from dataclasses import dataclass
 
 from faran.types import (
     jaxtyped,
+    Array,
     JaxControlInputBatchCreator,
     JaxControlInputSequence,
     JaxControlInputBatch,
@@ -10,7 +11,6 @@ from faran.types import (
 )
 
 from jaxtyping import Array as JaxArray, Float, Int, Scalar
-from numtypes import Array, Dims
 
 import jax
 import jax.numpy as jnp
@@ -37,52 +37,50 @@ MAX_RADICAL_INVERSE_ITERATIONS: Final = 32
 @dataclass(kw_only=True)
 class JaxHaltonSplineSampler[
     BatchT: JaxControlInputBatch,
-    D_u: int = int,
-    M: int = int,
 ](JaxSampler[JaxControlInputSequence, BatchT]):
     """Perturbs a nominal control sequence using Halton sequences interpolated through cubic splines."""
 
-    standard_deviation: Final[Float[JaxArray, "D_u"]]
+    standard_deviation: Final[Float[JaxArray, " D_u"]]
     to_batch: Final[JaxControlInputBatchCreator[BatchT]]
     knot_count: Final[int]
     halton_start_index: IntScalar
 
-    _control_dimension: Final[D_u]
-    _rollout_count: Final[M]
+    _control_dimension: Final[int]
+    _rollout_count: Final[int]
 
     @overload
     @staticmethod
-    def create[B: JaxControlInputBatch, D_u_: int, M_: int](
+    def create[B: JaxControlInputBatch](
         *,
-        standard_deviation: Array[Dims[D_u_]],
-        rollout_count: M_,
+        standard_deviation: Float[Array, " D_u"],
+        rollout_count: int,
         knot_count: int,
-        to_batch: JaxControlInputBatchCreator[B],
+        to_batch: JaxControlInputBatchCreator,
         seed: int,
-    ) -> "JaxHaltonSplineSampler[B, D_u_, M_]": ...
+    ) -> "JaxHaltonSplineSampler": ...
 
     @overload
     @staticmethod
-    def create[B: JaxControlInputBatch, D_u_: int, M_: int](
+    def create[B: JaxControlInputBatch](
         *,
-        standard_deviation: Float[JaxArray, "D_u"],
-        control_dimension: D_u_ | None = None,
-        rollout_count: M_,
+        standard_deviation: Float[JaxArray, " D_u"],
+        control_dimension: int | None = None,
+        rollout_count: int,
         knot_count: int,
-        to_batch: JaxControlInputBatchCreator[B],
+        to_batch: JaxControlInputBatchCreator,
         seed: int,
-    ) -> "JaxHaltonSplineSampler[B, D_u_, M_]": ...
+    ) -> "JaxHaltonSplineSampler": ...
 
     @staticmethod
-    def create[B: JaxControlInputBatch, D_u_: int, M_: int](
+    def create[B: JaxControlInputBatch](
         *,
-        standard_deviation: Array[Dims[D_u_]] | Float[JaxArray, "D_u"],
-        control_dimension: D_u_ | None = None,
-        rollout_count: M_,
+        standard_deviation: Float[Array, " D_u"] | Float[JaxArray, " D_u"],
+        control_dimension: int | None = None,
+        rollout_count: int,
         knot_count: int,
-        to_batch: JaxControlInputBatchCreator[B],
+        to_batch: JaxControlInputBatchCreator,
         seed: int,
-    ) -> "JaxHaltonSplineSampler[B, D_u_, M_]":
+    ) -> "JaxHaltonSplineSampler":
         return JaxHaltonSplineSampler(
             standard_deviation=jnp.asarray(standard_deviation),
             to_batch=to_batch,
@@ -91,7 +89,7 @@ class JaxHaltonSplineSampler[
             _control_dimension=(
                 control_dimension
                 if control_dimension is not None
-                else cast(D_u_, standard_deviation.shape[0])
+                else standard_deviation.shape[0]
             ),
             _rollout_count=rollout_count,
         )
@@ -116,11 +114,11 @@ class JaxHaltonSplineSampler[
         return self.to_batch(array=samples)
 
     @property
-    def control_dimension(self) -> D_u:
+    def control_dimension(self) -> int:
         return self._control_dimension
 
     @property
-    def rollout_count(self) -> M:
+    def rollout_count(self) -> int:
         return self._rollout_count
 
 
@@ -129,7 +127,7 @@ class JaxHaltonSplineSampler[
 def sample_halton(
     *,
     around: Float[JaxArray, "T D_u"],
-    standard_deviation: Float[JaxArray, "D_u"],
+    standard_deviation: Float[JaxArray, " D_u"],
     rollout_count: int,
     knot_count: int,
     halton_start_index: IntScalar,
@@ -161,13 +159,11 @@ def sample_halton(
 @jax.jit(static_argnames=("count",))
 @jaxtyped
 def generate_halton_sequence(
-    primes: Int[JaxArray, "D"],
-    count: int,
-    start_index: IntScalar,
+    primes: Int[JaxArray, " D"], count: int, start_index: IntScalar
 ) -> Float[JaxArray, "count D"]:
     indices = jnp.arange(count) + start_index
 
-    def compute_sample(index: Int[JaxArray, ""]) -> Float[JaxArray, "D"]:
+    def compute_sample(index: Int[JaxArray, ""]) -> Float[JaxArray, " D"]:
         return jax.vmap(lambda base: radical_inverse(index, base))(primes)
 
     return jax.vmap(compute_sample)(indices)
@@ -219,11 +215,11 @@ def inverse_normal_cdf(
 @jax.jit
 @jaxtyped
 def solve_tridiagonal(
-    lower: Float[JaxArray, "N"],
-    diag: Float[JaxArray, "N"],
-    upper: Float[JaxArray, "N"],
-    rhs: Float[JaxArray, "N"],
-) -> Float[JaxArray, "N"]:
+    lower: Float[JaxArray, " N"],
+    diag: Float[JaxArray, " N"],
+    upper: Float[JaxArray, " N"],
+    rhs: Float[JaxArray, " N"],
+) -> Float[JaxArray, " N"]:
     # NOTE: Thomas algorithm can be used, but the knot counts are small anyways.
     matrix = jnp.diag(diag) + jnp.diag(upper[:-1], k=1) + jnp.diag(lower[1:], k=-1)
     return jnp.linalg.solve(matrix, rhs)
@@ -232,9 +228,9 @@ def solve_tridiagonal(
 @jax.jit
 @jaxtyped
 def compute_spline_coefficients(
-    knot_times: Float[JaxArray, "K"],
-    knot_values: Float[JaxArray, "K"],
-) -> Float[JaxArray, "K"]:
+    knot_times: Float[JaxArray, " K"],
+    knot_values: Float[JaxArray, " K"],
+) -> Float[JaxArray, " K"]:
     h = jnp.diff(knot_times)
     b = jnp.diff(knot_values) / h
 
@@ -249,11 +245,11 @@ def compute_spline_coefficients(
 @jax.jit
 @jaxtyped
 def evaluate_cubic_spline(
-    knot_times: Float[JaxArray, "K"],
-    knot_values: Float[JaxArray, "K"],
-    second_derivatives: Float[JaxArray, "K"],
-    evaluation_times: Float[JaxArray, "T"],
-) -> Float[JaxArray, "T"]:
+    knot_times: Float[JaxArray, " K"],
+    knot_values: Float[JaxArray, " K"],
+    second_derivatives: Float[JaxArray, " K"],
+    evaluation_times: Float[JaxArray, " T"],
+) -> Float[JaxArray, " T"]:
     knot_count = knot_times.shape[0]
 
     def evaluate_at_time(t: Float[JaxArray, ""]) -> Float[JaxArray, ""]:
@@ -280,10 +276,10 @@ def evaluate_cubic_spline(
 @jax.jit
 @jaxtyped
 def interpolate_single_spline(
-    knot_times: Float[JaxArray, "K"],
-    knot_values: Float[JaxArray, "K"],
-    evaluation_times: Float[JaxArray, "T"],
-) -> Float[JaxArray, "T"]:
+    knot_times: Float[JaxArray, " K"],
+    knot_values: Float[JaxArray, " K"],
+    evaluation_times: Float[JaxArray, " T"],
+) -> Float[JaxArray, " T"]:
     second_derivatives = compute_spline_coefficients(knot_times, knot_values)
     return evaluate_cubic_spline(
         knot_times, knot_values, second_derivatives, evaluation_times
@@ -294,8 +290,8 @@ def interpolate_single_spline(
 @jaxtyped
 def interpolate_knots(
     gaussian_knots: Float[JaxArray, "M K D_u"],
-    knot_times: Float[JaxArray, "K"],
-    evaluation_times: Float[JaxArray, "T"],
+    knot_times: Float[JaxArray, " K"],
+    evaluation_times: Float[JaxArray, " T"],
 ) -> Float[JaxArray, "T D_u M"]:
     def interpolate_rollout(
         rollout_knots: Float[JaxArray, "K D_u"],

@@ -1,4 +1,5 @@
 from .array import (
+    Array as Array,
     DataType as DataType,
     Device as Device,
     HasShape as HasShape,

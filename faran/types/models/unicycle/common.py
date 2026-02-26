@@ -1,8 +1,9 @@
 from typing import Protocol, Final
 
-from faran.types.array import DataType
+from faran.types.array import Array, DataType
 
-from numtypes import Array, Dims, D
+from jaxtyping import Float
+from numtypes import D
 
 UNICYCLE_D_X: Final = 3
 UNICYCLE_D_U: Final = 2
@@ -19,7 +20,9 @@ type UnicycleD_o = D[3]
 
 
 class UnicycleState(Protocol):
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[UnicycleD_x]]:
+    def __array__(
+        self, dtype: DataType | None = None
+    ) -> Float[Array, f"{UNICYCLE_D_X}"]:
         """Returns the state as a NumPy array."""
         ...
 
@@ -50,14 +53,14 @@ class UnicycleStateSequence(Protocol):
         ...
 
 
-class UnicycleStateBatch[T: int, M: int](Protocol):
+class UnicycleStateBatch(Protocol):
     def __array__(
         self, dtype: DataType | None = None
-    ) -> Array[Dims[T, UnicycleD_x, M]]:
+    ) -> Float[Array, f"T {UNICYCLE_D_X} M"]:
         """Returns the states as a NumPy array."""
         ...
 
-    def heading(self) -> Array[Dims[T, M]]:
+    def heading(self) -> Float[Array, "T M"]:
         """Returns the headings (orientations) of the states in the batch."""
         ...
 
@@ -66,32 +69,34 @@ class UnicycleStateBatch[T: int, M: int](Protocol):
         ...
 
     @property
-    def positions(self) -> "UnicyclePositions[T, M]":
+    def positions(self) -> "UnicyclePositions":
         """Returns the positions of the states in the batch."""
         ...
 
 
-class UnicyclePositions[T: int, M: int](Protocol):
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[T, D[2], M]]:
+class UnicyclePositions(Protocol):
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "T 2 M"]:
         """Returns the positions as a NumPy array."""
         ...
 
-    def x(self) -> Array[Dims[T, M]]:
+    def x(self) -> Float[Array, "T M"]:
         """Returns the x positions."""
         ...
 
-    def y(self) -> Array[Dims[T, M]]:
+    def y(self) -> Float[Array, "T M"]:
         """Returns the y positions."""
         ...
 
 
-class UnicycleControlInputSequence[T: int](Protocol):
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[T, UnicycleD_u]]:
+class UnicycleControlInputSequence(Protocol):
+    def __array__(
+        self, dtype: DataType | None = None
+    ) -> Float[Array, f"T {UNICYCLE_D_U}"]:
         """Returns the control input sequence as a NumPy array."""
         ...
 
     @property
-    def horizon(self) -> T:
+    def horizon(self) -> int:
         """Time horizon of the control input sequence."""
         ...
 
@@ -101,23 +106,23 @@ class UnicycleControlInputSequence[T: int](Protocol):
         ...
 
 
-class UnicycleControlInputBatch[T: int, M: int](Protocol):
+class UnicycleControlInputBatch(Protocol):
     def __array__(
         self, dtype: DataType | None = None
-    ) -> Array[Dims[T, UnicycleD_u, M]]:
+    ) -> Float[Array, f"T {UNICYCLE_D_U} M"]:
         """Returns the control inputs as a NumPy array."""
         ...
 
-    def linear_velocity(self) -> Array[Dims[T, M]]:
+    def linear_velocity(self) -> Float[Array, "T M"]:
         """Returns the linear velocities over time for each rollout."""
         ...
 
     @property
-    def rollout_count(self) -> M:
+    def rollout_count(self) -> int:
         """Number of rollouts in the batch."""
         ...
 
     @property
-    def horizon(self) -> T:
+    def horizon(self) -> int:
         """Time horizon of the control inputs."""
         ...

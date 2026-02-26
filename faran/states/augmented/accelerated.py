@@ -3,6 +3,7 @@ from dataclasses import dataclass
 
 from faran.types import (
     DataType,
+    Array,
     JaxState,
     JaxStateSequence,
     JaxStateBatch,
@@ -26,7 +27,6 @@ from faran.states.augmented.base import (
 )
 
 from jaxtyping import Array as JaxArray, Float
-from numtypes import Array, Dim1, Dim2, Dim3
 
 import jax.numpy as jnp
 
@@ -47,7 +47,7 @@ class JaxAugmentedState[P: JaxState, V: JaxState](
             BaseAugmentedState.of(physical=physical, virtual=virtual)
         )
 
-    def __array__(self, dtype: DataType | None = None) -> Array[Dim1]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, " D_x"]:
         return self.inner.__array__(dtype=dtype)
 
     @property
@@ -63,7 +63,7 @@ class JaxAugmentedState[P: JaxState, V: JaxState](
         return self.inner.dimension
 
     @property
-    def array(self) -> Float[JaxArray, "D_x"]:
+    def array(self) -> Float[JaxArray, " D_x"]:
         return jnp.concatenate(
             [self.inner.physical.array, self.inner.virtual.array], axis=0
         )
@@ -110,7 +110,7 @@ class JaxAugmentedStateSequence[P: JaxStateSequence, V: JaxStateSequence](
 
         return creator
 
-    def __array__(self, dtype: DataType | None = None) -> Array[Dim2]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "T D_x"]:
         return self.inner.__array__(dtype=dtype)
 
     def batched(self) -> "JaxAugmentedStateBatch":
@@ -155,7 +155,7 @@ class JaxAugmentedStateBatch[P: JaxStateBatch, V: JaxStateBatch](
             BaseAugmentedStateBatch.of(physical=physical, virtual=virtual)
         )
 
-    def __array__(self, dtype: DataType | None = None) -> Array[Dim3]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "T D_x M"]:
         return self.inner.__array__(dtype=dtype)
 
     @property
@@ -207,7 +207,7 @@ class JaxAugmentedControlInputSequence[
             BaseAugmentedControlInputSequence.of(physical=physical, virtual=virtual)
         )
 
-    def __array__(self, dtype: DataType | None = None) -> Array[Dim2]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "T D_u"]:
         return self.inner.__array__(dtype=dtype)
 
     @overload
@@ -288,7 +288,7 @@ class JaxAugmentedControlInputBatch[
             BaseAugmentedControlInputBatch.of(physical=physical, virtual=virtual)
         )
 
-    def __array__(self, dtype: DataType | None = None) -> Array[Dim3]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "T D_u M"]:
         return self.inner.__array__(dtype=dtype)
 
     @property

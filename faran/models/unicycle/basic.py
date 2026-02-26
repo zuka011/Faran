@@ -1,8 +1,10 @@
-from typing import Self, overload, cast, Sequence, Final, Any
+from typing import Self, cast, Sequence, Final
 from dataclasses import dataclass
 from functools import cached_property
 
 from faran.types import (
+    jaxtyped,
+    Array,
     DataType,
     NumPyState,
     NumPyStateSequence,
@@ -21,8 +23,6 @@ from faran.types import (
     UnicycleD_u,
     UNICYCLE_D_U,
     UnicycleD_o,
-    UNICYCLE_D_O,
-    PoseD_o,
     DynamicalModel,
     ObstacleModel,
     ObstacleStateEstimator,
@@ -39,7 +39,9 @@ from faran.obstacles import NumPyObstacle2dPoses
 from faran.models.common import SMALL_UNCERTAINTY, LARGE_UNCERTAINTY
 from faran.models.basic import invalid_obstacle_filter_from
 
-from numtypes import Array, Dims, D, shape_of, array
+from numtypes import D, array
+
+from jaxtyping import Float
 
 import numpy as np
 
@@ -51,34 +53,35 @@ UNICYCLE_OBSERVATION_D_O: Final = 3
 type UnicycleEstimationD_x = D[5]
 type UnicycleObservationD_o = D[3]
 
-type StateArray = Array[Dims[UnicycleD_x]]
-type ControlInputSequenceArray[T: int] = Array[Dims[T, UnicycleD_u]]
-type StateBatchArray[T: int, M: int] = Array[Dims[T, UnicycleD_x, M]]
-type ControlInputBatchArray[T: int, M: int] = Array[Dims[T, UnicycleD_u, M]]
+type StateArray = Float[Array, " UnicycleD_x"]
+type ControlInputSequenceArray = Float[Array, "T UnicycleD_u"]
+type StateBatchArray = Float[Array, "T UnicycleD_x M"]
+type ControlInputBatchArray = Float[Array, "T UnicycleD_u M"]
 
-type StatesAtTimeStep[M: int] = Array[Dims[UnicycleD_x, M]]
-type ControlInputsAtTimeStep[M: int] = Array[Dims[UnicycleD_u, M]]
+type StatesAtTimeStep = Float[Array, "UnicycleD_x M"]
+type ControlInputsAtTimeStep = Float[Array, "UnicycleD_u M"]
 
-type EstimationStateCovarianceArray = Array[
-    Dims[UnicycleEstimationD_x, UnicycleEstimationD_x]
+type EstimationStateCovarianceArray = Float[
+    Array, "UnicycleEstimationD_x UnicycleEstimationD_x"
 ]
-type ProcessNoiseCovarianceArray = Array[
-    Dims[UnicycleEstimationD_x, UnicycleEstimationD_x]
+type ProcessNoiseCovarianceArray = Float[
+    Array, "UnicycleEstimationD_x UnicycleEstimationD_x"
 ]
-type ObservationNoiseCovarianceArray = Array[
-    Dims[UnicycleObservationD_o, UnicycleObservationD_o]
+type ObservationNoiseCovarianceArray = Float[
+    Array, "UnicycleObservationD_o UnicycleObservationD_o"
 ]
-type ObservationMatrix = Array[Dims[UnicycleObservationD_o, UnicycleEstimationD_x]]
+type ObservationMatrix = Float[Array, "UnicycleObservationD_o UnicycleEstimationD_x"]
 
-type UnicycleGaussianBelief[K: int] = NumPyGaussianBelief[UnicycleEstimationD_x, K]
-type NumPyUnicycleObstacleCovariances[K: int] = Array[
-    Dims[UnicycleEstimationD_x, UnicycleEstimationD_x, K]
+type UnicycleGaussianBelief = NumPyGaussianBelief
+type NumPyUnicycleObstacleCovariances = Float[
+    Array, "UnicycleEstimationD_x UnicycleEstimationD_x K"
 ]
 type KalmanFilter = NumPyExtendedKalmanFilter | NumPyUnscentedKalmanFilter
 
 
+@jaxtyped
 @dataclass(frozen=True)
-class NumPyUnicycleState(UnicycleState, NumPyState[UnicycleD_x]):
+class NumPyUnicycleState(UnicycleState, NumPyState):
     """Kinematic unicycle state: [x, y, heading]."""
 
     _array: StateArray
@@ -93,7 +96,7 @@ class NumPyUnicycleState(UnicycleState, NumPyState[UnicycleD_x]):
 
     @property
     def dimension(self) -> UnicycleD_x:
-        return self.array.shape[0]
+        return cast(UnicycleD_x, self.array.shape[0])
 
     @property
     def x(self) -> float:
@@ -113,128 +116,115 @@ class NumPyUnicycleState(UnicycleState, NumPyState[UnicycleD_x]):
 
 
 @dataclass(kw_only=True, frozen=True)
-class NumPyUnicycleStateSequence[T: int, M: int = Any](
-    UnicycleStateSequence, NumPyStateSequence[T, UnicycleD_x]
-):
-    batch: "NumPyUnicycleStateBatch[T, M]"
+class NumPyUnicycleStateSequence(UnicycleStateSequence, NumPyStateSequence):
+    batch: "NumPyUnicycleStateBatch"
     rollout: int
 
     @staticmethod
-    def of_states[T_: int = int](
-        states: Sequence[NumPyUnicycleState], *, horizon: T_ | None = None
-    ) -> "NumPyUnicycleStateSequence[T_, D[1]]":
+    def of_states(states: Sequence[NumPyUnicycleState]) -> "NumPyUnicycleStateSequence":
         assert len(states) > 0, "States sequence must not be empty."
 
-        horizon = horizon if horizon is not None else cast(T_, len(states))
         array = np.stack([state.array for state in states], axis=0)[:, :, np.newaxis]
-
-        assert shape_of(array, matches=(horizon, UNICYCLE_D_X, 1))
 
         return NumPyUnicycleStateSequence(
             batch=NumPyUnicycleStateBatch.wrap(array), rollout=0
         )
 
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[T, UnicycleD_x]]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "T UnicycleD_x"]:
         return self.array
 
     def step(self, index: int) -> NumPyUnicycleState:
         return NumPyUnicycleState(self.array[index])
 
-    def batched(self) -> "NumPyUnicycleStateBatch[T, D[1]]":
+    def batched(self) -> "NumPyUnicycleStateBatch":
         return NumPyUnicycleStateBatch.wrap(self.array[..., np.newaxis])
 
-    def x(self) -> Array[Dims[T]]:
+    def x(self) -> Float[Array, " T"]:
         return self.array[:, 0]
 
-    def y(self) -> Array[Dims[T]]:
+    def y(self) -> Float[Array, " T"]:
         return self.array[:, 1]
 
-    def heading(self) -> Array[Dims[T]]:
+    def heading(self) -> Float[Array, " T"]:
         return self.array[:, 2]
 
     @property
-    def horizon(self) -> T:
+    def horizon(self) -> int:
         return self.array.shape[0]
 
     @property
     def dimension(self) -> UnicycleD_x:
-        return self.array.shape[1]
+        return cast(UnicycleD_x, self.array.shape[1])
 
     @property
-    def array(self) -> Array[Dims[T, UnicycleD_x]]:
+    def array(self) -> Float[Array, "T UnicycleD_x"]:
         return self.batch.array[:, :, self.rollout]
 
 
+@jaxtyped
 @dataclass(frozen=True)
-class NumPyUnicycleStateBatch[T: int, M: int](
-    UnicycleStateBatch[T, M], NumPyStateBatch[T, UnicycleD_x, M]
-):
-    _array: StateBatchArray[T, M]
+class NumPyUnicycleStateBatch(UnicycleStateBatch, NumPyStateBatch):
+    _array: StateBatchArray
 
     @staticmethod
-    def wrap[T_: int, M_: int](
-        array: StateBatchArray[T_, M_],
-    ) -> "NumPyUnicycleStateBatch[T_, M_]":
+    def wrap(
+        array: StateBatchArray,
+    ) -> "NumPyUnicycleStateBatch":
         return NumPyUnicycleStateBatch(array)
 
     @staticmethod
-    def of_states[T_: int = int](
-        states: Sequence[NumPyUnicycleState], *, horizon: T_ | None = None
-    ) -> "NumPyUnicycleStateBatch[int, D[1]]":
+    def of_states(states: Sequence[NumPyUnicycleState]) -> "NumPyUnicycleStateBatch":
         assert len(states) > 0, "States sequence must not be empty."
 
-        horizon = horizon if horizon is not None else cast(T_, len(states))
         array = np.stack([state.array for state in states], axis=0)[:, :, np.newaxis]
-
-        assert shape_of(array, matches=(horizon, UNICYCLE_D_X, 1))
 
         return NumPyUnicycleStateBatch(array)
 
-    def __array__(self, dtype: DataType | None = None) -> StateBatchArray[T, M]:
+    def __array__(self, dtype: DataType | None = None) -> StateBatchArray:
         return self.array
 
-    def heading(self) -> Array[Dims[T, M]]:
+    def heading(self) -> Float[Array, "T M"]:
         return self.array[:, 2, :]
 
-    def rollout(self, index: int) -> NumPyUnicycleStateSequence[T, M]:
+    def rollout(self, index: int) -> NumPyUnicycleStateSequence:
         return NumPyUnicycleStateSequence(batch=self, rollout=index)
 
     @property
-    def horizon(self) -> T:
+    def horizon(self) -> int:
         return self.array.shape[0]
 
     @property
     def dimension(self) -> UnicycleD_x:
-        return self.array.shape[1]
+        return cast(UnicycleD_x, self.array.shape[1])
 
     @property
-    def rollout_count(self) -> M:
+    def rollout_count(self) -> int:
         return self.array.shape[2]
 
     @property
-    def positions(self) -> "NumPyUnicyclePositions[T, M]":
+    def positions(self) -> "NumPyUnicyclePositions":
         return NumPyUnicyclePositions(batch=self)
 
     @property
-    def array(self) -> StateBatchArray[T, M]:
+    def array(self) -> StateBatchArray:
         return self._array
 
 
 @dataclass(frozen=True)
-class NumPyUnicyclePositions[T: int, M: int](UnicyclePositions[T, M]):
-    batch: NumPyUnicycleStateBatch[T, M]
+class NumPyUnicyclePositions(UnicyclePositions):
+    batch: NumPyUnicycleStateBatch
 
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[T, D[2], M]]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "T 2 M"]:
         return self.batch.array[:, :2, :]
 
-    def x(self) -> Array[Dims[T, M]]:
+    def x(self) -> Float[Array, "T M"]:
         return self.batch.array[:, 0, :]
 
-    def y(self) -> Array[Dims[T, M]]:
+    def y(self) -> Float[Array, "T M"]:
         return self.batch.array[:, 1, :]
 
     @property
-    def horizon(self) -> T:
+    def horizon(self) -> int:
         return self.batch.horizon
 
     @property
@@ -242,220 +232,179 @@ class NumPyUnicyclePositions[T: int, M: int](UnicyclePositions[T, M]):
         return 2
 
     @property
-    def rollout_count(self) -> M:
+    def rollout_count(self) -> int:
         return self.batch.rollout_count
 
 
+@jaxtyped
 @dataclass(frozen=True)
-class NumPyUnicycleControlInputSequence[T: int](
-    UnicycleControlInputSequence[T], NumPyControlInputSequence[T, UnicycleD_u]
+class NumPyUnicycleControlInputSequence(
+    UnicycleControlInputSequence, NumPyControlInputSequence
 ):
     """Control inputs: [linear velocity, angular velocity]."""
 
-    _array: ControlInputSequenceArray[T]
+    _array: ControlInputSequenceArray
 
     @staticmethod
-    def zeroes[T_: int](horizon: T_) -> "NumPyUnicycleControlInputSequence[T_]":
+    def zeroes(horizon: int) -> "NumPyUnicycleControlInputSequence":
         """Creates a zeroed control input sequence for the given horizon."""
-        array = np.zeros((horizon, UNICYCLE_D_U))
+        return NumPyUnicycleControlInputSequence(np.zeros((horizon, UNICYCLE_D_U)))
 
-        assert shape_of(array, matches=(horizon, UNICYCLE_D_U))
-
-        return NumPyUnicycleControlInputSequence(array)
-
-    def __array__(self, dtype: DataType | None = None) -> ControlInputSequenceArray[T]:
+    def __array__(self, dtype: DataType | None = None) -> ControlInputSequenceArray:
         return self.array
 
-    @overload
-    def similar(self, *, array: Array[Dims[T, UnicycleD_u]]) -> Self: ...
-
-    @overload
-    def similar[L: int](
-        self, *, array: Array[Dims[L, UnicycleD_u]], length: L
-    ) -> "NumPyUnicycleControlInputSequence[L]": ...
-
-    def similar[L: int](
-        self, *, array: Array[Dims[L, UnicycleD_u]], length: L | None = None
-    ) -> "Self | NumPyUnicycleControlInputSequence[L]":
-        # NOTE: "Wrong" cast to silence the type checker.
-        effective_length = cast(T, length if length is not None else array.shape[0])
-
-        assert shape_of(
-            array, matches=(effective_length, self.dimension), name="similar array"
-        )
-
+    def similar(
+        self, *, array: Float[Array, "L UnicycleD_u"]
+    ) -> "Self | NumPyUnicycleControlInputSequence":
         return self.__class__(array)
 
-    def linear_velocities(self) -> Array[Dims[T]]:
+    def linear_velocities(self) -> Float[Array, " T"]:
         return self.array[:, 0]
 
-    def angular_velocities(self) -> Array[Dims[T]]:
+    def angular_velocities(self) -> Float[Array, " T"]:
         return self.array[:, 1]
 
     @property
-    def horizon(self) -> T:
+    def horizon(self) -> int:
         return self.array.shape[0]
 
     @property
     def dimension(self) -> UnicycleD_u:
-        return self.array.shape[1]
+        return cast(UnicycleD_u, self.array.shape[1])
 
     @property
-    def array(self) -> ControlInputSequenceArray[T]:
+    def array(self) -> ControlInputSequenceArray:
         return self._array
 
 
+@jaxtyped
 @dataclass(frozen=True)
-class NumPyUnicycleControlInputBatch[T: int, M: int](
-    UnicycleControlInputBatch[T, M], NumPyControlInputBatch[T, UnicycleD_u, M]
-):
-    _array: ControlInputBatchArray[T, M]
+class NumPyUnicycleControlInputBatch(UnicycleControlInputBatch, NumPyControlInputBatch):
+    _array: ControlInputBatchArray
 
     @staticmethod
-    def zero[T_: int, M_: int](
-        *, horizon: T_, rollout_count: M_ = 1
-    ) -> "NumPyUnicycleControlInputBatch[T_, M_]":
-        array = np.zeros((horizon, UNICYCLE_D_U, rollout_count))
+    def zero(
+        *, horizon: int, rollout_count: int = 1
+    ) -> "NumPyUnicycleControlInputBatch":
+        return NumPyUnicycleControlInputBatch(
+            np.zeros((horizon, UNICYCLE_D_U, rollout_count))
+        )
 
-        assert shape_of(array, matches=(horizon, UNICYCLE_D_U, rollout_count))
-
+    @staticmethod
+    def create(
+        *, array: Float[Array, "T UnicycleD_u M"]
+    ) -> "NumPyUnicycleControlInputBatch":
         return NumPyUnicycleControlInputBatch(array)
 
     @staticmethod
-    def create[T_: int, M_: int](
-        *, array: Array[Dims[T_, UnicycleD_u, M_]]
-    ) -> "NumPyUnicycleControlInputBatch[T_, M_]":
+    def of(
+        sequence: NumPyUnicycleControlInputSequence,
+    ) -> "NumPyUnicycleControlInputBatch":
+        return NumPyUnicycleControlInputBatch(sequence.array[..., np.newaxis])
 
-        return NumPyUnicycleControlInputBatch(array)
-
-    @staticmethod
-    def of[T_: int](
-        sequence: NumPyUnicycleControlInputSequence[T_],
-    ) -> "NumPyUnicycleControlInputBatch[T_, D[1]]":
-        array = sequence.array[..., np.newaxis]
-
-        assert shape_of(array, matches=(sequence.horizon, UNICYCLE_D_U, 1))
-
-        return NumPyUnicycleControlInputBatch(array)
-
-    def __array__(self, dtype: DataType | None = None) -> ControlInputBatchArray[T, M]:
+    def __array__(self, dtype: DataType | None = None) -> ControlInputBatchArray:
         return self.array
 
-    def linear_velocity(self) -> Array[Dims[T, M]]:
+    def linear_velocity(self) -> Float[Array, "T M"]:
         return self.array[:, 0, :]
 
     @property
-    def horizon(self) -> T:
+    def horizon(self) -> int:
         return self.array.shape[0]
 
     @property
     def dimension(self) -> UnicycleD_u:
-        return self.array.shape[1]
+        return cast(UnicycleD_u, self.array.shape[1])
 
     @property
-    def rollout_count(self) -> M:
+    def rollout_count(self) -> int:
         return self.array.shape[2]
 
     @property
-    def array(self) -> ControlInputBatchArray[T, M]:
+    def array(self) -> ControlInputBatchArray:
         return self._array
 
 
+@jaxtyped
 @dataclass(frozen=True)
-class NumPyUnicycleObstacleStates[K: int]:
-    _array: Array[Dims[UnicycleD_o, K]]
+class NumPyUnicycleObstacleStates:
+    _array: Float[Array, "UnicycleD_o K"]
 
     @staticmethod
-    def wrap[K_: int](
-        array: Array[Dims[UnicycleD_o, K_]],
-    ) -> "NumPyUnicycleObstacleStates[K_]":
+    def wrap(array: Float[Array, "UnicycleD_o K"]) -> "NumPyUnicycleObstacleStates":
         return NumPyUnicycleObstacleStates(array)
 
     @staticmethod
     def create(
-        *,
-        x: Array[Dims[K]],
-        y: Array[Dims[K]],
-        heading: Array[Dims[K]],
-    ) -> "NumPyUnicycleObstacleStates[K]":
-        array = np.stack([x, y, heading], axis=0)
+        *, x: Float[Array, " K"], y: Float[Array, " K"], heading: Float[Array, " K"]
+    ) -> "NumPyUnicycleObstacleStates":
+        return NumPyUnicycleObstacleStates(np.stack([x, y, heading], axis=0))
 
-        assert shape_of(array, matches=(UNICYCLE_D_O, x.shape[0]))
-
-        return NumPyUnicycleObstacleStates(array)
-
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[UnicycleD_o, K]]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "UnicycleD_o K"]:
         return self.array
 
-    def x(self) -> Array[Dims[K]]:
+    def x(self) -> Float[Array, " K"]:
         return self.array[0, :]
 
-    def y(self) -> Array[Dims[K]]:
+    def y(self) -> Float[Array, " K"]:
         return self.array[1, :]
 
-    def heading(self) -> Array[Dims[K]]:
+    def heading(self) -> Float[Array, " K"]:
         return self.array[2, :]
 
     @property
     def dimension(self) -> UnicycleD_o:
-        return self.array.shape[0]
+        return cast(UnicycleD_o, self.array.shape[0])
 
     @property
-    def count(self) -> K:
+    def count(self) -> int:
         return self.array.shape[1]
 
     @property
-    def array(self) -> Array[Dims[UnicycleD_o, K]]:
+    def array(self) -> Float[Array, "UnicycleD_o K"]:
         return self._array
 
 
+@jaxtyped
 @dataclass(frozen=True)
-class NumPyUnicycleObstacleStateSequences[T: int, K: int]:
-    _array: Array[Dims[T, UnicycleEstimationD_x, K]]
-    _covariance: Array[Dims[T, UnicycleEstimationD_x, UnicycleEstimationD_x, K]]
+class NumPyUnicycleObstacleStateSequences:
+    _array: Float[Array, "T UnicycleEstimationD_x K"]
+    _covariance: Float[Array, "T UnicycleEstimationD_x UnicycleEstimationD_x K"]
 
     @staticmethod
-    def create[K_: int, T_: int = int](
-        predictions: Sequence[UnicycleGaussianBelief[K_]],
-    ) -> "NumPyUnicycleObstacleStateSequences[T_, K_]":
+    def create(
+        predictions: Sequence[UnicycleGaussianBelief],
+    ) -> "NumPyUnicycleObstacleStateSequences":
         assert len(predictions) > 0, "Predictions sequence must not be empty."
 
-        T = cast(T_, len(predictions))
-        K = predictions[0].mean.shape[1]
-
-        array = np.stack([belief.mean for belief in predictions], axis=0)
-        covariance = np.stack([belief.covariance for belief in predictions], axis=0)
-
-        assert shape_of(array, matches=(T, UNICYCLE_ESTIMATION_D_X, K))
-        assert shape_of(
-            covariance, matches=(T, UNICYCLE_ESTIMATION_D_X, UNICYCLE_ESTIMATION_D_X, K)
+        return NumPyUnicycleObstacleStateSequences(
+            _array=np.stack([belief.mean for belief in predictions], axis=0),
+            _covariance=np.stack([belief.covariance for belief in predictions], axis=0),
         )
-
-        return NumPyUnicycleObstacleStateSequences(array, covariance)
 
     def __array__(
         self, dtype: DataType | None = None
-    ) -> Array[Dims[T, UnicycleEstimationD_x, K]]:
+    ) -> Float[Array, "T UnicycleEstimationD_x K"]:
         return self.array
 
-    def x(self) -> Array[Dims[T, K]]:
+    def x(self) -> Float[Array, "T K"]:
         return self.array[:, 0, :]
 
-    def y(self) -> Array[Dims[T, K]]:
+    def y(self) -> Float[Array, "T K"]:
         return self.array[:, 1, :]
 
-    def heading(self) -> Array[Dims[T, K]]:
+    def heading(self) -> Float[Array, "T K"]:
         return self.array[:, 2, :]
 
     def covariance(
         self,
-    ) -> Array[Dims[T, UnicycleEstimationD_x, UnicycleEstimationD_x, K]]:
+    ) -> Float[Array, "T UnicycleEstimationD_x UnicycleEstimationD_x K"]:
         return self._covariance
 
-    def pose_covariance(self) -> Array[Dims[T, PoseD_o, PoseD_o, K]]:
+    def pose_covariance(self) -> Float[Array, "T PoseD_o PoseD_o K"]:
         return self._covariance[:, :3, :3, :]
 
-    def pose(self) -> NumPyObstacle2dPoses[T, K]:
+    def pose(self) -> NumPyObstacle2dPoses:
         return NumPyObstacle2dPoses.create(
             x=self.x(),
             y=self.y(),
@@ -464,31 +413,32 @@ class NumPyUnicycleObstacleStateSequences[T: int, K: int]:
         )
 
     @property
-    def horizon(self) -> T:
+    def horizon(self) -> int:
         return self.array.shape[0]
 
     @property
     def dimension(self) -> UnicycleEstimationD_x:
-        return self.array.shape[1]
+        return cast(UnicycleEstimationD_x, self.array.shape[1])
 
     @property
-    def count(self) -> K:
+    def count(self) -> int:
         return self.array.shape[2]
 
     @property
-    def array(self) -> Array[Dims[T, UnicycleEstimationD_x, K]]:
+    def array(self) -> Float[Array, "T UnicycleEstimationD_x K"]:
         return self._array
 
 
+@jaxtyped
 @dataclass(frozen=True)
-class NumPyUnicycleObstacleInputs[K: int]:
-    _linear_velocities: Array[Dims[K]]
-    _angular_velocities: Array[Dims[K]]
+class NumPyUnicycleObstacleInputs:
+    _linear_velocities: Float[Array, " K"]
+    _angular_velocities: Float[Array, " K"]
 
     @staticmethod
-    def wrap[K_: int](
-        array: Array[Dims[UnicycleD_u, K_]],
-    ) -> "NumPyUnicycleObstacleInputs[K_]":
+    def wrap(
+        array: Float[Array, "UnicycleD_u K"],
+    ) -> "NumPyUnicycleObstacleInputs":
         linear, angular = array
         return NumPyUnicycleObstacleInputs(
             _linear_velocities=linear, _angular_velocities=angular
@@ -496,26 +446,24 @@ class NumPyUnicycleObstacleInputs[K: int]:
 
     @staticmethod
     def create(
-        *,
-        linear_velocities: Array[Dims[K]],
-        angular_velocities: Array[Dims[K]],
-    ) -> "NumPyUnicycleObstacleInputs[K]":
+        *, linear_velocities: Float[Array, " K"], angular_velocities: Float[Array, " K"]
+    ) -> "NumPyUnicycleObstacleInputs":
         return NumPyUnicycleObstacleInputs(
             _linear_velocities=linear_velocities, _angular_velocities=angular_velocities
         )
 
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[UnicycleD_u, K]]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "UnicycleD_u K"]:
         return self._array
 
-    def linear_velocities(self) -> Array[Dims[K]]:
+    def linear_velocities(self) -> Float[Array, " K"]:
         return self._linear_velocities
 
-    def angular_velocities(self) -> Array[Dims[K]]:
+    def angular_velocities(self) -> Float[Array, " K"]:
         return self._angular_velocities
 
     def zeroed(
         self, *, linear_velocity: bool = False, angular_velocity: bool = False
-    ) -> "NumPyUnicycleObstacleInputs[K]":
+    ) -> "NumPyUnicycleObstacleInputs":
         """Returns a version of the inputs with the specified components zeroed out."""
         return NumPyUnicycleObstacleInputs(
             _linear_velocities=np.zeros_like(self._linear_velocities)
@@ -531,15 +479,15 @@ class NumPyUnicycleObstacleInputs[K: int]:
         return UNICYCLE_D_U
 
     @property
-    def count(self) -> K:
+    def count(self) -> int:
         return self._linear_velocities.shape[0]
 
     @property
-    def array(self) -> Array[Dims[UnicycleD_u, K]]:
+    def array(self) -> Float[Array, "UnicycleD_u K"]:
         return self._array
 
     @cached_property
-    def _array(self) -> Array[Dims[UnicycleD_u, K]]:
+    def _array(self) -> Float[Array, "UnicycleD_u K"]:
         return np.stack([self._linear_velocities, self._angular_velocities], axis=0)
 
 
@@ -575,11 +523,9 @@ class NumPyUnicycleModel(
             else NO_LIMITS,
         )
 
-    def simulate[T: int, M: int](
-        self,
-        inputs: NumPyUnicycleControlInputBatch[T, M],
-        initial_state: NumPyUnicycleState,
-    ) -> NumPyUnicycleStateBatch[T, M]:
+    def simulate(
+        self, inputs: NumPyUnicycleControlInputBatch, initial_state: NumPyUnicycleState
+    ) -> NumPyUnicycleStateBatch:
         rollout_count = inputs.rollout_count
 
         initial = np.stack(
@@ -600,20 +546,11 @@ class NumPyUnicycleModel(
             )
         )
 
-    def step[T: int](
-        self, inputs: NumPyUnicycleControlInputSequence[T], state: NumPyUnicycleState
+    def step(
+        self, inputs: NumPyUnicycleControlInputSequence, state: NumPyUnicycleState
     ) -> NumPyUnicycleState:
         state_as_rollouts = state.array.reshape(-1, 1)
         first_input = inputs.array[0].reshape(-1, 1)
-
-        assert shape_of(
-            state_as_rollouts, matches=(UNICYCLE_D_X, 1), name="state reshaped for step"
-        )
-        assert shape_of(
-            first_input,
-            matches=(UNICYCLE_D_U, 1),
-            name="first control input reshaped for step",
-        )
 
         return NumPyUnicycleState(
             step(
@@ -625,9 +562,9 @@ class NumPyUnicycleModel(
             )[:, 0]
         )
 
-    def forward[T: int](
-        self, inputs: NumPyUnicycleControlInputSequence[T], state: NumPyUnicycleState
-    ) -> NumPyUnicycleStateSequence[T]:
+    def forward(
+        self, inputs: NumPyUnicycleControlInputSequence, state: NumPyUnicycleState
+    ) -> NumPyUnicycleStateSequence:
         return self.simulate(NumPyUnicycleControlInputBatch.of(inputs), state).rollout(
             0
         )
@@ -676,9 +613,7 @@ class NumPyUnicycleStateEstimationModel:
             ),
         )
 
-    def __call__[D_x: int, K: int](
-        self, state: Array[Dims[D_x, K]]
-    ) -> Array[Dims[D_x, K]]:
+    def __call__(self, state: Float[Array, "D_x K"]) -> Float[Array, "D_x K"]:
         dt = self.time_step_size
         x, y, theta, v, omega = state
 
@@ -692,9 +627,7 @@ class NumPyUnicycleStateEstimationModel:
             ]
         )
 
-    def jacobian[D_x: int, K: int](
-        self, state: Array[Dims[D_x, K]]
-    ) -> Array[Dims[D_x, D_x, K]]:
+    def jacobian(self, state: Float[Array, "D_x K"]) -> Float[Array, "D_x D_x K"]:
         D_x, K = state.shape
         dt = self.time_step_size
         x, y, theta, v, omega = state
@@ -722,31 +655,29 @@ class NumPyUnicycleStateEstimationModel:
         jacobian[3, 3, :] = 1  # ∂v_next/∂v
         jacobian[4, 4, :] = 1  # ∂omega_next/∂omega
 
-        assert shape_of(jacobian, matches=(D_x, D_x, K), name="jacobian")
-
         return jacobian
 
-    def observations_from[K: int, T: int = int](
-        self, history: NumPyUnicycleObstacleStatesHistory[T, K]
-    ) -> Array[Dims[T, UnicycleObservationD_o, K]]:
+    def observations_from(
+        self, history: NumPyUnicycleObstacleStatesHistory
+    ) -> Float[Array, "T UnicycleObservationD_o K"]:
         return np.stack([history.x(), history.y(), history.heading()], axis=1)
 
-    def states_from[K: int](
-        self, belief: UnicycleGaussianBelief[K]
-    ) -> NumPyUnicycleObstacleStates[K]:
+    def states_from(
+        self, belief: UnicycleGaussianBelief
+    ) -> NumPyUnicycleObstacleStates:
         return NumPyUnicycleObstacleStates.wrap(belief.mean[:3, :])
 
-    def inputs_from[K: int](
-        self, belief: UnicycleGaussianBelief[K]
-    ) -> NumPyUnicycleObstacleInputs[K]:
+    def inputs_from(
+        self, belief: UnicycleGaussianBelief
+    ) -> NumPyUnicycleObstacleInputs:
         return NumPyUnicycleObstacleInputs.wrap(belief.mean[3:, :])
 
-    def initial_belief_from[K: int](
+    def initial_belief_from(
         self,
         *,
-        states: NumPyUnicycleObstacleStates[K],
-        inputs: NumPyUnicycleObstacleInputs[K],
-        covariances: NumPyUnicycleObstacleCovariances[K] | None = None,
+        states: NumPyUnicycleObstacleStates,
+        inputs: NumPyUnicycleObstacleInputs,
+        covariances: NumPyUnicycleObstacleCovariances | None = None,
     ) -> UnicycleGaussianBelief:
         augmented = np.concatenate([states.array, inputs.array], axis=0)
 
@@ -756,17 +687,6 @@ class NumPyUnicycleStateEstimationModel:
                 np.eye(UNICYCLE_ESTIMATION_D_X)[:, :, np.newaxis] * SMALL_UNCERTAINTY,
                 (UNICYCLE_ESTIMATION_D_X, UNICYCLE_ESTIMATION_D_X, states.count),
             ).copy()
-
-        assert shape_of(
-            augmented,
-            matches=(UNICYCLE_ESTIMATION_D_X, states.count),
-            name="augmented state",
-        )
-        assert shape_of(
-            covariances,
-            matches=(UNICYCLE_ESTIMATION_D_X, UNICYCLE_ESTIMATION_D_X, states.count),
-            name="initial covariance",
-        )
 
         return NumPyGaussianBelief(mean=augmented, covariance=covariances)
 
@@ -832,14 +752,14 @@ class NumPyUnicycleObstacleModel(
             ),
         )
 
-    def forward[T: int, K: int](
+    def forward(
         self,
         *,
-        states: NumPyUnicycleObstacleStates[K],
-        inputs: NumPyUnicycleObstacleInputs[K],
-        covariances: NumPyUnicycleObstacleCovariances[K] | None,
-        horizon: T,
-    ) -> NumPyUnicycleObstacleStateSequences[T, K]:
+        states: NumPyUnicycleObstacleStates,
+        inputs: NumPyUnicycleObstacleInputs,
+        covariances: NumPyUnicycleObstacleCovariances | None,
+        horizon: int,
+    ) -> NumPyUnicycleObstacleStateSequences:
         beliefs = []
         last = self.model.initial_belief_from(
             states=states, inputs=inputs, covariances=covariances
@@ -875,10 +795,10 @@ class NumPyFiniteDifferenceUnicycleStateEstimator(
             time_step_size=time_step_size
         )
 
-    def estimate_from[K: int](
-        self, history: NumPyUnicycleObstacleStatesHistory[int, K]
+    def estimate_from(
+        self, history: NumPyUnicycleObstacleStatesHistory
     ) -> EstimatedObstacleStates[
-        NumPyUnicycleObstacleStates[K], NumPyUnicycleObstacleInputs[K], None
+        NumPyUnicycleObstacleStates, NumPyUnicycleObstacleInputs, None
     ]:
         """Estimates current states and inputs from position/heading history using finite differences.
 
@@ -914,11 +834,11 @@ class NumPyFiniteDifferenceUnicycleStateEstimator(
             covariance=None,
         )
 
-    def estimate_speeds_from[K: int](
-        self, history: NumPyUnicycleObstacleStatesHistory[int, K]
-    ) -> Array[Dims[K]]:
+    def estimate_speeds_from(
+        self, history: NumPyUnicycleObstacleStatesHistory
+    ) -> Float[Array, " K"]:
         if history.horizon < 2:
-            return cast(Array[Dims[K]], np.zeros((history.count,)))
+            return np.zeros((history.count,))
 
         x = history.x()
         y = history.y()
@@ -932,11 +852,11 @@ class NumPyFiniteDifferenceUnicycleStateEstimator(
             heading_current=heading[-1],
         )
 
-    def estimate_angular_velocities_from[K: int](
-        self, history: NumPyUnicycleObstacleStatesHistory[int, K]
-    ) -> Array[Dims[K]]:
+    def estimate_angular_velocities_from(
+        self, history: NumPyUnicycleObstacleStatesHistory
+    ) -> Float[Array, " K"]:
         if history.horizon < 2:
-            return cast(Array[Dims[K]], np.zeros((history.count,)))
+            return np.zeros((history.count,))
 
         heading = history.heading()
 
@@ -945,15 +865,15 @@ class NumPyFiniteDifferenceUnicycleStateEstimator(
             heading_previous=heading[-2],
         )
 
-    def _estimate_speeds_from[K: int](
+    def _estimate_speeds_from(
         self,
         *,
-        x_current: Array[Dims[K]],
-        y_current: Array[Dims[K]],
-        x_previous: Array[Dims[K]],
-        y_previous: Array[Dims[K]],
-        heading_current: Array[Dims[K]],
-    ) -> Array[Dims[K]]:
+        x_current: Float[Array, " K"],
+        y_current: Float[Array, " K"],
+        x_previous: Float[Array, " K"],
+        y_previous: Float[Array, " K"],
+        heading_current: Float[Array, " K"],
+    ) -> Float[Array, " K"]:
         delta_x = x_current - x_previous
         delta_y = y_current - y_previous
 
@@ -961,23 +881,15 @@ class NumPyFiniteDifferenceUnicycleStateEstimator(
             delta_x * np.cos(heading_current) + delta_y * np.sin(heading_current)
         ) / self.time_step_size
 
-        assert shape_of(speeds, matches=(x_current.shape[0],), name="estimated speeds")
-
         return speeds
 
-    def _estimate_angular_velocities_from[K: int](
+    def _estimate_angular_velocities_from(
         self,
         *,
-        heading_current: Array[Dims[K]],
-        heading_previous: Array[Dims[K]],
-    ) -> Array[Dims[K]]:
+        heading_current: Float[Array, " K"],
+        heading_previous: Float[Array, " K"],
+    ) -> Float[Array, " K"]:
         angular_velocities = (heading_current - heading_previous) / self.time_step_size
-
-        assert shape_of(
-            angular_velocities,
-            matches=(heading_current.shape[0],),
-            name="estimated angular velocities",
-        )
 
         return angular_velocities
 
@@ -1002,12 +914,8 @@ class NumPyKfUnicycleStateEstimator(
     def ekf(
         *,
         time_step_size: float,
-        process_noise_covariance: NumPyNoiseCovarianceDescription[
-            UnicycleEstimationD_x
-        ],
-        observation_noise_covariance: NumPyNoiseCovarianceDescription[
-            UnicycleObservationD_o
-        ],
+        process_noise_covariance: NumPyNoiseCovarianceDescription,
+        observation_noise_covariance: NumPyNoiseCovarianceDescription,
         initial_state_covariance: EstimationStateCovarianceArray | None = None,
     ) -> "NumPyKfUnicycleStateEstimator":
         """Creates an EKF state estimator for the unicycle model with the specified noise
@@ -1041,12 +949,8 @@ class NumPyKfUnicycleStateEstimator(
     def ukf(
         *,
         time_step_size: float,
-        process_noise_covariance: NumPyNoiseCovarianceDescription[
-            UnicycleEstimationD_x
-        ],
-        observation_noise_covariance: NumPyNoiseCovarianceDescription[
-            UnicycleObservationD_o
-        ],
+        process_noise_covariance: NumPyNoiseCovarianceDescription,
+        observation_noise_covariance: NumPyNoiseCovarianceDescription,
         initial_state_covariance: EstimationStateCovarianceArray | None = None,
     ) -> "NumPyKfUnicycleStateEstimator":
         """Creates a UKF state estimator for the unicycle model with the specified noise
@@ -1076,23 +980,20 @@ class NumPyKfUnicycleStateEstimator(
             estimator=NumPyUnscentedKalmanFilter.create(),
         )
 
-    def estimate_from[K: int, T: int = int](
-        self, history: NumPyUnicycleObstacleStatesHistory[T, K]
+    def estimate_from(
+        self, history: NumPyUnicycleObstacleStatesHistory
     ) -> EstimatedObstacleStates[
-        NumPyUnicycleObstacleStates[K],
-        NumPyUnicycleObstacleInputs[K],
-        NumPyUnicycleObstacleCovariances[K],
+        NumPyUnicycleObstacleStates,
+        NumPyUnicycleObstacleInputs,
+        NumPyUnicycleObstacleCovariances,
     ]:
-        estimate = cast(
-            UnicycleGaussianBelief[K],
-            self.estimator.filter(
-                self.model.observations_from(history),
-                initial_state_covariance=self.model.initial_state_covariance,
-                state_transition=self.model,
-                process_noise_covariance=self.process_noise_covariance,
-                observation_noise_covariance=self.observation_noise_covariance,
-                observation_matrix=self.model.observation_matrix,
-            ),
+        estimate = self.estimator.filter(
+            self.model.observations_from(history),
+            initial_state_covariance=self.model.initial_state_covariance,
+            state_transition=self.model,
+            process_noise_covariance=self.process_noise_covariance,
+            observation_noise_covariance=self.observation_noise_covariance,
+            observation_matrix=self.model.observation_matrix,
         )
 
         return EstimatedObstacleStates(
@@ -1102,14 +1003,14 @@ class NumPyKfUnicycleStateEstimator(
         )
 
 
-def simulate[T: int, N: int](
-    inputs: ControlInputBatchArray[T, N],
-    initial: StatesAtTimeStep[N],
+def simulate(
+    inputs: ControlInputBatchArray,
+    initial: StatesAtTimeStep,
     *,
     time_step_size: float,
     speed_limits: tuple[float, float],
     angular_velocity_limits: tuple[float, float],
-) -> StateBatchArray[T, N]:
+) -> StateBatchArray:
     horizon = inputs.shape[0]
     rollout_count = inputs.shape[2]
     states = np.zeros((horizon, UNICYCLE_D_X, rollout_count))
@@ -1125,21 +1026,17 @@ def simulate[T: int, N: int](
         )
         states[t] = current
 
-    assert shape_of(
-        states, matches=(horizon, UNICYCLE_D_X, rollout_count), name="simulated states"
-    )
-
     return states
 
 
-def step[M: int](
-    state: StatesAtTimeStep[M],
-    control: ControlInputsAtTimeStep[M],
+def step(
+    state: StatesAtTimeStep,
+    control: ControlInputsAtTimeStep,
     *,
     time_step_size: float,
     speed_limits: tuple[float, float],
     angular_velocity_limits: tuple[float, float],
-) -> StatesAtTimeStep[M]:
+) -> StatesAtTimeStep:
     x, y, theta = state[0], state[1], state[2]
     v, omega = control[0], control[1]
     linear_velocity = np.clip(v, *speed_limits)

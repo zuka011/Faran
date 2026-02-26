@@ -203,20 +203,16 @@ from faran.states import (
 class types:
     """Namespace of type aliases for states, controls, costs, and related domain types."""
 
-    type State[D_x: int = Any] = State[D_x]
-    type StateBatch[T: int = Any, D_x: int = Any, M: int = Any] = StateBatch[T, D_x, M]
-    type ControlInputSequence[T: int = Any, D_u: int = Any] = ControlInputSequence[
-        T, D_u
-    ]
-    type ControlInputBatch[T: int = Any, D_u: int = Any, M: int = Any] = (
-        ControlInputBatch[T, D_u, M]
-    )
-    type Costs[T: int = Any, M: int = Any] = Costs[T, M]
+    type State = State
+    type StateBatch = StateBatch
+    type ControlInputSequence = ControlInputSequence
+    type ControlInputBatch = ControlInputBatch
+    type Costs = Costs
     type CostFunction[InputBatchT, StateBatchT, CostsT] = CostFunction[
         InputBatchT, StateBatchT, CostsT
     ]
-    type Error[T: int = Any, M: int = Any] = Error[T, M]
-    type Risk[T: int = Any, M: int = Any] = Risk[T, M]
+    type Error = Error
+    type Risk = Risk
 
     type ContouringCost[InputBatchT, StateBatchT, ErrorT] = ContouringCost[
         InputBatchT, StateBatchT, ErrorT
@@ -235,12 +231,10 @@ class types:
         type D_u = BicycleD_u
         type State = BicycleState
         type StateSequence = BicycleStateSequence
-        type StateBatch[T: int = Any, M: int = Any] = BicycleStateBatch[T, M]
-        type Positions[T: int = Any, M: int = Any] = BicyclePositions[T, M]
-        type ControlInputSequence[T: int = Any] = BicycleControlInputSequence[T]
-        type ControlInputBatch[T: int = Any, M: int = Any] = BicycleControlInputBatch[
-            T, M
-        ]
+        type StateBatch = BicycleStateBatch
+        type Positions = BicyclePositions
+        type ControlInputSequence = BicycleControlInputSequence
+        type ControlInputBatch = BicycleControlInputBatch
 
         D_X: Final = BICYCLE_D_X
         D_U: Final = BICYCLE_D_U
@@ -250,12 +244,10 @@ class types:
         type D_u = UnicycleD_u
         type State = UnicycleState
         type StateSequence = UnicycleStateSequence
-        type StateBatch[T: int = Any, M: int = Any] = UnicycleStateBatch[T, M]
-        type Positions[T: int = Any, M: int = Any] = UnicyclePositions[T, M]
-        type ControlInputSequence[T: int = Any] = UnicycleControlInputSequence[T]
-        type ControlInputBatch[T: int = Any, M: int = Any] = UnicycleControlInputBatch[
-            T, M
-        ]
+        type StateBatch = UnicycleStateBatch
+        type Positions = UnicyclePositions
+        type ControlInputSequence = UnicycleControlInputSequence
+        type ControlInputBatch = UnicycleControlInputBatch
 
         D_X: Final = UNICYCLE_D_X
         D_U: Final = UNICYCLE_D_U
@@ -274,57 +266,34 @@ class types:
         control_input_batch: Final = AugmentedControlInputBatch
 
     class numpy:
-        type State[D_x: int = Any] = NumPyState[D_x]
-        type StateSequence[T: int = Any, D_x: int = Any] = NumPyStateSequence[T, D_x]
-        type StateBatch[T: int = Any, D_x: int = Any, M: int = Any] = NumPyStateBatch[
-            T, D_x, M
-        ]
-        type ControlInputSequence[T: int = Any, D_u: int = Any] = (
-            NumPyControlInputSequence[T, D_u]
-        )
-        type ControlInputBatch[T: int = Any, D_u: int = Any, M: int = Any] = (
-            NumPyControlInputBatch[T, D_u, M]
-        )
-        type Costs[T: int = Any, M: int = Any] = NumPyCosts[T, M]
-        type PathParameters[T: int = Any, M: int = Any] = NumPyPathParameters[T, M]
-        type ReferencePoints[T: int = Any, M: int = Any] = NumPyReferencePoints[T, M]
-        type Positions[T: int = Any, M: int = Any] = NumPyPositions[T, M]
-        type Headings[T: int = Any, M: int = Any] = NumPyHeadings[T, M]
-        type LateralPositions[T: int = Any, M: int = Any] = NumPyLateralPositions[T, M]
-        type LongitudinalPositions[T: int = Any, M: int = Any] = (
-            NumPyLongitudinalPositions[T, M]
-        )
-        type ObstacleIds[K: int = Any] = NumPyObstacleIds[K]
-        type SampledObstacleStates[
-            T: int = Any,
-            D_o: int = Any,
-            K: int = Any,
-            N: int = Any,
-        ] = NumPySampledObstacleStates[T, D_o, K, N]
-        type SampledObstaclePositions[T: int = Any, K: int = Any, N: int = Any] = (
-            NumPySampledObstaclePositions[T, K, N]
-        )
-        type SampledObstacleHeadings[T: int = Any, K: int = Any, N: int = Any] = (
-            NumPySampledObstacleHeadings[T, K, N]
-        )
+        type State = NumPyState
+        type StateSequence = NumPyStateSequence
+        type StateBatch = NumPyStateBatch
+        type ControlInputSequence = NumPyControlInputSequence
+        type ControlInputBatch = NumPyControlInputBatch
+        type Costs = NumPyCosts
+        type PathParameters = NumPyPathParameters
+        type ReferencePoints = NumPyReferencePoints
+        type Positions = NumPyPositions
+        type Headings = NumPyHeadings
+        type LateralPositions = NumPyLateralPositions
+        type LongitudinalPositions = NumPyLongitudinalPositions
+        type ObstacleIds = NumPyObstacleIds
+        type SampledObstacleStates = NumPySampledObstacleStates
+        type SampledObstaclePositions = NumPySampledObstaclePositions
+        type SampledObstacleHeadings = NumPySampledObstacleHeadings
         type SampledObstaclePositionExtractor[SampledStatesT] = (
             NumPySampledObstaclePositionExtractor[SampledStatesT]
         )
         type SampledObstacleHeadingExtractor[SampledStatesT] = (
             NumPySampledObstacleHeadingExtractor[SampledStatesT]
         )
-        type ObstacleStates[
-            T: int = Any,
-            D_o: int = Any,
-            K: int = Any,
-            SingleSampleT = Any,
-            ObstacleStatesForTimeStepT = Any,
-        ] = NumPyObstacleStates[T, D_o, K, SingleSampleT, ObstacleStatesForTimeStepT]
-        type ObstacleStatesForTimeStep[
-            D_o: int = Any,
-            K: int = Any,
-            ObstacleStatesT = Any,
-        ] = NumPyObstacleStatesForTimeStep[D_o, K, ObstacleStatesT]
+        type ObstacleStates[SingleSampleT = Any, ObstacleStatesForTimeStepT = Any] = (
+            NumPyObstacleStates[SingleSampleT, ObstacleStatesForTimeStepT]
+        )
+        type ObstacleStatesForTimeStep[ObstacleStatesT = Any] = (
+            NumPyObstacleStatesForTimeStep[ObstacleStatesT]
+        )
         type ObstaclePositionExtractor[
             ObstacleStatesForTimeStepT,
             ObstacleStatesT,
@@ -336,43 +305,22 @@ class types:
             PositionsForTimeStepT,
             PositionsT,
         ]
-        type SampledObstacle2dPoses[T: int = Any, K: int = Any, N: int = Any] = (
-            NumPySampledObstacle2dPoses[T, K, N]
-        )
-        type Obstacle2dPoses[T: int = Any, K: int = Any] = NumPyObstacle2dPoses[T, K]
-        type Obstacle2dPosesForTimeStep[K: int = Any] = NumPyObstacle2dPosesForTimeStep[
-            K
-        ]
-        type Obstacle2dPositions[T: int = Any, K: int = Any] = NumPyObstacle2dPositions[
-            T, K
-        ]
-        type Obstacle2dPositionsForTimeStep[K: int = Any] = (
-            NumPyObstacle2dPositionsForTimeStep[K]
-        )
-        type ObstacleHeadings[T: int = Any, K: int = Any] = NumPyObstacleHeadings[T, K]
-        type ObstacleHeadingsForTimeStep[K: int = Any] = (
-            NumPyObstacleHeadingsForTimeStep[K]
-        )
+        type SampledObstacle2dPoses = NumPySampledObstacle2dPoses
+        type Obstacle2dPoses = NumPyObstacle2dPoses
+        type Obstacle2dPosesForTimeStep = NumPyObstacle2dPosesForTimeStep
+        type Obstacle2dPositions = NumPyObstacle2dPositions
+        type Obstacle2dPositionsForTimeStep = NumPyObstacle2dPositionsForTimeStep
+        type ObstacleHeadings = NumPyObstacleHeadings
+        type ObstacleHeadingsForTimeStep = NumPyObstacleHeadingsForTimeStep
         type ObstacleStatesRunningHistory[
             StatesT,
             StatesForTimeStepT: NumPyObstacleStatesForTimeStep,
         ] = NumPyObstacleStatesRunningHistory[StatesT, StatesForTimeStepT]
-        type Distance[T: int = Any, V: int = Any, M: int = Any, N: int = Any] = (
-            NumPyDistance[T, V, M, N]
-        )
-        type BoundaryDistance[T: int = Any, M: int = Any] = NumPyBoundaryDistance[T, M]
-        type Risk[T: int = Any, M: int = Any] = NumPyRisk[T, M]
+        type Distance = NumPyDistance
+        type BoundaryDistance = NumPyBoundaryDistance
+        type Risk = NumPyRisk
 
-        type CostFunction[
-            T: int = Any,
-            D_u: int = Any,
-            D_x: int = Any,
-            M: int = Any,
-        ] = NumPyCostFunction[
-            NumPyControlInputBatch[T, D_u, M],
-            NumPyStateBatch[T, D_x, M],
-            NumPyCosts[T, M],
-        ]
+        type CostFunction = NumPyCostFunction
         type PathParameterExtractor[StateBatchT] = NumPyPathParameterExtractor[
             StateBatchT
         ]
@@ -409,32 +357,15 @@ class types:
         obstacle_states_running_history: Final = NumPyObstacleStatesRunningHistory
 
         class simple:
-            type State[D_x: int = Any] = NumPySimpleState[D_x]
-            type StateSequence[T: int = Any, D_x: int = Any] = NumPySimpleStateSequence[
-                T, D_x
-            ]
-            type StateBatch[T: int = Any, D_x: int = Any, M: int = Any] = (
-                NumPySimpleStateBatch[T, D_x, M]
-            )
-            type ControlInputSequence[T: int = Any, D_u: int = Any] = (
-                NumPySimpleControlInputSequence[T, D_u]
-            )
-            type ControlInputBatch[T: int = Any, D_u: int = Any, M: int = Any] = (
-                NumPySimpleControlInputBatch[T, D_u, M]
-            )
-            type Costs[T: int = Any, M: int = Any] = NumPySimpleCosts[T, M]
-            type SampledObstacleStates[
-                T: int = Any,
-                D_o: int = Any,
-                K: int = Any,
-                N: int = Any,
-            ] = NumPySimpleSampledObstacleStates[T, D_o, K, N]
-            type ObstacleStatesForTimeStep[D_o: int = Any, K: int = Any] = (
-                NumPySimpleObstacleStatesForTimeStep[D_o, K]
-            )
-            type ObstacleStates[T: int = Any, D_o: int = Any, K: int = Any] = (
-                NumPySimpleObstacleStates[T, D_o, K]
-            )
+            type State = NumPySimpleState
+            type StateSequence = NumPySimpleStateSequence
+            type StateBatch = NumPySimpleStateBatch
+            type ControlInputSequence = NumPySimpleControlInputSequence
+            type ControlInputBatch = NumPySimpleControlInputBatch
+            type Costs = NumPySimpleCosts
+            type SampledObstacleStates = NumPySimpleSampledObstacleStates
+            type ObstacleStatesForTimeStep = NumPySimpleObstacleStatesForTimeStep
+            type ObstacleStates = NumPySimpleObstacleStates
 
             state: Final = NumPySimpleState
             state_sequence: Final = NumPySimpleStateSequence
@@ -445,26 +376,18 @@ class types:
             obstacle_states: Final = NumPySimpleObstacleStates
 
         class integrator:
-            type ObstacleStateSequences[T: int = Any, D_o: int = Any, K: int = Any] = (
-                NumPyIntegratorObstacleStateSequences[T, D_o, K]
-            )
+            type ObstacleStateSequences = NumPyIntegratorObstacleStateSequences
 
         class bicycle:
             type State = NumPyBicycleState
-            type StateSequence[T: int = Any] = NumPyBicycleStateSequence[T]
-            type StateBatch[T: int = Any, M: int = Any] = NumPyBicycleStateBatch[T, M]
-            type Positions[T: int = Any, M: int = Any] = NumPyBicyclePositions[T, M]
-            type ControlInputSequence[T: int = Any] = NumPyBicycleControlInputSequence[
-                T
-            ]
-            type ControlInputBatch[T: int = Any, M: int = Any] = (
-                NumPyBicycleControlInputBatch[T, M]
-            )
-            type ObstacleStates[K: int = Any] = NumPyBicycleObstacleStates[K]
-            type ObstacleInputs[K: int = Any] = NumPyBicycleObstacleInputs[K]
-            type ObstacleStateSequences[T: int = Any, K: int = Any] = (
-                NumPyBicycleObstacleStateSequences[T, K]
-            )
+            type StateSequence = NumPyBicycleStateSequence
+            type StateBatch = NumPyBicycleStateBatch
+            type Positions = NumPyBicyclePositions
+            type ControlInputSequence = NumPyBicycleControlInputSequence
+            type ControlInputBatch = NumPyBicycleControlInputBatch
+            type ObstacleStates = NumPyBicycleObstacleStates
+            type ObstacleInputs = NumPyBicycleObstacleInputs
+            type ObstacleStateSequences = NumPyBicycleObstacleStateSequences
 
             state: Final = NumPyBicycleState
             state_sequence: Final = NumPyBicycleStateSequence
@@ -478,20 +401,14 @@ class types:
 
         class unicycle:
             type State = NumPyUnicycleState
-            type StateSequence[T: int = Any] = NumPyUnicycleStateSequence[T]
-            type StateBatch[T: int = Any, M: int = Any] = NumPyUnicycleStateBatch[T, M]
-            type Positions[T: int = Any, M: int = Any] = NumPyUnicyclePositions[T, M]
-            type ControlInputSequence[T: int = Any] = NumPyUnicycleControlInputSequence[
-                T
-            ]
-            type ControlInputBatch[T: int = Any, M: int = Any] = (
-                NumPyUnicycleControlInputBatch[T, M]
-            )
-            type ObstacleStates[K: int = Any] = NumPyUnicycleObstacleStates[K]
-            type ObstacleInputs[K: int = Any] = NumPyUnicycleObstacleInputs[K]
-            type ObstacleStateSequences[T: int = Any, K: int = Any] = (
-                NumPyUnicycleObstacleStateSequences[T, K]
-            )
+            type StateSequence = NumPyUnicycleStateSequence
+            type StateBatch = NumPyUnicycleStateBatch
+            type Positions = NumPyUnicyclePositions
+            type ControlInputSequence = NumPyUnicycleControlInputSequence
+            type ControlInputBatch = NumPyUnicycleControlInputBatch
+            type ObstacleStates = NumPyUnicycleObstacleStates
+            type ObstacleInputs = NumPyUnicycleObstacleInputs
+            type ObstacleStateSequences = NumPyUnicycleObstacleStateSequences
 
             state: Final = NumPyUnicycleState
             state_sequence: Final = NumPyUnicycleStateSequence
@@ -527,58 +444,34 @@ class types:
             control_input_batch: Final = NumPyAugmentedControlInputBatch
 
     class jax:
-        type State[D_x: int = Any] = JaxState[D_x]
-        type StateSequence[T: int = Any, D_x: int = Any] = JaxStateSequence[T, D_x]
-        type StateBatch[T: int = Any, D_x: int = Any, M: int = Any] = JaxStateBatch[
-            T, D_x, M
-        ]
-        type ControlInputSequence[T: int = Any, D_u: int = Any] = (
-            JaxControlInputSequence[T, D_u]
-        )
-        type ControlInputBatch[T: int = Any, D_u: int = Any, M: int = Any] = (
-            JaxControlInputBatch[T, D_u, M]
-        )
-        type Costs[T: int = Any, M: int = Any] = JaxCosts[T, M]
-        type PathParameters[T: int = Any, M: int = Any] = JaxPathParameters[T, M]
-        type ReferencePoints[T: int = Any, M: int = Any] = JaxReferencePoints[T, M]
-        type Positions[T: int = Any, M: int = Any] = JaxPositions[T, M]
-        type Headings[T: int = Any, M: int = Any] = JaxHeadings[T, M]
-        type LateralPositions[T: int = Any, M: int = Any] = JaxLateralPositions[T, M]
-        type LongitudinalPositions[T: int = Any, M: int = Any] = (
-            JaxLongitudinalPositions[T, M]
-        )
-        type ObstacleIds[K: int = Any] = JaxObstacleIds[K]
-        type SampledObstacleStates[
-            T: int = Any,
-            D_o: int = Any,
-            K: int = Any,
-            N: int = Any,
-        ] = JaxSampledObstacleStates[T, D_o, K, N]
-        type SampledObstaclePositions[T: int = Any, K: int = Any, N: int = Any] = (
-            JaxSampledObstaclePositions[T, K, N]
-        )
-        type SampledObstacleHeadings[T: int = Any, K: int = Any, N: int = Any] = (
-            JaxSampledObstacleHeadings[T, K, N]
-        )
+        type State = JaxState
+        type StateSequence = JaxStateSequence
+        type StateBatch = JaxStateBatch
+        type ControlInputSequence = JaxControlInputSequence
+        type ControlInputBatch = JaxControlInputBatch
+        type Costs = JaxCosts
+        type PathParameters = JaxPathParameters
+        type ReferencePoints = JaxReferencePoints
+        type Positions = JaxPositions
+        type Headings = JaxHeadings
+        type LateralPositions = JaxLateralPositions
+        type LongitudinalPositions = JaxLongitudinalPositions
+        type ObstacleIds = JaxObstacleIds
+        type SampledObstacleStates = JaxSampledObstacleStates
+        type SampledObstaclePositions = JaxSampledObstaclePositions
+        type SampledObstacleHeadings = JaxSampledObstacleHeadings
         type SampledObstaclePositionExtractor[SampledStatesT] = (
             JaxSampledObstaclePositionExtractor[SampledStatesT]
         )
         type SampledObstacleHeadingExtractor[SampledStatesT] = (
             JaxSampledObstacleHeadingExtractor[SampledStatesT]
         )
-        type ObstacleStates[
-            T: int = Any,
-            D_o: int = Any,
-            K: int = Any,
-            SingleSampleT = Any,
-            ObstacleStatesForTimeStepT = Any,
-        ] = JaxObstacleStates[T, D_o, K, SingleSampleT, ObstacleStatesForTimeStepT]
-        type ObstacleStatesForTimeStep[
-            D_o: int = Any,
-            K: int = Any,
-            ObstacleStatesT = Any,
-            NumPyT = Any,
-        ] = JaxObstacleStatesForTimeStep[D_o, K, ObstacleStatesT, NumPyT]
+        type ObstacleStates[SingleSampleT = Any, ObstacleStatesForTimeStepT = Any] = (
+            JaxObstacleStates[SingleSampleT, ObstacleStatesForTimeStepT]
+        )
+        type ObstacleStatesForTimeStep[ObstacleStatesT = Any, NumPyT = Any] = (
+            JaxObstacleStatesForTimeStep[ObstacleStatesT, NumPyT]
+        )
         type ObstaclePositionExtractor[
             ObstacleStatesForTimeStepT,
             ObstacleStatesT,
@@ -590,39 +483,22 @@ class types:
             PositionsForTimeStepT,
             PositionsT,
         ]
-        type SampledObstacle2dPoses[T: int = Any, K: int = Any, N: int = Any] = (
-            JaxSampledObstacle2dPoses[T, K, N]
-        )
-        type Obstacle2dPoses[T: int = Any, K: int = Any] = JaxObstacle2dPoses[T, K]
-        type Obstacle2dPosesForTimeStep[K: int = Any] = JaxObstacle2dPosesForTimeStep[K]
-        type Obstacle2dPositions[T: int = Any, K: int = Any] = JaxObstacle2dPositions[
-            T, K
-        ]
-        type Obstacle2dPositionsForTimeStep[K: int = Any] = (
-            JaxObstacle2dPositionsForTimeStep[K]
-        )
-        type ObstacleHeadings[T: int = Any, K: int = Any] = JaxObstacleHeadings[T, K]
-        type ObstacleHeadingsForTimeStep[K: int = Any] = JaxObstacleHeadingsForTimeStep[
-            K
-        ]
+        type SampledObstacle2dPoses = JaxSampledObstacle2dPoses
+        type Obstacle2dPoses = JaxObstacle2dPoses
+        type Obstacle2dPosesForTimeStep = JaxObstacle2dPosesForTimeStep
+        type Obstacle2dPositions = JaxObstacle2dPositions
+        type Obstacle2dPositionsForTimeStep = JaxObstacle2dPositionsForTimeStep
+        type ObstacleHeadings = JaxObstacleHeadings
+        type ObstacleHeadingsForTimeStep = JaxObstacleHeadingsForTimeStep
         type ObstacleStatesRunningHistory[
             StatesT: JaxObstacleStates,
             StatesForTimeStepT: JaxObstacleStatesForTimeStep,
         ] = JaxObstacleStatesRunningHistory[StatesT, StatesForTimeStepT]
-        type Distance[T: int = Any, V: int = Any, M: int = Any, N: int = Any] = (
-            JaxDistance[T, V, M, N]
-        )
-        type BoundaryDistance[T: int = Any, M: int = Any] = JaxBoundaryDistance[T, M]
-        type Risk[T: int = Any, M: int = Any] = JaxRisk[T, M]
+        type Distance = JaxDistance
+        type BoundaryDistance = JaxBoundaryDistance
+        type Risk = JaxRisk
 
-        type CostFunction[
-            T: int = Any,
-            D_u: int = Any,
-            D_x: int = Any,
-            M: int = Any,
-        ] = JaxCostFunction[
-            JaxControlInputBatch[T, D_u, M], JaxStateBatch[T, D_x, M], JaxCosts[T, M]
-        ]
+        type CostFunction = JaxCostFunction
         type PathParameterExtractor[StateBatchT] = JaxPathParameterExtractor[
             StateBatchT
         ]
@@ -657,32 +533,15 @@ class types:
         obstacle_states_running_history: Final = JaxObstacleStatesRunningHistory
 
         class simple:
-            type State[D_x: int = Any] = JaxSimpleState[D_x]
-            type StateSequence[T: int = Any, D_x: int = Any] = JaxSimpleStateSequence[
-                T, D_x
-            ]
-            type StateBatch[T: int = Any, D_x: int = Any, M: int = Any] = (
-                JaxSimpleStateBatch[T, D_x, M]
-            )
-            type ControlInputSequence[T: int = Any, D_u: int = Any] = (
-                JaxSimpleControlInputSequence[T, D_u]
-            )
-            type ControlInputBatch[T: int = Any, D_u: int = Any, M: int = Any] = (
-                JaxSimpleControlInputBatch[T, D_u, M]
-            )
-            type Costs[T: int = Any, M: int = Any] = JaxSimpleCosts[T, M]
-            type SampledObstacleStates[
-                T: int = Any,
-                D_o: int = Any,
-                K: int = Any,
-                N: int = Any,
-            ] = JaxSimpleSampledObstacleStates[T, D_o, K, N]
-            type ObstacleStatesForTimeStep[D_o: int = Any, K: int = Any] = (
-                JaxSimpleObstacleStatesForTimeStep[D_o, K]
-            )
-            type ObstacleStates[T: int = Any, D_o: int = Any, K: int = Any] = (
-                JaxSimpleObstacleStates[T, D_o, K]
-            )
+            type State = JaxSimpleState
+            type StateSequence = JaxSimpleStateSequence
+            type StateBatch = JaxSimpleStateBatch
+            type ControlInputSequence = JaxSimpleControlInputSequence
+            type ControlInputBatch = JaxSimpleControlInputBatch
+            type Costs = JaxSimpleCosts
+            type SampledObstacleStates = JaxSimpleSampledObstacleStates
+            type ObstacleStatesForTimeStep = JaxSimpleObstacleStatesForTimeStep
+            type ObstacleStates = JaxSimpleObstacleStates
 
             state: Final = JaxSimpleState
             state_sequence: Final = JaxSimpleStateSequence
@@ -693,24 +552,18 @@ class types:
             obstacle_states: Final = JaxSimpleObstacleStates
 
         class integrator:
-            type ObstacleStateSequences[T: int = Any, D_o: int = Any, K: int = Any] = (
-                JaxIntegratorObstacleStateSequences[T, D_o, K]
-            )
+            type ObstacleStateSequences = JaxIntegratorObstacleStateSequences
 
         class bicycle:
             type State = JaxBicycleState
-            type StateSequence[T: int = Any] = JaxBicycleStateSequence[T]
-            type StateBatch[T: int = Any, M: int = Any] = JaxBicycleStateBatch[T, M]
-            type Positions[T: int = Any, M: int = Any] = JaxBicyclePositions[T, M]
-            type ControlInputSequence[T: int = Any] = JaxBicycleControlInputSequence[T]
-            type ControlInputBatch[T: int = Any, M: int = Any] = (
-                JaxBicycleControlInputBatch[T, M]
-            )
-            type ObstacleStates[K: int = Any] = JaxBicycleObstacleStates[K]
-            type ObstacleInputs[K: int = Any] = JaxBicycleObstacleInputs[K]
-            type ObstacleStateSequences[T: int = Any, K: int = Any] = (
-                JaxBicycleObstacleStateSequences[T, K]
-            )
+            type StateSequence = JaxBicycleStateSequence
+            type StateBatch = JaxBicycleStateBatch
+            type Positions = JaxBicyclePositions
+            type ControlInputSequence = JaxBicycleControlInputSequence
+            type ControlInputBatch = JaxBicycleControlInputBatch
+            type ObstacleStates = JaxBicycleObstacleStates
+            type ObstacleInputs = JaxBicycleObstacleInputs
+            type ObstacleStateSequences = JaxBicycleObstacleStateSequences
 
             state: Final = JaxBicycleState
             state_sequence: Final = JaxBicycleStateSequence
@@ -724,18 +577,14 @@ class types:
 
         class unicycle:
             type State = JaxUnicycleState
-            type StateSequence[T: int = Any] = JaxUnicycleStateSequence[T]
-            type StateBatch[T: int = Any, M: int = Any] = JaxUnicycleStateBatch[T, M]
-            type Positions[T: int = Any, M: int = Any] = JaxUnicyclePositions[T, M]
-            type ControlInputSequence[T: int = Any] = JaxUnicycleControlInputSequence[T]
-            type ControlInputBatch[T: int = Any, M: int = Any] = (
-                JaxUnicycleControlInputBatch[T, M]
-            )
-            type ObstacleStates[K: int = Any] = JaxUnicycleObstacleStates[K]
-            type ObstacleInputs[K: int = Any] = JaxUnicycleObstacleInputs[K]
-            type ObstacleStateSequences[T: int = Any, K: int = Any] = (
-                JaxUnicycleObstacleStateSequences[T, K]
-            )
+            type StateSequence = JaxUnicycleStateSequence
+            type StateBatch = JaxUnicycleStateBatch
+            type Positions = JaxUnicyclePositions
+            type ControlInputSequence = JaxUnicycleControlInputSequence
+            type ControlInputBatch = JaxUnicycleControlInputBatch
+            type ObstacleStates = JaxUnicycleObstacleStates
+            type ObstacleInputs = JaxUnicycleObstacleInputs
+            type ObstacleStateSequences = JaxUnicycleObstacleStateSequences
 
             state: Final = JaxUnicycleState
             state_sequence: Final = JaxUnicycleStateSequence

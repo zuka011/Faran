@@ -31,3 +31,6 @@ site/
 
 # Generated notebooks
 notebooks/*.ipynb
+
+# Agent Files
+CODEBASE.md

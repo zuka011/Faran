@@ -57,9 +57,9 @@ class JaxLineTrajectory(
             _path_length=jnp.array(path_length),
         )
 
-    def query[T: int, M: int](
-        self, parameters: JaxPathParameters[T, M] | NumPyPathParameters[T, M]
-    ) -> JaxReferencePoints[T, M]:
+    def query(
+        self, parameters: JaxPathParameters | NumPyPathParameters
+    ) -> JaxReferencePoints:
         return JaxReferencePoints(
             query(
                 parameters=jnp.asarray(parameters.array),
@@ -70,9 +70,7 @@ class JaxLineTrajectory(
             )
         )
 
-    def lateral[T: int, M: int](
-        self, positions: JaxPositions[T, M]
-    ) -> JaxLateralPositions[T, M]:
+    def lateral(self, positions: JaxPositions) -> JaxLateralPositions:
         return JaxLateralPositions(
             lateral(
                 positions=positions.array,
@@ -81,9 +79,7 @@ class JaxLineTrajectory(
             )
         )
 
-    def longitudinal[T: int, M: int](
-        self, positions: JaxPositions[T, M]
-    ) -> JaxLongitudinalPositions[T, M]:
+    def longitudinal(self, positions: JaxPositions) -> JaxLongitudinalPositions:
         return JaxLongitudinalPositions(
             longitudinal(
                 positions=positions.array,
@@ -94,9 +90,7 @@ class JaxLineTrajectory(
             )
         )
 
-    def normal[T: int, M: int](
-        self, parameters: JaxPathParameters[T, M] | NumPyPathParameters[T, M]
-    ) -> JaxNormals[T, M]:
+    def normal(self, parameters: JaxPathParameters | NumPyPathParameters) -> JaxNormals:
         T, M = parameters.horizon, parameters.rollout_count
 
         x = jnp.full((T, M), self.perpendicular[0])

@@ -1,9 +1,9 @@
 from typing import Protocol, Self, Any
 from dataclasses import dataclass
 
-from faran.types.array import DataType
+from faran.types.array import Array, DataType
 
-from numtypes import Array, IndexArray, Dims
+from jaxtyping import Float, Int
 
 
 @dataclass(kw_only=True, frozen=True)
@@ -13,10 +13,8 @@ class EstimatedObstacleStates[StatesT, InputsT, CovarianceT]:
     covariance: CovarianceT | None
 
 
-class ObstacleStatesHistory[T: int, D_o: int, K: int, ObstacleStatesForTimeStepT = Any](
-    Protocol
-):
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[T, D_o, K]]:
+class ObstacleStatesHistory[ObstacleStatesForTimeStepT = Any](Protocol):
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "T D_o K"]:
         """Returns the obstacle history as a NumPy array."""
         ...
 
@@ -25,28 +23,28 @@ class ObstacleStatesHistory[T: int, D_o: int, K: int, ObstacleStatesForTimeStepT
         ...
 
     @property
-    def horizon(self) -> T:
+    def horizon(self) -> int:
         """The time horizon of the obstacle history."""
         ...
 
     @property
-    def dimension(self) -> D_o:
+    def dimension(self) -> int:
         """The dimension of the obstacle states."""
         ...
 
     @property
-    def count(self) -> K:
+    def count(self) -> int:
         """The number of obstacles."""
         ...
 
 
-class ObstacleIds[K: int](Protocol):
-    def __array__(self, dtype: DataType | None = None) -> IndexArray[Dims[K]]:
+class ObstacleIds(Protocol):
+    def __array__(self, dtype: DataType | None = None) -> Int[Array, " K"]:
         """Returns the obstacle IDs as a NumPy array."""
         ...
 
     @property
-    def count(self) -> K:
+    def count(self) -> int:
         """The number of obstacles."""
         ...
 

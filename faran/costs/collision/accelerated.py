@@ -4,6 +4,7 @@ from functools import cached_property
 
 from faran.types import (
     jaxtyped,
+    Array,
     DataType,
     Distance,
     ControlInputBatch,
@@ -21,7 +22,6 @@ from faran.types import (
 from faran.states import JaxSimpleCosts
 
 from jaxtyping import Array as JaxArray, Float, Scalar
-from numtypes import Array, Dims, D
 
 import numpy as np
 import jax
@@ -30,43 +30,43 @@ import jax.numpy as jnp
 
 @jaxtyped
 @dataclass(frozen=True)
-class JaxDistance[T: int, V: int, M: int, N: int](Distance[T, V, M, N]):
+class JaxDistance(Distance):
     """Pairwise distances between V vehicle parts and N obstacle samples over T time steps and M rollouts."""
 
     _array: Float[JaxArray, "T V M N"]
 
     @staticmethod
-    def create[T_: int, V_: int, M_: int, N_: int](
-        *, array: Array[Dims[T_, V_, M_, N_]] | Float[JaxArray, "T V M N"]
-    ) -> "JaxDistance[T_, V_, M_, N_]":
+    def create(
+        *, array: Float[Array, "T V M N"] | Float[JaxArray, "T V M N"]
+    ) -> "JaxDistance":
         """Creates a JAX distance from the given array."""
         return JaxDistance(jnp.asarray(array))
 
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[T, V, M, N]]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "T V M N"]:
         return self._numpy_array
 
     @property
-    def horizon(self) -> T:
-        return cast(T, self._array.shape[0])
+    def horizon(self) -> int:
+        return self._array.shape[0]
 
     @property
-    def vehicle_parts(self) -> V:
-        return cast(V, self._array.shape[1])
+    def vehicle_parts(self) -> int:
+        return self._array.shape[1]
 
     @property
-    def rollout_count(self) -> M:
-        return cast(M, self._array.shape[2])
+    def rollout_count(self) -> int:
+        return self._array.shape[2]
 
     @property
-    def sample_count(self) -> N:
-        return cast(N, self._array.shape[3])
+    def sample_count(self) -> int:
+        return self._array.shape[3]
 
     @property
     def array(self) -> Float[JaxArray, "T V M N"]:
         return self._array
 
     @cached_property
-    def _numpy_array(self) -> Array[Dims[T, V, M, N]]:
+    def _numpy_array(self) -> Float[Array, "T V M N"]:
         return np.asarray(self._array)
 
 
@@ -101,27 +101,26 @@ class JaxCollisionCost[
     ObstacleStatesT: ObstacleStates,
     SampledObstacleStatesT,
     DistanceT: JaxDistance,
-    V: int,
 ](CostFunction[ControlInputBatch, StateT, JaxCosts]):
     """Collision avoidance cost based on distance thresholds to sampled obstacle positions."""
 
     obstacle_states: JaxObstacleStateProvider[ObstacleStatesT]
     sampler: JaxObstacleStateSampler[ObstacleStatesT, SampledObstacleStatesT]
     distance: JaxDistanceExtractor[StateT, SampledObstacleStatesT, DistanceT]
-    distance_threshold: Float[JaxArray, "V"]
+    distance_threshold: Float[JaxArray, " V"]
     weight: float
     metric: JaxRiskMetric[StateT, ObstacleStatesT, SampledObstacleStatesT]
 
     @staticmethod
-    def create[S, OS: ObstacleStates, SOS, D: JaxDistance, V_: int](
+    def create[S, OS: ObstacleStates, SOS, D: JaxDistance](
         *,
         obstacle_states: JaxObstacleStateProvider[OS],
         sampler: JaxObstacleStateSampler[OS, SOS],
         distance: JaxDistanceExtractor[S, SOS, D],
-        distance_threshold: Array[Dims[V_]],
+        distance_threshold: Float[Array, " V"],
         weight: float,
         metric: JaxRiskMetric[S, OS, SOS] | None = None,
-    ) -> "JaxCollisionCost[S, OS, SOS, D, V_]":
+    ) -> "JaxCollisionCost[S, OS, SOS, D]":
         return JaxCollisionCost(
             obstacle_states=obstacle_states,
             sampler=sampler,
@@ -133,9 +132,7 @@ class JaxCollisionCost[
             else cast(JaxRiskMetric[S, OS, SOS], JaxNoMetric()),
         )
 
-    def __call__[T: int, M: int](
-        self, *, inputs: ControlInputBatch[T, int, M], states: StateT
-    ) -> JaxCosts[T, M]:
+    def __call__(self, *, inputs: ControlInputBatch, states: StateT) -> JaxCosts:
         def cost(
             *, states: StateT, samples: SampledObstacleStatesT
         ) -> Float[JaxArray, "T M N"]:
@@ -162,7 +159,7 @@ class JaxCollisionCost[
 def collision_cost(
     *,
     distance: Float[JaxArray, "T V M N"],
-    distance_threshold: Float[JaxArray, "V"],
+    distance_threshold: Float[JaxArray, " V"],
     weight: Scalar,
 ) -> Float[JaxArray, "T M N"]:
     cost = distance_threshold[jnp.newaxis, :, jnp.newaxis, jnp.newaxis] - distance

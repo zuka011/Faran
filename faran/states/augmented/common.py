@@ -193,5 +193,5 @@ class extract:
         return lambda it: extract(it.physical)
 
     @staticmethod
-    def from_virtual[R, V](extract: Callable[[V], R]) -> Callable[[HasVirtual[V]], R]:
+    def from_virtual[R, V](extract: Callable[[V], R]) -> Callable[[HasVirtual], R]:
         return lambda it: extract(it.virtual)

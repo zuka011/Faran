@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 
 from faran.types import (
+    jaxtyped,
+    Array,
     DataType,
     ObstacleIdAssignment,
     ObstacleStatesForTimeStep,
@@ -22,7 +24,7 @@ from faran.obstacles.history.accelerated import JaxObstacleIds
 from faran.obstacles.history.basic import NumPyObstacleIds
 from faran.obstacles.assignment.basic import NumPyHungarianObstacleIdAssignment
 
-from numtypes import Array, Dims
+from jaxtyping import Float
 
 import numpy as np
 import jax.numpy as jnp
@@ -40,107 +42,103 @@ type JaxOrientationsExtractor[StatesT, HistoryT] = JaxObstacleOrientationExtract
 ]
 
 
+@jaxtyped
 @dataclass(frozen=True)
-class NumPyAdaptedObstaclePositionsForTimeStep[D_p: int, K: int](
-    NumPyObstaclePositionsForTimeStep[D_p, K]
-):
+class NumPyAdaptedObstaclePositionsForTimeStep(NumPyObstaclePositionsForTimeStep):
     """Adapts JAX obstacle positions to NumPy for a single time step."""
 
-    _array: Array[Dims[D_p, K]]
+    _array: Float[Array, "D_p K"]
 
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[D_p, K]]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "D_p K"]:
         return self.array
 
     @property
-    def dimension(self) -> D_p:
+    def dimension(self) -> int:
         return self.array.shape[0]
 
     @property
-    def count(self) -> K:
+    def count(self) -> int:
         return self.array.shape[1]
 
     @property
-    def array(self) -> Array[Dims[D_p, K]]:
+    def array(self) -> Float[Array, "D_p K"]:
         return self._array
 
 
+@jaxtyped
 @dataclass(frozen=True)
-class NumPyAdaptedObstaclePositions[T: int, D_p: int, K: int](
-    NumPyObstaclePositions[T, D_p, K]
-):
+class NumPyAdaptedObstaclePositions(NumPyObstaclePositions):
     """Adapts JAX obstacle positions to NumPy across time steps."""
 
-    _array: Array[Dims[T, D_p, K]]
+    _array: Float[Array, "T D_p K"]
 
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[T, D_p, K]]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "T D_p K"]:
         return self.array
 
     @property
-    def horizon(self) -> T:
+    def horizon(self) -> int:
         return self.array.shape[0]
 
     @property
-    def dimension(self) -> D_p:
+    def dimension(self) -> int:
         return self.array.shape[1]
 
     @property
-    def count(self) -> K:
+    def count(self) -> int:
         return self.array.shape[2]
 
     @property
-    def array(self) -> Array[Dims[T, D_p, K]]:
+    def array(self) -> Float[Array, "T D_p K"]:
         return self._array
 
 
+@jaxtyped
 @dataclass(frozen=True)
-class NumPyAdaptedObstacleOrientationsForTimeStep[D_o: int, K: int](
-    NumPyObstacleOrientationsForTimeStep[D_o, K]
-):
+class NumPyAdaptedObstacleOrientationsForTimeStep(NumPyObstacleOrientationsForTimeStep):
     """Adapts JAX obstacle orientations to NumPy for a single time step."""
 
-    _array: Array[Dims[D_o, K]]
+    _array: Float[Array, "D_o K"]
 
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[D_o, K]]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "D_o K"]:
         return self.array
 
     @property
-    def dimension(self) -> D_o:
+    def dimension(self) -> int:
         return self.array.shape[0]
 
     @property
-    def count(self) -> K:
+    def count(self) -> int:
         return self.array.shape[1]
 
     @property
-    def array(self) -> Array[Dims[D_o, K]]:
+    def array(self) -> Float[Array, "D_o K"]:
         return self._array
 
 
+@jaxtyped
 @dataclass(frozen=True)
-class NumPyAdaptedObstacleOrientations[T: int, D_o: int, K: int](
-    NumPyObstacleOrientations[T, D_o, K]
-):
+class NumPyAdaptedObstacleOrientations(NumPyObstacleOrientations):
     """Adapts JAX obstacle orientations to NumPy across time steps."""
 
-    _array: Array[Dims[T, D_o, K]]
+    _array: Float[Array, "T D_o K"]
 
-    def __array__(self, dtype: DataType | None = None) -> Array[Dims[T, D_o, K]]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "T D_o K"]:
         return self.array
 
     @property
-    def horizon(self) -> T:
+    def horizon(self) -> int:
         return self.array.shape[0]
 
     @property
-    def dimension(self) -> D_o:
+    def dimension(self) -> int:
         return self.array.shape[1]
 
     @property
-    def count(self) -> K:
+    def count(self) -> int:
         return self.array.shape[2]
 
     @property
-    def array(self) -> Array[Dims[T, D_o, K]]:
+    def array(self) -> Float[Array, "T D_o K"]:
         return self._array
 
 
