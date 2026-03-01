@@ -22,6 +22,7 @@ from .mppi import (
     NumPyMppi as NumPyMppi,
     JaxMppi as JaxMppi,
 )
+from .mpcc import MpccMppiSetup as MpccMppiSetup
 from .models import (
     model as model,
 )

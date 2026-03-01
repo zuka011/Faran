@@ -161,7 +161,7 @@ class NumPyMpccMppi:
         planning_interval: int = 1,
         model: NumPyDynamicalModel[S, SS, SB, CS, CB],
         sampler: NumPySampler[CS, CB],
-        costs: tuple[NumPyMpccCostFunction[CB, SB, C], ...],
+        costs: tuple[NumPyMpccCostFunction[CB, SB, C], ...] = (),
         reference: Trajectory[NumPyPathParameters, NumPyReferencePoints],
         position_extractor: NumPyPositionExtractor[NumPyMpccAugmentedStateBatch[SB]],
         config: NumPyMpccConfig.Partial | None = None,

@@ -164,7 +164,7 @@ class JaxMpccMppi:
         planning_interval: int = 1,
         model: JaxDynamicalModel[S, SS, SB, CS, CB],
         sampler: JaxSampler[CS, CB],
-        costs: tuple[JaxMpccCostFunction[CB, SB, C], ...],
+        costs: tuple[JaxMpccCostFunction[CB, SB, C], ...] = (),
         reference: Trajectory[JaxPathParameters, JaxReferencePoints],
         position_extractor: JaxPositionExtractor[JaxMpccAugmentedStateBatch[SB]],
         config: JaxMpccConfig.Partial | None = None,
