@@ -1,3 +1,4 @@
+from typing import Protocol
 from dataclasses import dataclass
 from functools import cached_property
 
@@ -34,16 +35,25 @@ class NumPyPathParameters(PathParameters):
         return self.array.shape[1]
 
 
+class NumPyPositions(Positions, Protocol):
+    @property
+    def array(self) -> Float[Array, "T 2 M"]:
+        """Returns the positions as a NumPy array."""
+        ...
+
+
 @jaxtyped
 @dataclass(frozen=True)
-class NumPyPositions(Positions):
+class NumPySimplePositions(NumPyPositions):
     _x: Float[Array, "T M"]
     _y: Float[Array, "T M"]
 
     @staticmethod
-    def create(*, x: Float[Array, "T M"], y: Float[Array, "T M"]) -> "NumPyPositions":
+    def create(
+        *, x: Float[Array, "T M"], y: Float[Array, "T M"]
+    ) -> "NumPySimplePositions":
         """Creates a NumPy positions instance from x and y coordinate arrays."""
-        return NumPyPositions(_x=x, _y=y)
+        return NumPySimplePositions(_x=x, _y=y)
 
     def __array__(self) -> Float[Array, "T 2 M"]:
         return self.array

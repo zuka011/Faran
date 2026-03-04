@@ -276,6 +276,18 @@ class JaxBicyclePositions(BicyclePositions):
     def y_array(self) -> Float[JaxArray, "T M"]:
         return self.batch.array[:, 1, :]
 
+    @property
+    def array(self) -> Float[JaxArray, "T 2 M"]:
+        return self.batch.array[:, :2, :]
+
+    @property
+    def horizon(self) -> int:
+        return self.batch.horizon
+
+    @property
+    def rollout_count(self) -> int:
+        return self.batch.rollout_count
+
 
 @jaxtyped
 @dataclass(frozen=True)

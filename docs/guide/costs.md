@@ -26,7 +26,9 @@ $$
 contouring = costs.tracking.contouring(
     reference=reference,
     path_parameter_extractor=extract.from_virtual(path_parameter),
-    position_extractor=extract.from_physical(position),
+    position_extractor=extract.from_physical(
+        lambda states: states.positions
+    ),
     weight=50.0,
 )
 ```
@@ -43,7 +45,9 @@ $$
 lag = costs.tracking.lag(
     reference=reference,
     path_parameter_extractor=extract.from_virtual(path_parameter),
-    position_extractor=extract.from_physical(position),
+    position_extractor=extract.from_physical(
+        lambda states: states.positions
+    ),
     weight=100.0,
 )
 ```

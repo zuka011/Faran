@@ -95,11 +95,11 @@ Extractors decouple cost functions from specific state representations. A cost f
 This lets you reuse the same cost function implementation with different models:
 
 ```python
-from faran.numpy import extract, types
+from faran.numpy import extract
 
 # For augmented states: extract position from the physical sub-state
 position_extractor = extract.from_physical(
-    lambda states: types.positions(x=states.positions.x(), y=states.positions.y())
+    lambda states: states.positions
 )
 ```
 

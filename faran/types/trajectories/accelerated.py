@@ -1,4 +1,4 @@
-from typing import overload
+from typing import Protocol, overload
 from dataclasses import dataclass
 from functools import cached_property
 
@@ -53,37 +53,62 @@ class JaxPathParameters(PathParameters):
         return self.array.shape[1]
 
 
+class JaxPositions(Positions, Protocol):
+    @property
+    def x_array(self) -> Float[JaxArray, "T M"]:
+        """Returns the x coordinates as a JAX array."""
+        ...
+
+    @property
+    def y_array(self) -> Float[JaxArray, "T M"]:
+        """Returns the y coordinates as a JAX array."""
+        ...
+
+    @property
+    def array(self) -> Float[JaxArray, "T 2 M"]:
+        """Returns the positions as a JAX array."""
+        ...
+
+
 @jaxtyped
 @dataclass(frozen=True)
-class JaxPositions(Positions):
-    x_array: Float[JaxArray, "T M"]
-    y_array: Float[JaxArray, "T M"]
+class JaxSimplePositions(JaxPositions):
+    _x_array: Float[JaxArray, "T M"]
+    _y_array: Float[JaxArray, "T M"]
 
     @staticmethod
     def create(
         *,
         x: Float[JaxArray, "T M"] | Float[Array, "T M"],
         y: Float[JaxArray, "T M"] | Float[Array, "T M"],
-    ) -> "JaxPositions":
+    ) -> "JaxSimplePositions":
         """Creates a JAX positions instance from x and y coordinate arrays."""
-        return JaxPositions(x_array=jnp.asarray(x), y_array=jnp.asarray(y))
+        return JaxSimplePositions(_x_array=jnp.asarray(x), _y_array=jnp.asarray(y))
 
     def __array__(self) -> Float[Array, "T 2 M"]:
         return self._numpy_array
 
     def x(self) -> Float[Array, "T M"]:
-        return np.asarray(self.x_array)
+        return np.asarray(self._x_array)
 
     def y(self) -> Float[Array, "T M"]:
-        return np.asarray(self.y_array)
+        return np.asarray(self._y_array)
+
+    @property
+    def x_array(self) -> Float[JaxArray, "T M"]:
+        return self._x_array
+
+    @property
+    def y_array(self) -> Float[JaxArray, "T M"]:
+        return self._y_array
 
     @property
     def horizon(self) -> int:
-        return self.x_array.shape[0]
+        return self._x_array.shape[0]
 
     @property
     def rollout_count(self) -> int:
-        return self.x_array.shape[1]
+        return self._x_array.shape[1]
 
     @property
     def array(self) -> Float[JaxArray, "T 2 M"]:
@@ -91,11 +116,11 @@ class JaxPositions(Positions):
 
     @cached_property
     def _array(self) -> Float[JaxArray, "T 2 M"]:
-        return jnp.stack([self.x_array, self.y_array], axis=1)
+        return jnp.stack([self._x_array, self._y_array], axis=1)
 
     @cached_property
     def _numpy_array(self) -> Float[Array, "T 2 M"]:
-        return np.asarray(jnp.stack([self.x_array, self.y_array], axis=1))
+        return np.asarray(self._array)
 
 
 @jaxtyped

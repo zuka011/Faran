@@ -33,7 +33,9 @@ distance_extractor = distance.circles(
         origins=array([[0.0, 0.0]], shape=(1, 2)),
         radii=array([1.0], shape=(1,)),
     ),
-    position_extractor=extract.from_physical(position),
+    position_extractor=extract.from_physical(
+        lambda states: states.positions
+    ),
     heading_extractor=extract.from_physical(heading),
     obstacle_position_extractor=obstacles.pose_position_extractor,
     obstacle_heading_extractor=obstacles.pose_heading_extractor,
@@ -52,7 +54,9 @@ from faran import ConvexPolygon
 distance_extractor = distance.sat(
     ego=ConvexPolygon.rectangle(length=2.5, width=1.2),
     obstacle=ConvexPolygon.rectangle(length=2.5, width=1.2),
-    position_extractor=extract.from_physical(position),
+    position_extractor=extract.from_physical(
+        lambda states: states.positions
+    ),
     heading_extractor=extract.from_physical(heading),
     obstacle_position_extractor=obstacles.pose_position_extractor,
     obstacle_heading_extractor=obstacles.pose_heading_extractor,

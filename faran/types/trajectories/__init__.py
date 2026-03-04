@@ -11,6 +11,7 @@ from .common import (
 )
 from .basic import (
     NumPyPositions as NumPyPositions,
+    NumPySimplePositions as NumPySimplePositions,
     NumPyHeadings as NumPyHeadings,
     NumPyPathParameters as NumPyPathParameters,
     NumPyReferencePoints as NumPyReferencePoints,
@@ -20,6 +21,7 @@ from .basic import (
 )
 from .accelerated import (
     JaxPositions as JaxPositions,
+    JaxSimplePositions as JaxSimplePositions,
     JaxHeadings as JaxHeadings,
     JaxPathParameters as JaxPathParameters,
     JaxReferencePoints as JaxReferencePoints,

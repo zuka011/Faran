@@ -118,16 +118,8 @@ def path_velocity(inputs: VirtualInputBatch) -> Float[Array, "T M"]:
     return inputs.array[:, 0, :]
 
 
-def bicycle_position(states: PhysicalBicycleStateBatch) -> types.Positions:
-    return types.positions(x=states.positions.x(), y=states.positions.y())
-
-
 def bicycle_heading(states: PhysicalBicycleStateBatch) -> types.Headings:
     return types.headings(heading=states.heading())
-
-
-def unicycle_position(states: PhysicalUnicycleStateBatch) -> types.Positions:
-    return types.positions(x=states.positions.x(), y=states.positions.y())
 
 
 def unicycle_heading(states: PhysicalUnicycleStateBatch) -> types.Headings:
@@ -523,7 +515,9 @@ class configure:
                         path_extractor := extract.from_virtual(path_parameter)
                     ),
                     position_extractor=(
-                        position_extractor := extract.from_physical(bicycle_position)
+                        position_extractor := extract.from_physical(
+                            lambda states: states.positions
+                        )
                     ),
                     weight=weights.contouring,
                 ),
@@ -644,7 +638,9 @@ class configure:
                         path_extractor := extract.from_virtual(path_parameter)
                     ),
                     position_extractor=(
-                        position_extractor := extract.from_physical(bicycle_position)
+                        position_extractor := extract.from_physical(
+                            lambda states: states.positions
+                        )
                     ),
                     weight=weights.contouring,
                 ),
@@ -792,7 +788,7 @@ class configure:
         cyclic_reference: bool = False,
     ) -> NumPyMpccBicyclePlannerConfiguration:
         obstacle_simulator = obstacles()
-        position_extractor = extract.from_physical(bicycle_position)
+        position_extractor = extract.from_physical(lambda states: states.positions)
         fixed_boundary = boundary.fixed_width(
             reference=reference,
             position_extractor=position_extractor,
@@ -998,7 +994,7 @@ class configure:
         ),
     ) -> NumPyMpccUnicyclePlannerConfiguration:
         obstacle_simulator = obstacles()
-        position_extractor = extract.from_physical(unicycle_position)
+        position_extractor = extract.from_physical(lambda states: states.positions)
 
         planner, augmented_model, contouring_cost, lag_cost = mppi.mpcc(
             model=model.unicycle.dynamical(

@@ -225,6 +225,10 @@ class NumPyUnicyclePositions(UnicyclePositions):
         return self.batch.array[:, 1, :]
 
     @property
+    def array(self) -> Float[Array, "T 2 M"]:
+        return self.batch.array[:, :2, :]
+
+    @property
     def horizon(self) -> int:
         return self.batch.horizon
 

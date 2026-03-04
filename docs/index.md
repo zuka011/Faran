@@ -18,11 +18,6 @@ An MPCC (Model Predictive Contouring Control) formulation tracking a reference p
 from faran.numpy import mppi, model, sampler, trajectory, types, extract
 from numtypes import array
 
-def position(states):
-    return types.positions(
-        x=states.positions.x(), y=states.positions.y()
-    )
-
 reference = trajectory.waypoints(
     points=array(
         [[0, 0], [10, 0], [20, 5], [30, 5]], shape=(4, 2)
@@ -44,7 +39,9 @@ planner, augmented_model, _, _ = mppi.mpcc(
         seed=42,
     ),
     reference=reference,
-    position_extractor=extract.from_physical(position),
+    position_extractor=extract.from_physical(
+        lambda states: states.positions
+    ),
     config={
         "weights": {
             "contouring": 50.0,

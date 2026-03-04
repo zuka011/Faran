@@ -262,6 +262,10 @@ class JaxUnicyclePositions(UnicyclePositions):
         return self.batch.array[:, 1, :]
 
     @property
+    def array(self) -> Float[JaxArray, "T 2 M"]:
+        return self.batch.array[:, :2, :]
+
+    @property
     def horizon(self) -> int:
         return self.batch.horizon
 

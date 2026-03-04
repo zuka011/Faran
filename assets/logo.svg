@@ -21,9 +21,9 @@
      inkscape:pageopacity="0.0"
      inkscape:pagecheckerboard="0"
      inkscape:deskcolor="#d1d1d1"
-     inkscape:zoom="2.0175"
-     inkscape:cx="174.96902"
-     inkscape:cy="183.14746"
+     inkscape:zoom="2.8531759"
+     inkscape:cx="133.18492"
+     inkscape:cy="111.62999"
      inkscape:window-width="1920"
      inkscape:window-height="1009"
      inkscape:window-x="-8"
@@ -32,6 +32,21 @@
      inkscape:current-layer="svg23" />
   <defs
      id="defs6">
+    <linearGradient
+       id="linearGradient8"
+       x1="0%"
+       y1="100%"
+       x2="100%"
+       y2="0%">
+      <stop
+         offset="0"
+         style="stop-color:#0ea5e9;stop-opacity:1;"
+         id="stop7" />
+      <stop
+         offset="100%"
+         style="stop-color:#8b5cf6;stop-opacity:1"
+         id="stop8" />
+    </linearGradient>
     <linearGradient
        id="optPath"
        x1="0%"
@@ -99,57 +114,44 @@
        inkscape:collect="always"
        xlink:href="#optPath"
        id="linearGradient23"
-       x1="73.665733"
-       y1="430.66498"
+       x1="71.408363"
+       y1="431.6445"
        x2="238.3232"
        y2="295.18573"
        gradientTransform="scale(1.3973713,0.71562943)"
        gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient8"
+       id="linearGradient4"
+       x1="0%"
+       y1="100%"
+       x2="100%"
+       y2="0%" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#optPath"
+       id="linearGradient9"
+       x1="0%"
+       y1="100%"
+       x2="100%"
+       y2="0%" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#optPath"
+       id="linearGradient10"
+       x1="0%"
+       y1="100%"
+       x2="100%"
+       y2="0%" />
   </defs>
   <!-- MPPI Rollout Samples -->
-  <g
-     stroke="url(#optPath)"
-     fill="none"
-     stroke-width="2"
-     opacity="0.25"
-     stroke-linecap="round"
-     filter="url(#glow)"
-     id="g9"
-     style="display:inline">
-    <path
-       d="M 120,280 C 95,220 95,150 140,100 155.37821,93.391155 175.89405,83.53391 196.63247,83.85398 218.28299,84.188128 239.56965,84.784825 260,95"
-       id="path6"
-       sodipodi:nodetypes="ccsc" />
-    <path
-       d="M 120,280 C 135.83962,241.98492 100.85815,199.00781 102.77663,166.13474 106.50616,102.22933 140.49623,134.65661 135,120 c -15,-40 55,0 120,-15"
-       id="path7"
-       sodipodi:nodetypes="cssc" />
-    <path
-       d="M 120,280 C 105,230 110,170 125,115 135,80 200,70 250,105"
-       id="path8" />
-  </g>
   <!-- "aran" Rollout -->
   <g
-     id="g10"
-     style="display:inline">
-    <path
-       d="m 120,280 c 30,0 90.83253,-50.23222 42.9306,-39.95663 -25.61914,5.49564 -19.91325,42.39157 -9.91325,42.39157 10,0 28.3829,-19.95662 28.3829,-29.95662 C 181.40025,242.47832 175,280 185,280 c 4.14329,0 11.02614,-8.72505 12.52586,-18.75465 2.11991,-14.17725 -2.4933,-30.6113 -5.95214,-25.66294 -7.03613,10.06617 37.79426,8.84356 46.22581,5.78652 12.38312,-4.48977 -9.99882,-5.02171 -16.29275,2.35311 -6.46314,7.57311 -11.92777,35.20745 4.63768,35.55383 7.77939,0.16267 28.30073,-16.17758 27.49961,-29.2106 -0.65942,-10.72785 -9.27305,28.6666 1.13774,28.59866 11.03524,-0.072 22.91911,-52.98806 12.16022,-38.64468 -4.0766,5.43477 20.4257,-7.22817 29.27076,-0.30733 9.31243,7.28654 1.01113,29.19732 -4.75059,37.34508"
-       stroke="url(#optPath)"
-       stroke-width="2.5"
-       opacity="0.4"
-       fill="none"
-       stroke-linecap="round"
-       stroke-linejoin="round"
-       filter="url(#glow)"
-       id="path10"
-       sodipodi:nodetypes="csssssssssssssc"
-       style="display:inline;stroke:url(#linearGradient23);marker-mid:" />
-  </g>
-  <!-- Main "F" Trajectories -->
-  <g
      fill="none"
      stroke-linecap="round"
-     id="g12">
+     id="g12"
+     style="display:inline">
     <!-- Main Stem & Top Curve -->
     <path
        d="m 120,220 q 0,-40 40,-40 h 80"
@@ -168,6 +170,41 @@
        id="path12"
        style="display:inline" />
   </g>
+  <g
+     id="g10"
+     style="display:inline"
+     transform="translate(1.4019465,-105.14599)">
+    <path
+       d="M 120,280 C 95,220 95,150 140,100 155.37821,93.391155 175.89405,83.53391 196.63247,83.85398 218.28299,84.188128 239.56965,84.784825 260,95"
+       id="path6"
+       sodipodi:nodetypes="ccsc"
+       style="display:inline;stroke:url(#linearGradient10);fill:none;opacity:0.4"
+       transform="translate(-1.4019465,105.14599)" />
+    <path
+       d="m 120,280 c 15.83962,-38.01508 -14.96918,-79.90856 -13.7185,-112.8138 0.79326,-20.87082 5.81966,-30.714 9.86027,-42.50416 1.11194,-3.24455 7.97603,-18.56288 18.50774,-24.30929 C 164.62278,84.018454 190,120 255,105"
+       id="path7"
+       sodipodi:nodetypes="csssc"
+       style="display:inline;opacity:0.4;fill:none;stroke:url(#linearGradient9)"
+       transform="translate(-1.4019465,105.14599)" />
+    <path
+       d="M 120,280 C 105,230 110,170 125,115 135,80 200,70 250,105"
+       id="path8"
+       style="display:inline;stroke:url(#linearGradient4);fill:none;opacity:0.4"
+       transform="translate(-1.4019465,105.14599)" />
+    <path
+       d="m 117.89708,384.7955 c -2.96036,-22.78163 -16.57391,-92.39122 3.73302,-99.11611 46.07434,-15.25809 79.93851,-53.92438 41.3005,-45.63602 -25.61914,5.49564 -19.91325,42.39157 -9.91325,42.39157 10,0 28.3829,-19.95662 28.3829,-29.95662 C 181.40025,242.47832 175,280 185,280 c 4.14329,0 11.02614,-8.72505 12.52586,-18.75465 2.11991,-14.17725 -2.4933,-30.6113 -5.95214,-25.66294 -7.03613,10.06617 37.79426,8.84356 46.22581,5.78652 12.38312,-4.48977 -9.99882,-5.02171 -16.29275,2.35311 -6.46314,7.57311 -11.92777,35.20745 4.63768,35.55383 7.77939,0.16267 28.30073,-16.17758 27.49961,-29.2106 -0.65942,-10.72785 -9.27305,28.6666 1.13774,28.59866 11.03524,-0.072 22.91911,-52.98806 12.16022,-38.64468 -4.0766,5.43477 20.4257,-7.22817 29.27076,-0.30733 9.31243,7.28654 1.01113,29.19732 -4.75059,37.34508"
+       stroke="url(#optPath)"
+       stroke-width="2.5"
+       opacity="0.4"
+       fill="none"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       filter="url(#glow)"
+       id="path10"
+       sodipodi:nodetypes="cssssssssssssssc"
+       style="display:inline;stroke:url(#linearGradient23)" />
+  </g>
+  <!-- Main "F" Trajectories -->
   <!-- Waypoints (Negative Space) along the optimal paths -->
   <circle
      fill="#0f172a"

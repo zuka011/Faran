@@ -45,6 +45,7 @@ from faran.types import (
     NumPyPathParameters,
     NumPyReferencePoints,
     NumPyPositions,
+    NumPySimplePositions,
     NumPyHeadings,
     NumPyLateralPositions,
     NumPyLongitudinalPositions,
@@ -53,6 +54,7 @@ from faran.types import (
     JaxPathParameters,
     JaxReferencePoints,
     JaxPositions,
+    JaxSimplePositions,
     JaxHeadings,
     JaxLateralPositions,
     JaxLongitudinalPositions,
@@ -344,7 +346,7 @@ class types:
 
         path_parameters: Final = NumPyPathParameters
         reference_points: Final = NumPyReferencePoints.create
-        positions: Final = NumPyPositions.create
+        positions: Final = NumPySimplePositions.create
         headings: Final = NumPyHeadings.create
         lateral_positions: Final = NumPyLateralPositions.create
         longitudinal_positions: Final = NumPyLongitudinalPositions.create
@@ -520,7 +522,7 @@ class types:
 
         path_parameters: Final = JaxPathParameters.create
         reference_points: Final = JaxReferencePoints.create
-        positions: Final = JaxPositions.create
+        positions: Final = JaxSimplePositions.create
         headings: Final = JaxHeadings.create
         lateral_positions: Final = JaxLateralPositions.create
         longitudinal_positions: Final = JaxLongitudinalPositions.create

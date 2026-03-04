@@ -44,10 +44,6 @@ STEP_LIMIT = 150
 # ── Extractors ────────────────────────────────────────────────────────────── #
 
 
-def position(states: BicycleStateBatch) -> types.Positions:
-    return types.positions(x=states.positions.x(), y=states.positions.y())
-
-
 def heading(states: BicycleStateBatch) -> types.Headings:
     return types.headings(heading=states.heading())
 
@@ -95,7 +91,7 @@ class Result:
 
 # --8<-- [start:setup]
 def create():
-    position_extractor = extract.from_physical(position)
+    position_extractor = extract.from_physical(lambda states: states.positions)
 
     planner, augmented_model, contouring_cost, lag_cost = mppi.mpcc(
         model=model.bicycle.dynamical(

@@ -10,9 +10,6 @@ from pytest import mark
 class test_that_mpcc_factory_creates_mpcc_planner:
     @staticmethod
     def cases(mppi, model, sampler, trajectory, types) -> Sequence[tuple]:
-        def position(states):
-            return types.positions(x=states.positions.x(), y=states.positions.y())
-
         reference = trajectory.waypoints(
             points=array([[0, 0], [10, 0], [20, 5], [30, 5]], shape=(4, 2)),
             path_length=35.0,
@@ -34,7 +31,9 @@ class test_that_mpcc_factory_creates_mpcc_planner:
                     seed=42,
                 ),
                 reference=reference,
-                position_extractor=extract.from_physical(position),
+                position_extractor=extract.from_physical(
+                    lambda states: states.positions
+                ),
                 config={
                     "weights": {"contouring": 50.0, "lag": 100.0, "progress": 1000.0},
                     "virtual": {"velocity_limits": (0.0, 15.0)},
