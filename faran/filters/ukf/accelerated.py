@@ -52,7 +52,7 @@ class JaxUnscentedKalmanFilter(eqx.Module):
             else noise_model,
         )
 
-    @jax.jit
+    @eqx.filter_jit
     @jaxtyped
     def filter(
         self,
@@ -110,7 +110,7 @@ class JaxUnscentedKalmanFilter(eqx.Module):
         )
         return belief
 
-    @jax.jit
+    @eqx.filter_jit
     @jaxtyped
     def predict(
         self,
@@ -211,7 +211,7 @@ class JaxUnscentedKalmanFilter(eqx.Module):
             predicted_covariance=predicted_covariances,
         )
 
-    @jax.jit
+    @eqx.filter_jit
     @jaxtyped
     def update(
         self,
@@ -239,7 +239,7 @@ class JaxUnscentedKalmanFilter(eqx.Module):
             initial_state_covariance=initial_state_covariance,
         )
 
-    @jax.jit
+    @eqx.filter_jit
     @jaxtyped
     def initial_belief_from(
         self,

@@ -788,6 +788,7 @@ class configure:
         use_risk_metric: bool = False,
         use_boundary: bool = False,
         use_halton: bool = False,
+        use_kalman_filters: bool = False,
         cyclic_reference: bool = False,
     ) -> NumPyMpccBicyclePlannerConfiguration:
         obstacle_simulator = obstacles()
@@ -834,13 +835,13 @@ class configure:
                                         time_step_size=dt, wheelbase=L
                                     ),
                                     estimator=(
-                                        model.bicycle.estimator.ekf(
+                                        model.bicycle.estimator.ukf(
                                             time_step_size=dt,
                                             wheelbase=L,
                                             process_noise_covariance=1e-4,
                                             observation_noise_covariance=1e-8,
                                         )
-                                        if use_risk_metric
+                                        if use_kalman_filters
                                         else model.bicycle.estimator.finite_difference(
                                             time_step_size=dt, wheelbase=L
                                         )

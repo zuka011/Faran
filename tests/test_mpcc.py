@@ -380,6 +380,14 @@ def test_that_mpcc_planner_follows_trajectory_without_excessive_deviation[
             ),
             "jax-from-mpcc-highway-uncertain",
         ),
+        (
+            mpcc.jax.planner_from_mpcc(
+                reference=reference.jax.highway,
+                obstacles=obstacles.jax.dynamic.highway,
+                use_kalman_filters=True,
+            ),
+            "jax-from-mpcc-kalman",
+        ),
     ],
 )
 @mark.visualize.with_args(visualizer.mpcc(), lambda seed: f"{seed}-obstacles")
