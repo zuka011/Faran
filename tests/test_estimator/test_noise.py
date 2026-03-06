@@ -15,7 +15,7 @@ from numtypes import array
 import numpy as np
 import jax.numpy as jnp
 
-from tests.dsl import check
+from tests.dsl import check, ArrayConvertible
 from pytest import mark
 
 
@@ -954,3 +954,83 @@ class test_that_observations_older_than_window_size_do_not_affect_noise:
             result_b.observation_noise_covariance,
             atol=1e-6,
         )
+
+
+class test_that_noise_covariances_are_created_correctly:
+    @staticmethod
+    def cases(covariances, to_array) -> Sequence[tuple]:
+        return [
+            (  # Entire covariance matrices specified directly
+                covariances(
+                    process=to_array(process := np.array([[1.0, 0.5], [0.5, 2.0]])),
+                    observation=to_array(
+                        observation := np.array(
+                            [[3.0, 0.1, 0.0], [0.1, 4.0, 0.2], [0.0, 0.2, 5.0]]
+                        )
+                    ),
+                    process_dimension=2,
+                    observation_dimension=3,
+                ),
+                expected_process := process,
+                expected_observation := observation,
+            ),
+            (  # Diagonal vectors specified
+                covariances(
+                    process=to_array(np.array([1.0, 2.0, 3.0])),
+                    observation=to_array(np.array([4.0, 5.0])),
+                    process_dimension=3,
+                    observation_dimension=2,
+                ),
+                expected_process := np.array(
+                    [
+                        [1.0, 0.0, 0.0],
+                        [0.0, 2.0, 0.0],
+                        [0.0, 0.0, 3.0],
+                    ]
+                ),
+                expected_observation := np.array(
+                    [
+                        [4.0, 0.0],
+                        [0.0, 5.0],
+                    ]
+                ),
+            ),
+            (  # Scalar variance values and dimensions
+                covariances(
+                    process=0.01,
+                    observation=0.5,
+                    process_dimension=4,
+                    observation_dimension=2,
+                ),
+                expected_process := np.array(
+                    [
+                        [0.01, 0.0, 0.0, 0.0],
+                        [0.0, 0.01, 0.0, 0.0],
+                        [0.0, 0.0, 0.01, 0.0],
+                        [0.0, 0.0, 0.0, 0.01],
+                    ]
+                ),
+                expected_observation := np.array(
+                    [
+                        [0.5, 0.0],
+                        [0.0, 0.5],
+                    ]
+                ),
+            ),
+        ]
+
+    @mark.parametrize(
+        ["result", "expected_process", "expected_observation"],
+        [
+            *cases(covariances=noise.numpy.covariances, to_array=np.asarray),
+            *cases(covariances=noise.jax.covariances, to_array=jnp.asarray),
+        ],
+    )
+    def test(
+        self,
+        result: NumPyNoiseCovariances | JaxNoiseCovariances,
+        expected_process: ArrayConvertible,
+        expected_observation: ArrayConvertible,
+    ) -> None:
+        assert np.allclose(result.process_noise_covariance, expected_process)
+        assert np.allclose(result.observation_noise_covariance, expected_observation)

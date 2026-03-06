@@ -32,7 +32,6 @@ class noise:
             process_dimension: int | None = None,
             observation_dimension: int | None = None,
         ) -> NumPyNoiseCovariances:
-            # TODO: Test me!
             return NumPyNoiseCovariances(
                 process_noise_covariance=numpy_kalman_filter.standardize_noise_covariance(
                     process, dimension=process_dimension
@@ -55,7 +54,6 @@ class noise:
             process_dimension: int | None = None,
             observation_dimension: int | None = None,
         ) -> JaxNoiseCovariances:
-            # TODO: Test me!
             return JaxNoiseCovariances(
                 process_noise_covariance=jax_kalman_filter.standardize_noise_covariance(
                     process, dimension=process_dimension
