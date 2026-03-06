@@ -1,15 +1,14 @@
 # MPPI Planning
 
-!!! warning "Work in Progress"
-    This page is under active development and may be incomplete or subject to change.
+This page covers the practical details of configuring and tuning an MPPI planner: factory functions, temperature selection, filtering, and sampler seeding. For the algorithmic background, see [Core Concepts](concepts.md).
 
 ## Factory Functions
 
-| Factory | Use case |
-|---|---|
-| `mppi.base` | Single model, custom cost function |
-| `mppi.augmented` | Augmented states (e.g., physical + virtual) with separate models and samplers |
-| `mppi.mpcc` | MPCC path following — wires up contouring, lag, and progress costs automatically |
+| Factory          | Use case                                                                         |
+|------------------|----------------------------------------------------------------------------------|
+| `mppi.base`      | Single model, custom cost function                                               |
+| `mppi.augmented` | Augmented states (e.g., physical + virtual) with separate models and samplers    |
+| `mppi.mpcc`      | MPCC path following — wires up contouring, lag, and progress costs automatically |
 
 ### `mppi.base`
 
@@ -101,16 +100,24 @@ for step in range(max_steps):
 
 ## Temperature
 
-The temperature $\lambda$ controls the sharpness of the softmax weighting:
+The temperature $\lambda$ controls the sharpness of the softmax weighting used to combine rollout costs into the optimal control:
 
-- **Low** ($\lambda \approx 1$–$10$) — concentrates weight on the lowest-cost samples, more greedy
-- **High** ($\lambda \approx 50$–$100$) — distributes weight more evenly, more exploration
+$$
+w_m = \frac{1}{\eta} \exp\!\left(-\frac{1}{\lambda}\,(J_m - J_{\min})\right)
+$$
 
-The right value depends on the cost scale. If costs are large, you need higher temperature to avoid numerical issues.
+- **Low** ($\lambda \approx 1$–$10$) — concentrates weight on the lowest-cost samples. More greedy, less diverse. Good when costs are small and well-scaled.
+- **High** ($\lambda \approx 50$–$100$) — distributes weight more evenly across samples. More exploration, smoother control. Necessary when costs are large.
+
+### Choosing a Temperature
+
+The right $\lambda$ depends on the **magnitude of your cost values**. If your total costs per rollout are in the range $[100, 10\,000]$, a temperature of $50$ will produce reasonable weights. If costs are in $[0.01, 1.0]$, try $\lambda = 0.1$.
+
+A practical starting point: set $\lambda$ so that the cost difference $(J_m - J_{\min})$ divided by $\lambda$ is roughly in the range $[0.1, 10]$ for most rollouts. If all weights collapse to zero (numerical underflow), increase $\lambda$. If all weights are nearly uniform, decrease it.
 
 ## Filtering
 
-A Savitzky-Golay filter smooths the optimal control sequence:
+A Savitzky-Golay filter smooths the optimal control sequence, reducing jitter from noisy sampling:
 
 ```python
 from faran.numpy import filters
@@ -120,6 +127,10 @@ planner = mppi.base(
     filter_function=filters.savgol(window_length=11, polynomial_order=3),
 )
 ```
+
+**`window_length`** must be odd and determines how many time steps are smoothed together. Larger windows produce smoother but less reactive control. **`polynomial_order`** controls fitting flexibility — 3 (cubic) is a good default.
+
+If the planner's control outputs look noisy or oscillatory, try increasing the window length. If the planner reacts too slowly to changes, reduce it.
 
 ## Sampler Seeding
 

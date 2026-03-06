@@ -1,9 +1,6 @@
 # predictor
 
-!!! warning "Work in Progress"
-    This page is under active development and may be incomplete or subject to change.
-
-The predictor module provides motion prediction for dynamic obstacles, with optional covariance propagation built into the obstacle models.
+Predictors estimate future obstacle states based on motion models. When using Kalman filter-based estimators, covariance propagation is automatically performed by the obstacle model. For background on state estimation, see the [State Estimation guide](../guide/estimation.md).
 
 ## Overview
 

@@ -118,15 +118,21 @@ nav:
       - Feature Overview: guide/features.md
       - Core Concepts: guide/concepts.md
       - Notation and Conventions: guide/conventions.md
+      - Dynamics Models: guide/models.md
+      - Samplers: guide/samplers.md
       - MPPI Planning: guide/mppi.md
-      - Obstacle Handling: guide/obstacles.md
       - Cost Function Design: guide/costs.md
-      - Metrics and Evaluation: guide/metrics.md
       - Defining Trajectories: guide/trajectories.md
+      - Obstacle Handling: guide/obstacles.md
       - Working with Boundaries: guide/boundaries.md
+      - State Estimation: guide/estimation.md
+      - Risk Metrics: guide/risk.md
+      - Data Collection: guide/collectors.md
+      - Metrics and Evaluation: guide/metrics.md
       - Backend Selection: guide/backends.md
       - Visualizer: guide/visualizer.md
       - Examples: guide/examples.md
+      - Gotchas: guide/gotchas.md
   - API Reference:
       - Overview: api/index.md
       - mppi: api/mppi.md

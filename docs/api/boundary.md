@@ -1,9 +1,6 @@
 # boundary
 
-!!! warning "Work in Progress"
-    This page is under active development and may be incomplete or subject to change.
-
-Boundaries define drivable corridors around a reference trajectory and compute signed distances from vehicle positions to corridor edges.
+Boundaries define drivable corridors around a reference trajectory and compute signed distances from vehicle positions to corridor edges. For usage patterns, see [Working with Boundaries](../guide/boundaries.md).
 
 ## Fixed-Width Boundary
 

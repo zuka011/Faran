@@ -1,20 +1,17 @@
 # sampler
 
-!!! warning "Work in Progress"
-    This page is under active development and may be incomplete or subject to change.
-
-Samplers generate control input perturbations around a nominal sequence for MPPI rollout exploration.
+Samplers generate control input perturbations around a nominal sequence for MPPI rollout exploration. For guidance on choosing and tuning samplers, see the [Samplers guide](../guide/samplers.md).
 
 ## Gaussian Sampler
 
-Draws i.i.d. Gaussian perturbations per timestep with a fixed standard deviation per control dimension.
+Draws i.i.d. Gaussian perturbations per timestep with a fixed standard deviation per control dimension. Simple and fast — the default choice for most scenarios.
 
 ```python
 from faran.numpy import sampler, types
-from numtypes import array
+import numpy as np
 
 control_sampler = sampler.gaussian(
-    standard_deviation=array([0.5, 0.2], shape=(2,)),
+    standard_deviation=np.array([0.5, 0.2]),
     rollout_count=256,
     to_batch=types.bicycle.control_input_batch.create,
     seed=42,
@@ -37,11 +34,11 @@ control_sampler = sampler.gaussian(
 
 ## Halton Spline Sampler
 
-Generates temporally smooth perturbations using Halton quasi-random sequences interpolated through cubic splines. Halton sequences provide better coverage of the sampling space compared to pseudo-random sampling, and the spline interpolation produces smooth control trajectories.
+Generates temporally smooth perturbations using Halton quasi-random sequences interpolated through cubic splines. Provides better coverage of the sampling space (low discrepancy) and smoother control sequences than Gaussian sampling. See the [Samplers guide](../guide/samplers.md#choosing-a-sampler) for a comparison.
 
 ```python
 control_sampler = sampler.halton(
-    standard_deviation=array([0.5, 0.2], shape=(2,)),
+    standard_deviation=np.array([0.5, 0.2]),
     rollout_count=256,
     knot_count=8,
     to_batch=types.bicycle.control_input_batch.create,

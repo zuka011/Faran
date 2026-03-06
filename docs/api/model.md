@@ -1,9 +1,6 @@
 # model
 
-!!! warning "Work in Progress"
-    This page is under active development and may be incomplete or subject to change.
-
-Dynamical models define the state transition function $f(\mathbf{u}, \mathbf{x})$ used to simulate rollouts during MPPI planning.
+Dynamical models define the state transition function $f(\mathbf{u}, \mathbf{x})$ used to simulate rollouts during MPPI planning. For a conceptual overview, see the [Dynamics Models guide](../guide/models.md).
 
 ## Kinematic Bicycle Model
 
@@ -114,3 +111,85 @@ Obstacle models are used by predictors to propagate obstacle states forward in t
       heading_level: 3
       members:
         - create
+
+## State Estimators
+
+Estimators recover unobserved state variables and quantify uncertainty from noisy observations. For conceptual background, see [State Estimation](../guide/estimation.md).
+
+### Bicycle Estimators
+
+```python
+from faran.numpy import model
+
+# Finite difference (no covariance)
+fd = model.bicycle.estimator.finite_difference(time_step_size=0.1, wheelbase=2.5)
+
+# Extended Kalman Filter
+ekf = model.bicycle.estimator.ekf(
+    time_step_size=0.1, wheelbase=2.5,
+    process_noise_covariance=1e-3,
+    observation_noise_covariance=1e-2,
+)
+
+# Unscented Kalman Filter
+ukf = model.bicycle.estimator.ukf(
+    time_step_size=0.1, wheelbase=2.5,
+    process_noise_covariance=1e-3,
+    observation_noise_covariance=1e-2,
+)
+```
+
+### Unicycle Estimators
+
+```python
+fd = model.unicycle.estimator.finite_difference(time_step_size=0.1)
+
+ekf = model.unicycle.estimator.ekf(
+    time_step_size=0.1,
+    process_noise_covariance=1e-3,
+    observation_noise_covariance=1e-2,
+)
+
+ukf = model.unicycle.estimator.ukf(
+    time_step_size=0.1,
+    process_noise_covariance=1e-3,
+    observation_noise_covariance=1e-2,
+)
+```
+
+### Integrator Estimators
+
+```python
+fd = model.integrator.estimator.finite_difference(time_step_size=0.1)
+
+kf = model.integrator.estimator.kf(
+    time_step_size=0.1,
+    process_noise_covariance=1e-3,
+    observation_noise_covariance=1e-2,
+)
+```
+
+## Noise Models
+
+Noise models adapt filter covariances at runtime. See [State Estimation](../guide/estimation.md#adaptive-noise) for usage.
+
+```python
+from faran.numpy import noise
+
+# Fixed noise (default)
+identity = noise.identity
+
+# Adaptive (IAE method)
+adaptive = noise.adaptive(window_size=10)
+
+# Clamped (floor on diagonal entries)
+clamped = noise.clamped(
+    noise.adaptive(window_size=10),
+    floor=noise.covariances(
+        process=1e-5,
+        observation=1e-5,
+        process_dimension=6,
+        observation_dimension=3,
+    ),
+)
+```

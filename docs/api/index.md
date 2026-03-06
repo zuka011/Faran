@@ -1,5 +1,7 @@
 # API Reference
 
+This section documents the factory functions, protocols, and types for every Faran component.
+
 !!! warning "Work in Progress"
     This page is under active development and may be incomplete or subject to change.
 

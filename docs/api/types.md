@@ -1,9 +1,6 @@
 # types
 
-!!! warning "Work in Progress"
-    This page is under active development and may be incomplete or subject to change.
-
-The types module provides type definitions, protocols, and type aliases used throughout faran.
+Core type definitions, protocols, and type aliases used throughout Faran. For dimension and shape conventions, see [Notation and Conventions](../guide/conventions.md).
 
 ## Namespace Access
 

@@ -4,101 +4,95 @@ hide:
   - toc
 ---
 
-# faran
+<div class="hero" markdown>
 
-Sampling-based trajectory planning for autonomous systems. The library provides composable building blocks — dynamics models, cost functions, samplers, and risk metrics — that you wire together into an MPPI planner. NumPy and JAX backends expose the same API; switch between them by changing one import line.
+# Composable Trajectory Planning for Python
+
+Faran provides building blocks for sampling-based trajectory planning — dynamics models, samplers, cost functions, state estimation, obstacle tracking, and more — with a consistent API across **NumPy** and **JAX** backends.
+
+<p align="center">
+    <iframe src="visualizations/mpcc-simulation/doc-dynamic-obstacles-uncertain.html" width="100%" height="750px" frameborder="0"></iframe>
+</p>
+
+[Get Started](guide/getting-started.md){ .md-button .md-button--primary }
+[API Reference](api/index.md){ .md-button }
+
+</div>
+
+---
+
+## Why Faran?
+
+<div class="grid cards" markdown>
+
+-   :material-puzzle: **Composable**
+
+    ---
+
+    Swap a cost function, sampler, or dynamics model without rewriting the rest of your planner. Components are decoupled by design.
+
+-   :material-package-variant-closed: **Comprehensive**
+
+    ---
+
+    Includes everything you need for a working planner: dynamics models, samplers, state estimation (KF/EKF/UKF), cost functions, obstacle tracking, risk metrics, and motion prediction.
+
+-   :material-swap-horizontal: **Backend-Agnostic**
+
+    ---
+
+    Set up your planner with NumPy, then switch to JAX by changing one import line. Same API, no code rewrite.
+
+-   :material-test-tube: **Tested**
+
+    ---
+
+    Extensive test suite covering every component on both backends. Runtime type checking with `jaxtyping` + `beartype` catches shape errors early.
+
+</div>
+
+---
 
 ## Quick Start
 
-An MPCC (Model Predictive Contouring Control) formulation tracking a reference path with a kinematic bicycle model:
-
-<div class="grid" markdown>
+An MPCC planner tracking a reference path with a kinematic bicycle model:
 
 ```python
 from faran.numpy import mppi, model, sampler, trajectory, types, extract
-from numtypes import array
+import numpy as np
 
 reference = trajectory.waypoints(
-    points=array(
-        [[0, 0], [10, 0], [20, 5], [30, 5]], shape=(4, 2)
-    ),
+    points=np.array([[0, 0], [10, 0], [20, 5], [30, 0], [40, -5], [50, 0]]),
     path_length=35.0,
 )
 
 planner, augmented_model, _, _ = mppi.mpcc(
     model=model.bicycle.dynamical(
         time_step_size=0.1, wheelbase=2.5,
-        speed_limits=(0.0, 15.0),
-        steering_limits=(-0.5, 0.5),
+        speed_limits=(0.0, 15.0), steering_limits=(-0.5, 0.5),
         acceleration_limits=(-3.0, 3.0),
     ),
     sampler=sampler.gaussian(
-        standard_deviation=array([0.5, 0.2], shape=(2,)),
+        standard_deviation=np.array([0.5, 0.05]),
         rollout_count=256,
-        to_batch=types.bicycle.control_input_batch.create,
-        seed=42,
+        to_batch=types.bicycle.control_input_batch.create, seed=42,
     ),
     reference=reference,
-    position_extractor=extract.from_physical(
-        lambda states: states.positions
-    ),
+    position_extractor=extract.from_physical(lambda states: states.positions),
     config={
-        "weights": {
-            "contouring": 50.0,
-            "lag": 100.0,
-            "progress": 1000.0,
-        },
+        "weights": {"contouring": 100.0, "lag": 100.0, "progress": 1000.0},
         "virtual": {"velocity_limits": (0.0, 15.0)},
     },
 )
-
-state = types.augmented.state.of(
-    physical=types.bicycle.state.create(
-        x=0.0, y=0.0, heading=0.0, speed=0.0
-    ),
-    virtual=types.simple.state.zeroes(dimension=1),
-)
-nominal = types.augmented.control_input_sequence.of(
-    physical=types.bicycle.control_input_sequence.zeroes(
-        horizon=30
-    ),
-    virtual=types.simple.control_input_sequence.zeroes(
-        horizon=30, dimension=1
-    ),
-)
-
-for _ in range(200):
-    control = planner.step(
-        temperature=50.0,
-        nominal_input=nominal,
-        initial_state=state,
-    )
-    state = augmented_model.step(
-        inputs=control.optimal, state=state
-    )
-    nominal = control.nominal
 ```
 
-![MPCC simulation](../assets/quickstart.gif)
+To use JAX, change `from faran.numpy` to `from faran.jax`. Everything else stays the same.
 
-</div>
+[Full walkthrough :octicons-arrow-right-24:](guide/getting-started.md){ .md-button }
 
-To use JAX (GPU), change `from faran.numpy` to `from faran.jax`. Everything else stays the same.
+---
 
-## Installation
-
-```bash
-pip install faran          # NumPy + JAX (CPU)
-pip install faran[cuda]    # JAX with GPU support (Linux)
-```
-
-Requires Python ≥ 3.13.
-
-## Features
-
-See the [feature overview](guide/features.md) for the full list of supported components, backend coverage, and roadmap.
-
-## Documentation
+## Explore the Docs
 
 <div class="grid cards" markdown>
 
@@ -106,7 +100,7 @@ See the [feature overview](guide/features.md) for the full list of supported com
 
     ---
 
-    Install faran and run your first MPPI planner
+    Install Faran, build your first planner, and run a simulation loop.
 
     [:octicons-arrow-right-24: Getting started](guide/getting-started.md)
 
@@ -114,7 +108,7 @@ See the [feature overview](guide/features.md) for the full list of supported com
 
     ---
 
-    MPPI concepts, cost design, obstacles, boundaries, risk metrics
+    Core concepts, cost design, obstacle handling, state estimation, risk metrics, and more.
 
     [:octicons-arrow-right-24: User guide](guide/concepts.md)
 
@@ -122,7 +116,7 @@ See the [feature overview](guide/features.md) for the full list of supported com
 
     ---
 
-    Interactive visualizations of MPCC scenarios
+    End-to-end scenarios with interactive visualizations: path following, boundaries, obstacle avoidance.
 
     [:octicons-arrow-right-24: Examples](guide/examples.md)
 
@@ -130,12 +124,25 @@ See the [feature overview](guide/features.md) for the full list of supported com
 
     ---
 
-    Factory functions and protocol documentation
+    Factory functions, protocols, and type documentation for every component.
 
     [:octicons-arrow-right-24: Reference](api/index.md)
 
 </div>
 
-## License
+---
 
-MIT
+## Backends
+
+| Backend   | Import                        | Best for                                                |
+|-----------|-------------------------------|---------------------------------------------------------|
+| **NumPy** | `from faran.numpy import ...` | Prototyping, debugging, environments without GPU        |
+| **JAX**   | `from faran.jax import ...`   | GPU acceleration, JIT compilation, large rollout counts |
+
+Both expose the same API. See [Backend Selection](guide/backends.md) for details.
+
+---
+
+!!! info "Under Active Development"
+
+    Faran is being actively developed — expect missing features, [some gotchas](guide/gotchas.md), and possible API changes. See the [feature overview](guide/features.md) for what's available and what's coming.

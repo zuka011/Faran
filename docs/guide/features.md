@@ -1,8 +1,5 @@
 # Feature Overview
 
-!!! warning "Work in Progress"
-    This page is under active development and may be incomplete or subject to change.
-
 Everything listed below is implemented, tested, and available in both the NumPy and JAX backends unless noted otherwise.
 
 ---
@@ -180,13 +177,13 @@ All costs operate on batched state/input tensors of shape $(T, D, M)$ and return
 
 Risk-aware collision costs via the [riskit](https://gitlab.com/risk-metrics/riskit) library. The risk metric replaces the expected cost with a risk measure over sampled obstacle predictions.
 
-| Metric | Description |
-|---|---|
-| **Expected value** | Mean cost over samples |
-| **Mean-variance** | Mean + $\gamma \cdot$ variance |
-| **VaR** | Value at Risk at confidence $\alpha$ |
-| **CVaR** | Conditional Value at Risk at confidence $\alpha$ |
-| **Entropic risk** | Exponential risk measure with parameter $\theta$ |
+| Metric             | Description                                      |
+|--------------------|--------------------------------------------------|
+| **Expected value** | Mean cost over samples                           |
+| **Mean-variance**  | Mean + $\gamma \cdot$ variance                   |
+| **VaR**            | Value at Risk at confidence $\alpha$             |
+| **CVaR**           | Conditional Value at Risk at confidence $\alpha$ |
+| **Entropic risk**  | Exponential risk measure with parameter $\theta$ |
 
 :material-check-all: NumPy · :material-check-all: JAX
 
@@ -222,13 +219,13 @@ Risk-aware collision costs via the [riskit](https://gitlab.com/risk-metrics/risk
 
 Post-simulation evaluation for benchmarking and analysis.
 
-| Metric | Measures |
-|---|---|
-| **Collision** | Minimum distances, collision detection per time step |
-| **MPCC error** | Contouring and lag error over the trajectory |
-| **Task completion** | Goal reached, completion time, stretch ratio, progress fraction |
-| **Constraint violation** | Boundary and limit violations |
-| **Comfort** | Jerk, lateral acceleration, smoothness |
+| Metric                   | Measures                                                        |
+|--------------------------|-----------------------------------------------------------------|
+| **Collision**            | Minimum distances, collision detection per time step            |
+| **MPCC error**           | Contouring and lag error over the trajectory                    |
+| **Task completion**      | Goal reached, completion time, stretch ratio, progress fraction |
+| **Constraint violation** | Boundary and limit violations                                   |
+| **Comfort**              | Jerk, lateral acceleration, smoothness                          |
 
 [:octicons-arrow-right-24: Metrics guide](metrics.md) · [:octicons-arrow-right-24: API](../api/metrics.md)
 
@@ -238,13 +235,13 @@ Post-simulation evaluation for benchmarking and analysis.
 
 Both backends expose identical factory functions. Switching requires changing one import line.
 
-| | NumPy | JAX |
-|---|:---:|:---:|
-| All planning components | :material-check: | :material-check: |
-| All cost functions | :material-check: | :material-check: |
-| All evaluation metrics | :material-check: | :material-check: |
-| GPU acceleration | — | :material-check: (Linux, CUDA) |
-| JIT compilation | — | :material-check: |
+|                         |      NumPy       |              JAX               |
+|-------------------------|:----------------:|:------------------------------:|
+| All planning components | :material-check: |        :material-check:        |
+| All cost functions      | :material-check: |        :material-check:        |
+| All evaluation metrics  | :material-check: |        :material-check:        |
+| GPU acceleration        |        —         | :material-check: (Linux, CUDA) |
+| JIT compilation         |        —         |        :material-check:        |
 
 [:octicons-arrow-right-24: Backend guide](backends.md)
 
@@ -254,54 +251,54 @@ Both backends expose identical factory functions. Switching requires changing on
 
 ### Current Coverage
 
-| Component | NumPy | JAX | Status |
-|---|:---:|:---:|---|
-| **Planning** | | | |
-| MPPI (`mppi.base`) | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
-| MPPI Augmented (`mppi.augmented`) | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
-| MPCC (`mppi.mpcc`) | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
-| **Dynamics Models** | | | |
-| Kinematic Bicycle | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
-| Unicycle | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
-| Integrator | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
-| **Samplers** | | | |
-| Gaussian | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
-| Halton + Spline | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
-| **Cost Functions** | | | |
-| Contouring / Lag / Progress | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
-| Collision (hinge-loss) | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
-| Boundary | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
-| Control Smoothing / Effort | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
-| **Collision Avoidance** | | | |
-| Circle-to-Circle Distance | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
-| SAT Distance | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
-| Static Obstacles | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
-| Dynamic Obstacles | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
-| Hungarian ID Assignment | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
-| **Risk Metrics** | | | |
-| Expected Value | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
-| Mean-Variance | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
-| VaR | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
-| CVaR | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
-| Entropic Risk | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
-| **Trajectories & Boundaries** | | | |
-| Waypoints | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
-| Line | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
-| Fixed-Width Boundary | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
-| Piecewise Fixed-Width Boundary | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
-| **Evaluation Metrics** | | | |
-| Collision | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
-| MPCC Error | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
-| Task Completion | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
-| Constraint Violation | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
-| Comfort | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
-| **Visualization** | | | |
+| Component                           |             NumPy              |              JAX               | Status                |
+|-------------------------------------|:------------------------------:|:------------------------------:|-----------------------|
+| **Planning**                        |                                |                                |                       |
+| MPPI (`mppi.base`)                  | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
+| MPPI Augmented (`mppi.augmented`)   | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
+| MPCC (`mppi.mpcc`)                  | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
+| **Dynamics Models**                 |                                |                                |                       |
+| Kinematic Bicycle                   | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
+| Unicycle                            | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
+| Integrator                          | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
+| **Samplers**                        |                                |                                |                       |
+| Gaussian                            | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
+| Halton + Spline                     | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
+| **Cost Functions**                  |                                |                                |                       |
+| Contouring / Lag / Progress         | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
+| Collision (hinge-loss)              | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
+| Boundary                            | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
+| Control Smoothing / Effort          | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
+| **Collision Avoidance**             |                                |                                |                       |
+| Circle-to-Circle Distance           | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
+| SAT Distance                        | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
+| Static Obstacles                    | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
+| Dynamic Obstacles                   | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
+| Hungarian ID Assignment             | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
+| **Risk Metrics**                    |                                |                                |                       |
+| Expected Value                      | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
+| Mean-Variance                       | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
+| VaR                                 | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
+| CVaR                                | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
+| Entropic Risk                       | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
+| **Trajectories & Boundaries**       |                                |                                |                       |
+| Waypoints                           | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
+| Line                                | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
+| Fixed-Width Boundary                | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
+| Piecewise Fixed-Width Boundary      | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
+| **Evaluation Metrics**              |                                |                                |                       |
+| Collision                           | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
+| MPCC Error                          | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
+| Task Completion                     | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
+| Constraint Violation                | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
+| Comfort                             | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
+| **Visualization**                   |                                |                                |                       |
 | Interactive HTML (faran-visualizer) | :material-check-all:{ .green } | :material-check-all:{ .green } | :material-tag: Stable |
 
 ### Planned
 
-| Feature | NumPy | JAX | Status |
-|---|:---:|:---:|---|
+| Feature                               |                NumPy                |                 JAX                 | Status                           |
+|---------------------------------------|:-----------------------------------:|:-----------------------------------:|----------------------------------|
 | Additional planning algorithms (iLQR) | :material-progress-clock:{ .amber } | :material-progress-clock:{ .amber } | :material-hammer-wrench: Planned |
-| Spline-based reference trajectories | :material-progress-clock:{ .amber } | :material-progress-clock:{ .amber } | :material-hammer-wrench: Planned |
-| Multi-agent / human environments | :material-check:{ .green } | :material-progress-clock:{ .amber } | :material-wrench: Partial |
+| Spline-based reference trajectories   | :material-progress-clock:{ .amber } | :material-progress-clock:{ .amber } | :material-hammer-wrench: Planned |
+| Multi-agent / human environments      | :material-progress-clock:{ .amber } | :material-progress-clock:{ .amber } | :material-wrench: Partial        |

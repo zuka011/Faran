@@ -1,7 +1,6 @@
 # Core Concepts
 
-!!! warning "Work in Progress"
-    This page is under active development and may be incomplete or subject to change.
+This page covers the algorithms and abstractions at the heart of Faran: MPPI planning, the MPCC formulation, batched computation, and extractors.
 
 ## MPPI
 
@@ -20,21 +19,21 @@ The temperature $\lambda$ controls how aggressively the planner favors low-cost 
 
 ### What You Provide
 
-| Component | Role |
-|---|---|
+| Component      | Role                                                          |
+|----------------|---------------------------------------------------------------|
 | Dynamics model | Predicts the next state given current state and control input |
-| Cost function | Scores each rollout (lower is better) |
-| Sampler | Generates perturbations around the nominal control sequence |
+| Cost function  | Scores each rollout (lower is better)                         |
+| Sampler        | Generates perturbations around the nominal control sequence   |
 
 faran provides concrete implementations for each of these (see [Feature Overview](features.md)), and you compose them into a planner via factory functions.
 
 ### Factory Functions
 
-| Factory | When to use |
-|---|---|
-| `mppi.base` | You have a single model and a custom cost function |
+| Factory          | When to use                                                   |
+|------------------|---------------------------------------------------------------|
+| `mppi.base`      | You have a single model and a custom cost function            |
 | `mppi.augmented` | Your state has multiple components (e.g., physical + virtual) |
-| `mppi.mpcc` | Path following with the MPCC formulation (see below) |
+| `mppi.mpcc`      | Path following with the MPCC formulation (see below)          |
 
 ```python
 from faran.numpy import mppi
@@ -67,12 +66,12 @@ A progress cost pushes $\phi$ forward while contouring and lag costs pull the ve
 
 MPCC augments the physical state with a virtual component:
 
-| | Variables | Meaning |
-|---|---|---|
-| Physical state | $x, y, \theta, v$ | Vehicle pose and speed |
-| Virtual state | $\phi$ | Arc-length progress along the reference |
-| Physical controls | $a, \delta$ | Acceleration, steering |
-| Virtual control | $\dot\phi$ | Path velocity |
+|                   | Variables         | Meaning                                 |
+|-------------------|-------------------|-----------------------------------------|
+| Physical state    | $x, y, \theta, v$ | Vehicle pose and speed                  |
+| Virtual state     | $\phi$            | Arc-length progress along the reference |
+| Physical controls | $a, \delta$       | Acceleration, steering                  |
+| Virtual control   | $\dot\phi$        | Path velocity                           |
 
 Both the physical and virtual dynamics are simulated together. The `mppi.mpcc` factory handles this composition automatically.
 
@@ -80,11 +79,11 @@ Both the physical and virtual dynamics are simulated together. The `mppi.mpcc` f
 
 All computations operate on 3D tensors:
 
-| Shape | Meaning |
-|---|---|
+| Shape         | Meaning                                                            |
+|---------------|--------------------------------------------------------------------|
 | $(T, D_x, M)$ | State batch — $T$ time steps, $D_x$ state dimensions, $M$ rollouts |
-| $(T, D_u, M)$ | Control batch — same layout for control inputs |
-| $(T, M)$ | Cost array — one scalar per rollout per time step |
+| $(T, D_u, M)$ | Control batch — same layout for control inputs                     |
+| $(T, M)$      | Cost array — one scalar per rollout per time step                  |
 
 The MPPI algorithm sums costs over $T$ to get a total cost per rollout, then computes softmax weights to combine all $M$ samples.
 

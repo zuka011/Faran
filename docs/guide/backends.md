@@ -1,9 +1,6 @@
 # Backends
 
-!!! warning "Work in Progress"
-    This page is under active development and may be incomplete or subject to change.
-
-faran exposes identical APIs under two backends. Switch by changing the import path.
+Faran exposes identical APIs under two backends. Switch by changing the import path.
 
 ```python
 # NumPy — prototyping, debugging, no GPU dependency

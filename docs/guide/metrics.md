@@ -1,9 +1,6 @@
 # Metrics and Evaluation
 
-!!! warning "Work in Progress"
-    This page is under active development and may be incomplete or subject to change.
-
-Evaluation metrics measure planning performance after (or during) a simulation. They operate on data collected by decorating the planner and obstacle observer.
+Evaluation metrics measure planning performance after (or during) a simulation. They operate on data collected by [decorating](../api/collectors.md) the planner and obstacle observer.
 
 ## Setup
 

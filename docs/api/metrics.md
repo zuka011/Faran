@@ -1,9 +1,6 @@
 # metrics
 
-!!! warning "Work in Progress"
-    This page is under active development and may be incomplete or subject to change.
-
-The metrics module provides evaluation metrics for trajectory planning algorithms.
+Evaluation metrics measure planning performance during or after simulation. For usage patterns and setup, see the [Metrics and Evaluation guide](../guide/metrics.md).
 
 ## Available Metrics
 

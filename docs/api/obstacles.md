@@ -1,9 +1,6 @@
 # obstacles
 
-!!! warning "Work in Progress"
-    This page is under active development and may be incomplete or subject to change.
-
-The obstacles module provides obstacle representation and handling for risk-aware planning.
+The obstacles module provides obstacle representation, tracking, and state management for collision avoidance and risk-aware planning. For the full avoidance pipeline, see the [Obstacle Handling guide](../guide/obstacles.md).
 
 ## Overview
 

@@ -1,9 +1,6 @@
 # Visualizer
 
-!!! warning "Work in Progress"
-    This page is under active development and may be incomplete or subject to change.
-
-`faran-visualizer` is a separate package that generates interactive HTML visualizations from simulation results.
+`faran-visualizer` generates standalone HTML files with interactive Plotly charts from simulation results. Each visualization includes an animated vehicle replay and configurable time-series plots.
 
 ## Installation
 
@@ -13,26 +10,66 @@ pip install faran-visualizer
 
 Requires **Node.js 18+** at runtime.
 
-## MPCC Visualization
+## How It Works
+
+1. You build a result object (`MpccSimulationResult` or `Visualizable.SimulationResult`) from your simulation data.
+2. You call a visualizer factory (`visualizer.mpcc()` or `visualizer.simulation()`) to create a renderer.
+3. The renderer serializes the result to JSON and invokes the TypeScript core to produce a self-contained HTML file.
+
+Output goes to the configured directory (default: current working directory). Each call produces `<key>.json` and `<key>.html`.
 
 ```python
-from faran_visualizer import visualizer, MpccSimulationResult
-from numtypes import array
+from faran_visualizer import configure
+configure(output_directory="./results")
+```
+
+## MPCC Visualization
+
+For planners created with `mppi.mpcc()`, use `MpccSimulationResult`:
+
+```python
+import asyncio
+from faran_visualizer import visualizer, MpccSimulationResult, configure
 
 result = MpccSimulationResult(
-    reference=trajectory,
-    states=augmented_states,
-    contouring_errors=array(contouring_errors),
-    lag_errors=array(lag_errors),
+    reference=reference,
+    states=collected_states,
+    contouring_errors=errors.contouring,
+    lag_errors=errors.lag,
     time_step_size=0.1,
     wheelbase=2.5,
 )
 
-mpcc_viz = visualizer.mpcc()
-await mpcc_viz(result, key="my-simulation")
+configure(output_directory=".")
+asyncio.run(visualizer.mpcc()(result, key="my-simulation"))
 ```
 
-`MpccSimulationResult` also accepts optional fields: `obstacles`, `obstacle_forecasts`, `boundary`, `controls`, `risks`, `optimal_trajectories`, `nominal_trajectories`, `vehicle_width`, `max_contouring_error`, `max_lag_error`, and `network`.
+### Required Fields
+
+| Field               | Type            | Description                                 |
+|---------------------|-----------------|---------------------------------------------|
+| `reference`         | `Trajectory`    | The reference path used by MPCC             |
+| `states`            | `StateSequence` | Augmented state history from collectors     |
+| `contouring_errors` | `array`         | Contouring errors from `metrics.mpcc_error` |
+| `lag_errors`        | `array`         | Lag errors from `metrics.mpcc_error`        |
+| `time_step_size`    | `float`         | Simulation time step (seconds)              |
+| `wheelbase`         | `float`         | Vehicle wheelbase (meters)                  |
+
+### Optional Fields
+
+| Field                  | Description                                                        |
+|------------------------|--------------------------------------------------------------------|
+| `obstacles`            | Obstacle state history for rendering obstacles                     |
+| `obstacle_forecasts`   | Predicted obstacle trajectories                                    |
+| `boundary`             | Corridor boundary for rendering road edges                         |
+| `controls`             | Control input history                                              |
+| `risks`                | Risk metric values over time                                       |
+| `optimal_trajectories` | Best trajectory at each step                                       |
+| `nominal_trajectories` | Nominal (warm-started) trajectory at each step                     |
+| `vehicle_width`        | Width of the rendered vehicle (default: proportional to wheelbase) |
+| `max_contouring_error` | Cap for contouring error plot y-axis                               |
+| `max_lag_error`        | Cap for lag error plot y-axis                                      |
+| `network`              | Road network overlay                                               |
 
 ## Generic Visualization
 
@@ -51,8 +88,7 @@ result = Visualizable.SimulationResult.create(
     ),
 )
 
-sim_viz = visualizer.simulation()
-await sim_viz(result, key="my-simulation")
+asyncio.run(visualizer.simulation()(result, key="my-simulation"))
 ```
 
 ## Custom Plots
@@ -71,6 +107,10 @@ speed_plot = Plot.Additional(
 )
 ```
 
-## Output
+Pass additional plots to the `MpccSimulationResult` or `Visualizable.SimulationResult` via the `additional_plots` field.
 
-Each visualization produces a `<key>.json` data file and a self-contained `<key>.html` file with interactive Plotly charts.
+## What the Output Shows
+
+The HTML file contains an interactive dashboard with a visualization of the vehicle's trajectory, the reference path, and any obstacles. Time-series plots show contouring and lag errors, control inputs, risk metrics, or any custom data you provide. All plots are interactive (Plotly): pan, zoom, and hover for exact values.
+
+For API signatures and detailed options, see the [Visualizer API reference](../api/visualizer.md).

@@ -91,8 +91,6 @@ class Result:
 
 # --8<-- [start:setup]
 def create():
-    position_extractor = extract.from_physical(lambda states: states.positions)
-
     planner, augmented_model, contouring_cost, lag_cost = mppi.mpcc(
         model=model.bicycle.dynamical(
             time_step_size=DT,
@@ -113,7 +111,7 @@ def create():
             ),
         ),
         reference=REFERENCE,
-        position_extractor=position_extractor,
+        position_extractor=extract.from_physical(lambda states: states.positions),
         config={
             "weights": {"contouring": 50.0, "lag": 100.0, "progress": 1000.0},
             "virtual": {"velocity_limits": (0.0, 15.0)},

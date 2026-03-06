@@ -5,14 +5,13 @@ hide:
 
 # Examples
 
-!!! warning "Work in Progress"
-    This page is under active development and may be incomplete or subject to change.
+Complete MPCC planning scenarios, each building on the previous one. Click the **Result** tab to see the interactive visualization, or expand **Full code** to see the entire script.
 
-Each example below is a complete MPCC planning loop. Click the **Result** tab to see the interactive visualization, or expand **Full code** to see the entire script.
+Each example can also be run as a Jupyter notebook via the Binder badge.
 
 ## Basic Path Following
 
-Bicycle model following an S-curve with contouring, lag, and progress costs.
+The simplest case: a bicycle model following an S-curve using contouring, lag, and progress costs. This example introduces the core planning loop and demonstrates how MPCC tracks a reference trajectory.
 
 [![Launch Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/zuka011/faran/main?filepath=notebooks/01_basic_path_following.ipynb){ .binder-badge }
 
@@ -47,7 +46,7 @@ Bicycle model following an S-curve with contouring, lag, and progress costs.
 
 ## Path Following with Boundaries
 
-Same setup plus a fixed-width corridor (2.5 m each side). The boundary cost activates when the vehicle approaches the corridor edge.
+Building on the basic example, this adds a fixed-width corridor (2.5 m each side). The [boundary cost](costs.md#boundary) activates when the vehicle approaches the corridor edge, steering it away from violations. Notice how the vehicle stays inside the corridor even on tight turns.
 
 [![Launch Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/zuka011/faran/main?filepath=notebooks/02_path_following_with_boundaries.ipynb){ .binder-badge }
 
@@ -82,7 +81,7 @@ Same setup plus a fixed-width corridor (2.5 m each side). The boundary cost acti
 
 ## Obstacle Avoidance
 
-Three static obstacles along the path. Circle-to-circle distance computation with a hinge-loss collision cost and a fixed-width corridor boundary.
+This example adds three static obstacles along the path. It demonstrates the full avoidance pipeline: [circle-based distance computation](obstacles.md#circle-to-circle), a hinge-loss [collision cost](costs.md#collision), and a fixed-width corridor boundary. The planner swerves around obstacles while staying inside the corridor.
 
 [![Launch Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/zuka011/faran/main?filepath=notebooks/03_obstacle_avoidance.ipynb){ .binder-badge }
 
@@ -117,7 +116,7 @@ Three static obstacles along the path. Circle-to-circle distance computation wit
 
 ## Obstacle Avoidance with Uncertainty
 
-Four moving obstacles with covariance propagation and a mean-variance risk metric. The planner accounts for prediction uncertainty when evaluating collision costs, producing more cautious trajectories.
+The most advanced example: four moving obstacles with covariance propagation and a mean-variance risk metric. The planner uses [state estimation](../api/predictor.md) to track obstacles, propagates uncertainty through motion predictions, and evaluates collision risk using sampled obstacle poses. The result is a more cautious trajectory that accounts for prediction uncertainty — the vehicle gives wider berth to uncertain obstacles.
 
 [![Launch Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/zuka011/faran/main?filepath=notebooks/04_obstacle_avoidance_with_uncertainty.ipynb){ .binder-badge }
 

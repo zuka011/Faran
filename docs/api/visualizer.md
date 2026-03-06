@@ -1,9 +1,6 @@
 # visualizer
 
-!!! warning "Work in Progress"
-    This page is under active development and may be incomplete or subject to change.
-
-The faran-visualizer package provides interactive HTML visualizations for MPCC simulation results.
+The `faran-visualizer` package generates interactive HTML visualizations for simulation results. For setup and usage, see the [Visualizer guide](../guide/visualizer.md).
 
 !!! note "Separate Package"
     The visualizer is distributed as a separate package: `faran-visualizer`

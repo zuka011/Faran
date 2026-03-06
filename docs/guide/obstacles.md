@@ -1,15 +1,12 @@
 # Obstacle Avoidance
 
-!!! warning "Work in Progress"
-    This page is under active development and may be incomplete or subject to change.
-
-The collision avoidance pipeline has three stages:
+The obstacle avoidance pipeline has three stages:
 
 ```
 Obstacle states → Distance computation → Collision cost
 ```
 
-Optionally, a risk metric replaces the expected collision cost with a risk measure (CVaR, etc.) when obstacle positions are uncertain.
+When obstacle positions are uncertain, a **risk metric** (CVaR, EVaR, etc.) can replace the expected collision cost with a risk-sensitive evaluation.
 
 ## Distance Computation
 
