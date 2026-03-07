@@ -8,12 +8,6 @@ repo_name: risk-metrics/faran
 # Exclude unused visualization files from build
 exclude_docs: |
   visualizations/**/*.json
-  visualizations/**/numpy-*.html
-  visualizations/**/jax-from-augmented*.html
-  visualizations/**/jax-from-base*.html
-  visualizations/**/jax-from-mpcc-static-obstacles.html
-  visualizations/**/*-halton-*.html
-  visualizations/**/*-highway-*.html
 
 theme:
   name: material

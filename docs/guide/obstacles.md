@@ -84,6 +84,27 @@ provider = obstacles.provider.predicting(
 provider.observe(detected_obstacle_states)
 ```
 
+### Noisy Observations
+
+For testing or estimator tuning, you can inject zero-mean Gaussian noise into obstacle detections before they reach the provider. Wrap the observer you call from your perception loop with `NoisyObstacleStateObserver`:
+
+```python
+from faran import NoisyObstacleStateObserver
+from numtypes import array
+
+observer = NoisyObstacleStateObserver.create(
+    provider,
+    to_states=types.obstacle_2d_poses_for_time_step.wrap,
+    sigma=array([0.1, 0.1, 0.05], shape=(3,)),
+    seed=44,
+)
+
+# Feed noisy observations each step
+observer.observe(detected_obstacle_states)
+```
+
+This is especially useful when validating EKF/UKF-based obstacle estimators against synthetic sensor noise.
+
 ### Input Assumptions
 
 By default the curvilinear predictor assumes **all** estimated input components remain constant over the prediction horizon. Sometimes this is too strong — for example, you may want to assume an obstacle drives straight (zero steering) while keeping its current speed.

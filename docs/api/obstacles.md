@@ -57,6 +57,18 @@ For testing and simulation purposes:
       show_root_heading: true
       heading_level: 3
 
+## Observers
+
+### Noisy Obstacle State Observer
+
+::: faran.obstacles.observer.common.NoisyObstacleStateObserver
+    options:
+      show_root_heading: true
+      heading_level: 4
+      members:
+        - create
+        - observe
+
 ## ID Assignment
 
 ### Hungarian Algorithm

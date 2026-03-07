@@ -5,10 +5,7 @@ pytest.register_assert_rewrite("docs.examples")
 
 from typing import AsyncGenerator
 
-from faran_visualizer import configure as configure_visualizer
-
 from tests.utilities import (
-    project_root,
     add_visualizer_option,
     add_compilation_tracker_option,
     is_compilation_tracker_enabled,
@@ -26,10 +23,6 @@ def pytest_addoption(parser: pytest.Parser) -> None:
     add_visualizer_option(parser)
     add_compilation_tracker_option(parser)
     add_notebook_option(parser)
-
-
-def pytest_configure(config: pytest.Config) -> None:
-    configure_visualizer(output_directory=project_root() / "docs" / "visualizations")
 
 
 def pytest_sessionstart(session: pytest.Session) -> None:

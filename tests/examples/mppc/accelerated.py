@@ -13,6 +13,7 @@ from faran import (
     ObstaclePositionExtractor,
     ObstacleStateObserver,
     ObstacleSimulator,
+    NoisyObstacleStateObserver,
     MetricRegistry,
     MpccErrorMetric,
     CollisionMetric,
@@ -33,6 +34,7 @@ from faran.jax import (
     predictor,
     obstacles as create_obstacles,
     risk,
+    noise,
 )
 
 from numtypes import array, Array
@@ -837,6 +839,7 @@ class configure:
         use_boundary: bool = False,
         use_halton: bool = False,
         use_kalman_filters: bool = False,
+        use_observation_noise: bool = False,
         cyclic_reference: bool = False,
     ) -> JaxMpccBicyclePlannerConfiguration:
         obstacle_simulator = obstacles()
@@ -886,8 +889,22 @@ class configure:
                                         model.bicycle.estimator.ukf(
                                             time_step_size=dt,
                                             wheelbase=L,
-                                            process_noise_covariance=1e-4,
-                                            observation_noise_covariance=1e-8,
+                                            process_noise_covariance=array(
+                                                [1e-8, 1e-8, 1e-8, 1e-8, 1e-2, 1e-2],
+                                                shape=(6,),
+                                            ),
+                                            observation_noise_covariance=array(
+                                                [0.1, 0.1, 0.05], shape=(3,)
+                                            ),
+                                            noise_model=noise.clamped(
+                                                noise.adaptive(window_size=10),
+                                                floor=noise.covariances(
+                                                    process=1e-8,
+                                                    observation=1e-2,
+                                                    process_dimension=6,
+                                                    observation_dimension=3,
+                                                ),
+                                            ),
                                         )
                                         if use_kalman_filters
                                         else model.bicycle.estimator.finite_difference(
@@ -898,7 +915,7 @@ class configure:
                                 ),
                                 history=types.obstacle_states_running_history.empty(
                                     creator=types.obstacle_2d_poses,
-                                    horizon=10,
+                                    horizon=32,
                                     obstacle_count=obstacle_simulator.obstacle_count,
                                 ),
                                 id_assignment=create_obstacles.id_assignment.hungarian(
@@ -991,7 +1008,15 @@ class configure:
         )
 
         obstacle_collector = collectors.obstacle_states.decorating(
-            obstacles_provider, transformer=types.obstacle_2d_poses.of_states
+            NoisyObstacleStateObserver.create(
+                obstacles_provider,
+                to_states=types.obstacle_2d_poses_for_time_step.wrap,
+                sigma=array([0.1, 0.1, 0.05], shape=(3,)),
+                seed=sampling.obstacle_seed,
+            )
+            if use_observation_noise
+            else obstacles_provider,
+            transformer=types.obstacle_2d_poses.of_states,
         )
 
         return JaxMpccBicyclePlannerConfiguration(

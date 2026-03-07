@@ -112,6 +112,8 @@ Both can be specified as:
 
 Larger process noise makes the estimator trust observations more; larger observation noise makes it trust the model more.
 
+If you want to test these settings against synthetic sensor corruption, wrap the obstacle observer with `NoisyObstacleStateObserver` as shown in the [Obstacle Handling guide](obstacles.md#noisy-observations).
+
 ## Adaptive Noise
 
 When the true noise covariances are unknown or change over time, **Innovation-based Adaptive Estimation (IAE)**[@Mohamed1999] adapts them online using the observation innovation sequence.

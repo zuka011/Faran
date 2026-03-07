@@ -170,7 +170,7 @@ def run(planner, augmented_model, registry, error_metric) -> Result:
             bar.write(f"Reached goal at step {step + 1}.")
             break
 
-        bar.set_postfix(progress=f"{current_state.virtual.array[0]:.1}%")
+        bar.set_postfix(progress=f"{current_state.virtual.array[0]:.2f}%")
     # --8<-- [end:loop]
 
     trajectories = registry.data(access.trajectories.require())

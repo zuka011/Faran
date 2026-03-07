@@ -6,12 +6,21 @@ from pathlib import Path
 from functools import lru_cache
 
 from faran import Trajectory, MpccErrorMetricResult
-from faran_visualizer import MpccSimulationResult, visualizer
+from faran_visualizer import (
+    MpccSimulationResult,
+    visualizer,
+    configure as configure_visualizer,
+)
 
-from tests.utilities import VisualizationData, doc_example
-from pytest import mark
+from tests.utilities import VisualizationData, doc_example, project_root
+from pytest import mark, fixture
 
 EXAMPLES_DIRECTORY: Final = Path("docs/examples")
+
+
+@fixture(scope="session", autouse=True)
+def configure_visualization_output_directory() -> None:
+    configure_visualizer(output_directory=project_root() / "docs" / "visualizations")
 
 
 class ExampleResult(Protocol):
@@ -126,7 +135,7 @@ def load(module_path: str) -> ExampleModule:
     [doc_example(path) for path in discover()],
     ids=[extract.module_id(path) for path in discover()],
 )
-@mark.visualize.with_args(visualizer.mpcc(), lambda seed: seed)
+@mark.visualize.with_args(visualizer.mpcc, lambda seed: seed)
 @mark.filterwarnings("ignore:.*'obstacle_states'.*not.*data.*")
 def test_that_documentation_example_produces_valid_plan(
     visualization: VisualizationData[MpccSimulationResult], module_path: str
@@ -136,6 +145,7 @@ def test_that_documentation_example_produces_valid_plan(
     components = example.create()
     result = example.run(*components)
 
+    configure_visualizer(output_directory=project_root() / "docs" / "visualizations")
     visualization.data_is(result.visualization).seed_is(example.seed)
 
     assert result.reached_goal, (

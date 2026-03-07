@@ -20,11 +20,20 @@ from faran import (
     access,
     risk,
 )
-from faran_visualizer import MpccSimulationResult, visualizer
+from faran_visualizer import (
+    MpccSimulationResult,
+    visualizer,
+    configure as configure_visualizer,
+)
 
-from tests.utilities import VisualizationData
+from tests.utilities import VisualizationData, project_root
 from tests.examples import mpcc, reference, obstacles, sampling, weights
-from pytest import mark
+from pytest import mark, fixture
+
+
+@fixture(scope="session", autouse=True)
+def configure_visualizer_output_directory() -> None:
+    configure_visualizer(output_directory=project_root() / "tests" / "visualizations")
 
 
 class MpccBicyclePlannerConfiguration[
@@ -334,6 +343,16 @@ def test_that_mpcc_planner_follows_trajectory_without_excessive_deviation[
             "numpy-from-mpcc-dynamic-uncertain",
         ),
         (
+            mpcc.numpy.planner_from_mpcc(
+                reference=reference.numpy.short,
+                obstacles=obstacles.numpy.dynamic.short,
+                use_kalman_filters=True,
+                use_observation_noise=True,
+                use_risk_metric=True,
+            ),
+            "numpy-from-mpcc-kalman-noisy-observations",
+        ),
+        (
             mpcc.jax.planner_from_augmented(
                 reference=reference.jax.loop, obstacles=obstacles.jax.static.loop
             ),
@@ -385,12 +404,14 @@ def test_that_mpcc_planner_follows_trajectory_without_excessive_deviation[
                 reference=reference.jax.highway,
                 obstacles=obstacles.jax.dynamic.highway,
                 use_kalman_filters=True,
+                use_observation_noise=True,
+                use_risk_metric=True,
             ),
-            "jax-from-mpcc-kalman",
+            "jax-from-mpcc-kalman-noisy-observations",
         ),
     ],
 )
-@mark.visualize.with_args(visualizer.mpcc(), lambda seed: f"{seed}-obstacles")
+@mark.visualize.with_args(visualizer.mpcc, lambda seed: f"{seed}-obstacles")
 @mark.filterwarnings("error")
 @mark.integration
 def test_that_mpcc_planner_follows_trajectory_without_collision_when_obstacles_are_present[

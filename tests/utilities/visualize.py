@@ -92,9 +92,9 @@ async def visualizer_arguments_from[T](
         return
 
     match marker.args:
-        case (Visualizer() as visualizer, str() as key):
+        case (factory, str() as key) if callable(factory):
             pass
-        case (Visualizer() as visualizer, KeyProvider() as key_provider):
+        case (factory, KeyProvider() as key_provider) if callable(factory):
             assert (
                 capture.seed is not None
             ), """A key provider was used for visualization, but no seed was
@@ -113,6 +113,8 @@ async def visualizer_arguments_from[T](
                 
                 Example: @pytest.mark.visualize.with_args(my_visualizer, "my-test-key")
                 """
+
+    visualizer: Visualizer = factory()
 
     assert await visualizer.can_visualize(capture.data), (
         f"Visualizer {visualizer} cannot visualize data of type "
