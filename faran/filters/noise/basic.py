@@ -13,7 +13,7 @@ from jaxtyping import Float
 import numpy as np
 
 
-class NumPyClampedNoiseModel[StateT](NamedTuple):
+class NumPyClampedNoise[StateT](NamedTuple):
     """Decorator that clamps an inner noise model's output diagonals to a floor."""
 
     inner: NumPyNoiseModel
@@ -69,9 +69,9 @@ class NumPyClampedNoiseProvider[StateT](NamedTuple):
         *,
         observation_matrix: Float[Array, "D_z D_x"],
         noise: NumPyNoiseCovariances,
-    ) -> NumPyClampedNoiseModel:
+    ) -> NumPyClampedNoise:
         inner_model = self.inner(observation_matrix=observation_matrix, noise=noise)
-        return NumPyClampedNoiseModel(inner=inner_model, floor=self.floor)
+        return NumPyClampedNoise(inner=inner_model, floor=self.floor)
 
 
 class NumPyAdaptiveNoiseState(NamedTuple):

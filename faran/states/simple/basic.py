@@ -38,7 +38,7 @@ class NumPySimpleState(NumPyState):
     _array: Float[Array, " D_x"]
 
     @staticmethod
-    def create(*, array: Float[Array, " D_x"]) -> "NumPySimpleState":
+    def create(array: Float[Array, " D_x"]) -> "NumPySimpleState":
         """Creates a NumPy simple state from the given array."""
         return NumPySimpleState(array)
 
@@ -151,7 +151,7 @@ class NumPySimpleControlInputSequence(NumPyControlInputSequence):
     _array: Float[Array, "T D_u"]
 
     @staticmethod
-    def create(*, array: Float[Array, "T D_u"]) -> "NumPySimpleControlInputSequence":
+    def create(array: Float[Array, "T D_u"]) -> "NumPySimpleControlInputSequence":
         """Creates a NumPy simple control input sequence from the given array."""
         return NumPySimpleControlInputSequence(array)
 
@@ -165,7 +165,7 @@ class NumPySimpleControlInputSequence(NumPyControlInputSequence):
         return NumPySimpleControlInputSequence(array)
 
     @staticmethod
-    def zeroes(horizon: int, dimension: int) -> "NumPySimpleControlInputSequence":
+    def zeroes(*, horizon: int, dimension: int) -> "NumPySimpleControlInputSequence":
         """Creates a zeroed control input sequence for the given horizon."""
         return NumPySimpleControlInputSequence.constant(
             np.zeros((dimension,)), horizon=horizon
@@ -207,7 +207,7 @@ class NumPySimpleControlInputBatch(NumPyControlInputBatch):
         return NumPySimpleControlInputBatch(array)
 
     @staticmethod
-    def create(*, array: Float[Array, "T D_u M"]) -> "NumPySimpleControlInputBatch":
+    def create(array: Float[Array, "T D_u M"]) -> "NumPySimpleControlInputBatch":
         """Creates a NumPy simple control input batch from the given array."""
         return NumPySimpleControlInputBatch(array)
 
@@ -304,6 +304,11 @@ class NumPySimpleObstacleStatesForTimeStep(
     """NumPy obstacle states for a single time step as a 2D array (dimension × obstacles)."""
 
     _array: Float[Array, "D_o K"]
+
+    @staticmethod
+    def create(array: Float[Array, "D_o K"]) -> "NumPySimpleObstacleStatesForTimeStep":
+        """Creates obstacle states for a single time step from the given array."""
+        return NumPySimpleObstacleStatesForTimeStep(array)
 
     def __array__(self, dtype: DataType | None = None) -> Float[Array, "D_o K"]:
         return self.array

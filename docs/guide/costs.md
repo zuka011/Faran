@@ -9,7 +9,7 @@ costs_array = cost_function(inputs=control_batch, states=state_batch)
 
 ## Tracking Costs
 
-These are used in the MPCC formulation (see [Concepts](concepts.md#mpcc-model-predictive-contouring-control)).
+These are used in the MPCC formulation[@Liniger2015] (see [Concepts](concepts.md#mpcc-model-predictive-contouring-control)).
 
 ### Contouring
 
@@ -69,7 +69,7 @@ progress = costs.tracking.progress(
 
 ### Collision
 
-Penalizes proximity to obstacles when the signed distance falls below a threshold:
+Penalizes proximity to obstacles when the signed distance falls below a threshold[@Schulman2013]:
 
 $$
 J_{\text{col}} = k_{\text{col}} \max(d_0 - d, \; 0)
@@ -103,7 +103,7 @@ boundary_cost = costs.safety.boundary(
 
 ### Control Smoothing
 
-Penalizes the difference between consecutive control inputs:
+Penalizes the difference between consecutive control inputs[@Liniger2015]:
 
 ```python
 smoothing = costs.comfort.control_smoothing(
@@ -113,7 +113,7 @@ smoothing = costs.comfort.control_smoothing(
 
 ### Control Effort
 
-Penalizes the magnitude of control inputs:
+Penalizes the magnitude of control inputs[@Williams2017]:
 
 ```python
 effort = costs.comfort.control_effort(
@@ -151,3 +151,5 @@ total = costs.combined(
     speed_limit_cost,
 )
 ```
+
+\bibliography

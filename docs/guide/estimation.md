@@ -38,7 +38,7 @@ estimator = model.bicycle.estimator.finite_difference(
 
 ### Kalman Filter (KF)
 
-For **linear** models (integrator). Maintains a Gaussian belief $(\mu, \Sigma)$ and updates it optimally using the Kalman gain:
+For **linear** models (integrator). Maintains a Gaussian belief $(\mu, \Sigma)$ and updates it optimally using the Kalman gain[@Thrun2005]:
 
 **Prediction:**
 $$
@@ -65,7 +65,7 @@ estimator = model.integrator.estimator.kf(
 
 ### Extended Kalman Filter (EKF)
 
-For **nonlinear** models (bicycle, unicycle). Linearizes the dynamics around the current estimate using the Jacobian $A_t = \frac{\partial f}{\partial x}\big|_{x=\mu_{t-1}}$, then applies the standard Kalman update.
+For **nonlinear** models (bicycle, unicycle). Linearizes the dynamics around the current estimate using the Jacobian $A_t = \frac{\partial f}{\partial x}\big|_{x=\mu_{t-1}}$, then applies the standard Kalman update[@Thrun2005].
 
 ```python
 estimator = model.bicycle.estimator.ekf(
@@ -80,7 +80,7 @@ estimator = model.bicycle.estimator.ekf(
 
 ### Unscented Kalman Filter (UKF)
 
-Higher-accuracy nonlinear estimation. Instead of linearizing with Jacobians, the UKF propagates a set of carefully chosen **sigma points** through the nonlinear dynamics and reconstructs the output distribution from those points.
+Higher-accuracy nonlinear estimation[@Julier1996][@Wan2000]. Instead of linearizing with Jacobians, the UKF propagates a set of carefully chosen **sigma points** through the nonlinear dynamics and reconstructs the output distribution from those points.
 
 The UKF captures mean and covariance to second order (vs. first order for EKF), making it more accurate for strongly nonlinear dynamics.
 
@@ -114,7 +114,7 @@ Larger process noise makes the estimator trust observations more; larger observa
 
 ## Adaptive Noise
 
-When the true noise covariances are unknown or change over time, **Innovation-based Adaptive Estimation (IAE)** adapts them online using the observation innovation sequence.
+When the true noise covariances are unknown or change over time, **Innovation-based Adaptive Estimation (IAE)**[@Mohamed1999] adapts them online using the observation innovation sequence.
 
 The adaptive noise model monitors the innovation (difference between predicted and actual observations) over a sliding window and adjusts both process and observation noise covariances to match the observed statistics.
 
@@ -164,3 +164,5 @@ If you just need obstacle positions without uncertainty, use Finite Difference. 
 ## API Reference
 
 See the [model API reference](../api/model.md) for estimator factory signatures and the [predictor API reference](../api/predictor.md) for how estimators connect to motion prediction.
+
+\bibliography

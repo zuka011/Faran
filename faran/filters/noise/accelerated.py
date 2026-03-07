@@ -15,7 +15,7 @@ import jax
 import jax.numpy as jnp
 
 
-class JaxClampedNoiseModel[StateT](eqx.Module):
+class JaxClampedNoise[StateT](eqx.Module):
     """Decorator that clamps an inner noise model's output diagonals to a floor."""
 
     inner: JaxNoiseModel[StateT]
@@ -74,9 +74,9 @@ class JaxClampedNoiseProvider[StateT](eqx.Module):
         *,
         observation_matrix: Float[JaxArray, "D_z D_x"],
         noise: JaxNoiseCovariances,
-    ) -> JaxClampedNoiseModel:
+    ) -> JaxClampedNoise:
         inner_model = self.inner(observation_matrix=observation_matrix, noise=noise)
-        return JaxClampedNoiseModel(inner=inner_model, floor=self.floor)
+        return JaxClampedNoise(inner=inner_model, floor=self.floor)
 
 
 class JaxAdaptiveNoiseState(NamedTuple):

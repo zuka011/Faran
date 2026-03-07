@@ -184,3 +184,37 @@ class check:
         ), f"Diagonal elements in padded region should be {epsilon}. Got: {diagonals}"
 
         return True
+
+    @staticmethod
+    def has_moments(
+        *,
+        samples: Float[Array, "N D_o K"],
+        mean: Float[Array, " D_o"],
+        sigma: Float[Array, " D_o"],
+        confidence_multiplier: float = 3.0,
+    ) -> bool:
+        n = samples.shape[0]
+
+        assert np.allclose(
+            empirical_mean := samples.mean(axis=0),
+            mean[:, np.newaxis],
+            atol=(
+                tolerance := confidence_multiplier * sigma[:, np.newaxis] / np.sqrt(n)
+            ),
+        ), (
+            f"Empirical mean should be approximately {mean} within tolerance {tolerance}. Got: {empirical_mean}"
+        )
+
+        assert np.allclose(
+            empirical_std := samples.std(axis=0),
+            sigma[:, np.newaxis],
+            atol=(
+                tolerance := confidence_multiplier
+                * sigma[:, np.newaxis]
+                / np.sqrt(2 * n)
+            ),
+        ), (
+            f"Empirical std should be approximately sigma={sigma} within tolerance {tolerance}. Got: {empirical_std}"
+        )
+
+        return True

@@ -443,11 +443,19 @@ class JaxObstacle2dPoses(
 @jaxtyped
 @dataclass(kw_only=True, frozen=True)
 class JaxObstacle2dPosesForTimeStep(JaxObstacleStatesForTimeStep[JaxObstacle2dPoses]):
-    """2D poses (x, y, heading) for a single time step with shape (POSE_D_O, K)."""
+    """2D poses (x, y, heading) for a single time step."""
 
     _x: Float[JaxArray, " K"]
     _y: Float[JaxArray, " K"]
     _heading: Float[JaxArray, " K"]
+
+    @staticmethod
+    def wrap(
+        array: Float[Array, f"{D_O} K"] | Float[JaxArray, f"{D_O} K"],
+    ) -> "JaxObstacle2dPosesForTimeStep":
+        return JaxObstacle2dPosesForTimeStep.create(
+            x=array[0, :], y=array[1, :], heading=array[2, :]
+        )
 
     @staticmethod
     def create(

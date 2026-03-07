@@ -1,6 +1,6 @@
 # MPPI Planning
 
-This page covers the practical details of configuring and tuning an MPPI planner: factory functions, temperature selection, filtering, and sampler seeding. For the algorithmic background, see [Core Concepts](concepts.md).
+This page covers the practical details of configuring and tuning an MPPI planner[@Williams2015][@Williams2016][@Williams2017]: factory functions, temperature selection, filtering, and sampler seeding. For the algorithmic background, see [Core Concepts](concepts.md).
 
 ## Factory Functions
 
@@ -140,3 +140,5 @@ Samplers are deterministic given a seed. When using `mppi.augmented`, use differ
 physical_sampler = sampler.gaussian(seed=42, ...)
 virtual_sampler = sampler.gaussian(seed=43, ...)
 ```
+
+\bibliography

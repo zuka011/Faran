@@ -43,7 +43,7 @@ class JaxSimpleState(JaxState):
 
     @staticmethod
     def create(
-        *, array: Float[Array, " D_x"] | Float[JaxArray, " D_x"]
+        array: Float[Array, " D_x"] | Float[JaxArray, " D_x"],
     ) -> "JaxSimpleState":
         """Creates a JAX simple state from the given array."""
         return JaxSimpleState(jnp.asarray(array))
@@ -117,7 +117,7 @@ class JaxSimpleStateBatch(JaxStateBatch):
 
     @staticmethod
     def wrap(
-        *, array: Float[Array, "T D_x M"] | Float[JaxArray, "T D_x M"]
+        array: Float[Array, "T D_x M"] | Float[JaxArray, "T D_x M"],
     ) -> "JaxSimpleStateBatch":
         """Creates a JAX simple state batch from the given array."""
         return JaxSimpleStateBatch(jnp.asarray(array))
@@ -170,7 +170,7 @@ class JaxSimpleControlInputSequence(JaxControlInputSequence):
 
     @staticmethod
     def create(
-        *, array: Float[Array, "T D_u"] | Float[JaxArray, "T D_u"]
+        array: Float[Array, "T D_u"] | Float[JaxArray, "T D_u"],
     ) -> "JaxSimpleControlInputSequence":
         """Creates a JAX simple control input sequence from the given array."""
         return JaxSimpleControlInputSequence(jnp.asarray(array))
@@ -185,7 +185,7 @@ class JaxSimpleControlInputSequence(JaxControlInputSequence):
         )
 
     @staticmethod
-    def zeroes(horizon: int, dimension: int) -> "JaxSimpleControlInputSequence":
+    def zeroes(*, horizon: int, dimension: int) -> "JaxSimpleControlInputSequence":
         """Creates a zeroed control input sequence for the given horizon."""
         return JaxSimpleControlInputSequence.constant(
             jnp.zeros((dimension,)), horizon=horizon
@@ -223,7 +223,7 @@ class JaxSimpleControlInputBatch(JaxControlInputBatch):
 
     @staticmethod
     def create(
-        *, array: Float[Array, "T D_u M"] | Float[JaxArray, "T D_u M"]
+        array: Float[Array, "T D_u M"] | Float[JaxArray, "T D_u M"],
     ) -> "JaxSimpleControlInputBatch":
         """Factory method to create a JAX simple control input batch from an array."""
         return JaxSimpleControlInputBatch(jnp.asarray(array))
@@ -238,9 +238,7 @@ class JaxSimpleControlInputBatch(JaxControlInputBatch):
         )
 
     @staticmethod
-    def of(
-        sequence: JaxControlInputSequenceLike,
-    ) -> "JaxSimpleControlInputBatch":
+    def of(sequence: JaxControlInputSequenceLike) -> "JaxSimpleControlInputBatch":
         """Creates a JAX simple control input batch from a single control input sequence."""
         return JaxSimpleControlInputBatch(sequence.array[..., jnp.newaxis])
 
@@ -346,6 +344,13 @@ class JaxSimpleObstacleStatesForTimeStep(
     """JAX obstacle states for a single time step as a 2D array (dimension × obstacles)."""
 
     _array: Float[JaxArray, "D_o K"]
+
+    @staticmethod
+    def create(
+        array: Float[Array, "D_o K"] | Float[JaxArray, "D_o K"],
+    ) -> "JaxSimpleObstacleStatesForTimeStep":
+        """Creates obstacle states for a single time step from the given array."""
+        return JaxSimpleObstacleStatesForTimeStep(jnp.asarray(array))
 
     def __array__(self, dtype: DataType | None = None) -> Float[Array, "D_o K"]:
         return self._numpy_array

@@ -23,4 +23,7 @@ from .history import (
     JaxObstacleIds as JaxObstacleIds,
     JaxObstacleStatesRunningHistory as JaxObstacleStatesRunningHistory,
 )
+from .observer import (
+    NoisyObstacleStateObserver as NoisyObstacleStateObserver,
+)
 from .factory import obstacles as obstacles

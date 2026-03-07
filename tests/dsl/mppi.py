@@ -76,6 +76,12 @@ class numpy:
         )
 
     @staticmethod
+    def simple_obstacle_states_for_time_step(
+        *, array: Float[Array, " D_o K"]
+    ) -> NumPySimpleObstacleStates:
+        return types.numpy.simple.obstacle_states_for_time_step.create(array=array)
+
+    @staticmethod
     def obstacle_2d_poses(
         *,
         x: Float[Array, "T K"],
@@ -169,6 +175,12 @@ class jax:
         return types.jax.simple.obstacle_states.create(
             states=states, covariance=covariance
         )
+
+    @staticmethod
+    def simple_obstacle_states_for_time_step(
+        *, array: Float[Array, " D_o K"] | Float[JaxArray, " D_o K"]
+    ) -> JaxSimpleObstacleStates:
+        return types.jax.simple.obstacle_states_for_time_step.create(array=array)
 
     @staticmethod
     def obstacle_2d_poses(

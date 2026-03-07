@@ -376,6 +376,7 @@ class types:
             control_input_batch: Final = NumPySimpleControlInputBatch
             costs: Final = NumPySimpleCosts
             obstacle_states: Final = NumPySimpleObstacleStates
+            obstacle_states_for_time_step: Final = NumPySimpleObstacleStatesForTimeStep
 
         class integrator:
             type ObstacleStateSequences = NumPyIntegratorObstacleStateSequences
@@ -552,6 +553,7 @@ class types:
             control_input_batch: Final = JaxSimpleControlInputBatch
             costs: Final = JaxSimpleCosts
             obstacle_states: Final = JaxSimpleObstacleStates
+            obstacle_states_for_time_step: Final = JaxSimpleObstacleStatesForTimeStep
 
         class integrator:
             type ObstacleStateSequences = JaxIntegratorObstacleStateSequences

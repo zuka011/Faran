@@ -55,6 +55,8 @@ theme:
 
 plugins:
   - search
+  - bibtex:
+      bib_file: "documents/references.bib"
   - mkdocstrings:
       handlers:
         python:

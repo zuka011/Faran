@@ -4,7 +4,7 @@ This page covers the algorithms and abstractions at the heart of Faran: MPPI pla
 
 ## MPPI
 
-MPPI (Model Predictive Path Integral) is a sampling-based trajectory optimization algorithm. At each planning step it:
+MPPI (Model Predictive Path Integral) is a sampling-based trajectory optimization algorithm[@Williams2015][@Williams2016][@Williams2017]. At each planning step it:
 
 1. Draws $M$ control sequences by perturbing a nominal sequence
 2. Simulates each through a dynamics model to produce $M$ state rollouts
@@ -47,7 +47,7 @@ planner, model, contouring, lag = mppi.mpcc(model=..., sampler=..., reference=..
 
 ## MPCC: Model Predictive Contouring Control
 
-MPCC is an MPC formulation for path following. It introduces a virtual path parameter $\phi$ that moves independently along the reference trajectory, and decomposes tracking error into two components:
+MPCC is an MPC formulation for path following[@Liniger2015]. It introduces a virtual path parameter $\phi$ that moves independently along the reference trajectory, and decomposes tracking error into two components:
 
 - **Contouring error** $e_c$ — perpendicular distance to the path (lateral deviation)
 - **Lag error** $e_l$ — distance along the path behind the reference point (longitudinal deviation)
@@ -123,3 +123,5 @@ for step in range(max_steps):
 ```
 
 `control.optimal` is the weighted-average control sequence. `control.nominal` is the shifted and padded sequence used as the center of sampling in the next step.
+
+\bibliography

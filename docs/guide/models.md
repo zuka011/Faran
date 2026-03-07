@@ -6,7 +6,7 @@ Faran provides three models. All support both NumPy and JAX backends, and each h
 
 ## Kinematic Bicycle Model
 
-The standard model for wheeled vehicles. Four state variables and two control inputs, discretized via Euler integration:
+The standard model for wheeled vehicles[@Polack2017]. Four state variables and two control inputs, discretized via Euler integration:
 
 $$
 x_{t+1} = x_t + v_t \cos(\theta_t) \, \Delta t, \quad
@@ -40,7 +40,7 @@ bicycle = model.bicycle.dynamical(
 
 ## Unicycle Model
 
-A simpler model for differential-drive or omnidirectional robots. Three state variables with direct velocity control:
+A simpler model for differential-drive or omnidirectional robots[@Oriolo2002]. Three state variables with direct velocity control:
 
 $$
 x_{t+1} = x_t + v_t \cos(\theta_t) \, \Delta t, \quad
@@ -105,3 +105,5 @@ Omitting a limit (or passing `None`) leaves that dimension unconstrained.
 ## API Reference
 
 See the [model API reference](../api/model.md) for full signatures and docstrings.
+
+\bibliography

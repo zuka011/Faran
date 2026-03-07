@@ -15,8 +15,12 @@ from .ukf import (
 from .noise import (
     NumPyAdaptiveNoise as NumPyAdaptiveNoise,
     NumPyAdaptiveNoiseProvider as NumPyAdaptiveNoiseProvider,
+    NumPyClampedNoise as NumPyClampedNoise,
+    NumPyClampedNoiseProvider as NumPyClampedNoiseProvider,
     JaxAdaptiveNoise as JaxAdaptiveNoise,
     JaxAdaptiveNoiseProvider as JaxAdaptiveNoiseProvider,
+    JaxClampedNoise as JaxClampedNoise,
+    JaxClampedNoiseProvider as JaxClampedNoiseProvider,
     IdentityNoiseModelProvider as IdentityNoiseModelProvider,
 )
 from .factory import noise as noise

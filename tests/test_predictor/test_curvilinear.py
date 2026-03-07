@@ -1868,7 +1868,6 @@ class test_that_predictor_correctly_predicts_circular_motion_when_steering_angle
     ) -> Sequence[tuple]:
         dt = 0.1
         L = 5.0
-        radius = 24.0
 
         def trajectory_for(inputs):
             return model.bicycle.dynamical(time_step_size=dt, wheelbase=L).simulate(
@@ -1885,7 +1884,7 @@ class test_that_predictor_correctly_predicts_circular_motion_when_steering_angle
                     (T_h := (T_straight := 10) + (T_turn := 11)) + (T_p := 30)
                 ),
                 steering=np.where(
-                    np.arange(T_h + T_p) < T_straight, 0.0, np.arctan(L / radius)
+                    np.arange(T_h + T_p) < T_straight, 0.0, 10 * np.pi / 180
                 ),
             )
         )

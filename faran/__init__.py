@@ -29,6 +29,7 @@ from .models import (
 from .obstacles import (
     obstacles as obstacles,
     PredictingObstacleStateProvider as PredictingObstacleStateProvider,
+    NoisyObstacleStateObserver as NoisyObstacleStateObserver,
 )
 from .predictors import predictor as predictor
 from .types import (
@@ -107,7 +108,7 @@ from .types import (
     NoiseModel as NoiseModel,
     NoiseModelProvider as NoiseModelProvider,
 )
-from .filters.noise import (
+from .filters import (
     NumPyAdaptiveNoiseProvider as NumPyAdaptiveNoiseProvider,
     NumPyClampedNoiseProvider as NumPyClampedNoiseProvider,
     JaxAdaptiveNoiseProvider as JaxAdaptiveNoiseProvider,

@@ -294,7 +294,11 @@ class JaxUnscentedKalmanFilter(eqx.Module):
         # NOTE: This is to ensure the scaled covariance is positive definite.
         scaled_covariance = (scaled_covariance + scaled_covariance.T) / 2
         eigenvalues, eigenvectors = jnp.linalg.eigh(scaled_covariance)
-        eigenvalues = jnp.maximum(eigenvalues, 1e-10)
+
+        # NOTE: The eigenvalue floor must be large enough to survive the float32
+        # round-trip through V @ D @ V^T without losing positive-definiteness.
+        eigenvalue_floor = jnp.maximum(1e-10, jnp.max(eigenvalues) * 1e-6)
+        eigenvalues = jnp.maximum(eigenvalues, eigenvalue_floor)
         scaled_covariance = eigenvectors @ jnp.diag(eigenvalues) @ eigenvectors.T
 
         sqrt_scaled_covariance = jnp.linalg.cholesky(scaled_covariance)

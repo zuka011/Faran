@@ -372,11 +372,17 @@ class NumPyObstacle2dPoses(
 class NumPyObstacle2dPosesForTimeStep(
     NumPyObstacleStatesForTimeStep[NumPyObstacle2dPoses]
 ):
-    """2D poses (x, y, heading) for a single time step with shape (POSE_D_O, K)."""
+    """2D poses (x, y, heading) for a single time step."""
 
     _x: Float[Array, " K"]
     _y: Float[Array, " K"]
     _heading: Float[Array, " K"]
+
+    @staticmethod
+    def wrap(array: Float[Array, f"{D_O} K"]) -> "NumPyObstacle2dPosesForTimeStep":
+        return NumPyObstacle2dPosesForTimeStep.create(
+            x=array[0, :], y=array[1, :], heading=array[2, :]
+        )
 
     @staticmethod
     def create(

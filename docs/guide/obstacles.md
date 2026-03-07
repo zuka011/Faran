@@ -14,7 +14,7 @@ Two methods are available for computing signed distances between the ego vehicle
 
 ### Circle-to-Circle
 
-Represents both the ego and obstacles as collections of circles. Fast, suitable when precise geometry is not needed.
+Represents both the ego and obstacles as collections of circles[@Tolksdorf2024]. Fast, suitable when precise geometry is not needed.
 
 ```python
 from faran.numpy import distance
@@ -43,7 +43,7 @@ Distance is center-to-center minus both radii. Negative values indicate overlap.
 
 ### SAT (Separating Axis Theorem)
 
-Represents both the ego and obstacles as convex polygons. Computes exact signed separation distance.
+Represents both the ego and obstacles as convex polygons[@Gottschalk1997]. Computes exact signed separation distance.
 
 ```python
 from faran import ConvexPolygon
@@ -63,6 +63,8 @@ distance_extractor = distance.sat(
 ## Obstacle State Provider
 
 The obstacle state provider supplies predicted obstacle positions to the collision cost at each planning step. It wraps a motion predictor and maintains a running history of observations.
+
+The curvilinear predictor propagates obstacle states forward using constant-input motion models[@Schubert2008] (constant velocity, constant steering angle and acceleration, etc.).
 
 ```python
 from faran.numpy import obstacles, predictor, model, types
@@ -207,3 +209,5 @@ collision = costs.safety.collision(
 
 Available risk metrics: `risk.expected_value`, `risk.mean_variance`, `risk.var`, `risk.cvar`, `risk.entropic_risk`. See the [Feature Overview](features.md) for details.
 ```
+
+\bibliography

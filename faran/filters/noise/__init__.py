@@ -4,13 +4,13 @@ from .common import (
 from .basic import (
     NumPyAdaptiveNoise as NumPyAdaptiveNoise,
     NumPyAdaptiveNoiseProvider as NumPyAdaptiveNoiseProvider,
-    NumPyClampedNoiseModel as NumPyClampedNoiseModel,
+    NumPyClampedNoise as NumPyClampedNoise,
     NumPyClampedNoiseProvider as NumPyClampedNoiseProvider,
 )
 from .accelerated import (
     JaxAdaptiveNoise as JaxAdaptiveNoise,
     JaxAdaptiveNoiseProvider as JaxAdaptiveNoiseProvider,
     JaxAdaptiveNoiseState as JaxAdaptiveNoiseState,
-    JaxClampedNoiseModel as JaxClampedNoiseModel,
+    JaxClampedNoise as JaxClampedNoise,
     JaxClampedNoiseProvider as JaxClampedNoiseProvider,
 )
