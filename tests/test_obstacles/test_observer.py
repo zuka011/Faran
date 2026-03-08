@@ -63,7 +63,7 @@ class test_that_noisy_observer_delegates_modified_states_to_inner_observer:
         to_states: Callable[[Array], ObstacleStatesForTimeStep],
         sigma: Array,
     ) -> None:
-        observer = NoisyObstacleStateObserver.create(
+        observer = NoisyObstacleStateObserver.decorate(
             inner := ObstacleStateCollector(), sigma=sigma, seed=42, to_states=to_states
         )
 
@@ -132,7 +132,7 @@ class test_that_states_are_unchanged_when_sigma_is_zero:
         to_states: Callable[[Array], ObstacleStatesForTimeStep],
         sigma: Array,
     ) -> None:
-        observer = NoisyObstacleStateObserver.create(
+        observer = NoisyObstacleStateObserver.decorate(
             inner := ObstacleStateCollector(), sigma=sigma, seed=42, to_states=to_states
         )
 
@@ -184,13 +184,13 @@ class test_that_same_seed_produces_identical_noise:
         to_states: Callable[[Array], ObstacleStatesForTimeStep],
         sigma: Array,
     ) -> None:
-        observer_a = NoisyObstacleStateObserver.create(
+        observer_a = NoisyObstacleStateObserver.decorate(
             inner_a := ObstacleStateCollector(),
             sigma=sigma,
             seed=42,
             to_states=to_states,
         )
-        observer_b = NoisyObstacleStateObserver.create(
+        observer_b = NoisyObstacleStateObserver.decorate(
             inner_b := ObstacleStateCollector(),
             sigma=sigma,
             seed=42,
@@ -246,13 +246,13 @@ class test_that_different_seeds_produce_different_noise:
         to_states: Callable[[Array], ObstacleStatesForTimeStep],
         sigma: Array,
     ) -> None:
-        observer_a = NoisyObstacleStateObserver.create(
+        observer_a = NoisyObstacleStateObserver.decorate(
             inner_a := ObstacleStateCollector(),
             sigma=sigma,
             seed=42,
             to_states=to_states,
         )
-        observer_b = NoisyObstacleStateObserver.create(
+        observer_b = NoisyObstacleStateObserver.decorate(
             inner_b := ObstacleStateCollector(),
             sigma=sigma,
             seed=99,
@@ -309,7 +309,7 @@ class test_that_original_states_are_not_mutated:
         sigma: Array,
     ) -> None:
         original_array = states.array.copy()
-        observer = NoisyObstacleStateObserver.create(
+        observer = NoisyObstacleStateObserver.decorate(
             ObstacleStateCollector(), sigma=sigma, seed=42, to_states=to_states
         )
 

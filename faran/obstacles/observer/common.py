@@ -22,7 +22,7 @@ class NoisyObstacleStateObserver[ObstacleStatesForTimeStepT: ObstacleStatesForTi
     rng: np.random.Generator
 
     @staticmethod
-    def create[OS: ObstacleStatesForTimeStep](
+    def decorate[OS: ObstacleStatesForTimeStep](
         observer: ObstacleStateObserver[OS],
         *,
         to_states: ObstacleStateCreator[OS],
