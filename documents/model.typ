@@ -86,6 +86,61 @@ The exact algorithm is as follows:
   $"sample"(dot), "filter"(dot), "update"(dot), "and" "pad"(dot)$ can vary based on the specific implementation.
 ]
 
+== Savitsky-Golay Smoothing Filter
+
+The weighted average of sampled control trajectories in MPPI can produce noisy control sequences, particularly when the number of rollouts is limited. To mitigate this, a *Savitzky-Golay (SG) smoothing filter* can be applied to the resulting optimal control sequence. This corresponds to the $"filter"(dot)$ operation in the MPPI algorithm.
+
+The SG filter smooths a discrete sequence by fitting a low-degree polynomial to successive windows of adjacent data points using least squares, then taking the fitted polynomial's value at the center of each window as the smoothed output.
+
+#definition(title: [Savitzky-Golay Filter @Savitzky1964])[
+  Let $y = {y_0, y_1, ..., y_(#horizon -1)}$ be a discrete sequence (e.g. one component of the optimal control sequence). Given a half-window size $w$ and a polynomial degree $p$ (with $p < 2w + 1$), the smoothed value at time step $t$ is:
+
+  $
+    hat(y)_t = sum_(j=-w)^(w) c_j y_(t+j)
+  $
+
+  where ${c_j}$ are convolution coefficients determined solely by $w$ and $p$. These coefficients are obtained by solving the least-squares problem for fitting a polynomial of degree $p$ to $2w+1$ points. Since they do not depend on the data, they can be precomputed once.
+
+  At the boundaries of the sequence (where $t < w$ or $t > #horizon - 1 - w$), the window is truncated or the sequence is padded.
+]
+
+The SG filter is applied independently to each control dimension of the optimal control sequence after the weighted averaging step. It preserves the general shape of the control profile (as captured by the fitted polynomial) while suppressing high-frequency noise introduced by the sampling.
+
+== Halton Spline Sampling
+
+#let control-dimension = $D_u$
+
+Vanilla MPPI samples independent perturbations at each time step, typically from a Gaussian distribution. This produces control sequences that can change abruptly between consecutive time steps, which is both physically implausible and sample-inefficient. That is, many rollouts are wasted on trajectories that no reasonable controller would execute.
+
+*Halton spline sampling* addresses this by sampling smooth perturbations. The process involves two parts:
+1. Using a *Halton sequence* to generate well-distributed quasi-random numbers, and
+2. using *spline interpolation* to produce temporally smooth perturbations from a small number of sampled control points.
+
+This procedure corresponds to the $"sample"(dot)$ operation in the MPPI algorithm.
+
+#definition(title: [Halton Sequence @Halton1960])[
+  The Halton sequence is a deterministic, low-discrepancy sequence that fills a space more uniformly than pseudo-random sampling. The one-dimensional Halton sequence in base $b$ is constructed by writing successive integers in base $b$ and reflecting the digits about the decimal point. For example, in base 2:
+
+  #align(
+    center,
+    $1 -> 0.1_2 = 0.5, quad 2 -> 0.01_2 = 0.25, quad 3 -> 0.11_2 = 0.75, quad ...$,
+  )
+
+  For a $d$-dimensional sequence, a different prime base is used for each dimension (e.g., bases 2, 3, 5, 7, ...). The resulting points in $[0, 1]^d$ can be transformed to other distributions (e.g., Gaussian) via the inverse cumulative distribution function.
+]
+
+#definition(title: "Spline-Based Control Perturbation Sampling")[
+  Rather than sampling $#horizon times #control-dimension$ independent perturbation values, the control horizon is divided into $K$ knot points ($K << #horizon$) at evenly spaced time steps $t_0, t_1, ..., t_(K-1)$. The sampling procedure for a single rollout is:
+
+  1. Generate $K times #control-dimension$ quasi-random values using the Halton sequence.
+  2. Transform these values to the desired perturbation distribution.
+  3. Interpolate between the $K$ knot values using a cubic spline to obtain perturbation values at all $#horizon$ time steps.
+  4. Scale the perturbations by the standard deviation $sigma in bb(R)^(#control-dimension)$.
+  5. Add the resulting smooth perturbation to the nominal control sequence.
+]
+
+The combination of Halton sequences and spline interpolation has two benefits. The low-discrepancy property of the Halton sequence ensures that the sampled perturbations cover the space of possible control profiles more uniformly than independent random sampling, improving sample efficiency. The spline interpolation enforces temporal smoothness, so that the sampled rollouts resemble physically plausible control inputs.
+
 = Dynamical Model
 
 == Kinematic Bicycle Model (KBM)
@@ -343,7 +398,6 @@ The progress cost given by @progress-cost-equation pushes #path-parameter to mov
 
 #let input-single-(at: none) = $#input-single _(#at)$
 #let state-dimension = $D_x$
-#let control-dimension = $D_u$
 #let smoothing-cost = $#cost-()_s$
 #let effort-cost = $#cost-()_n$
 #let input-change = $Delta #input-single$
@@ -385,11 +439,11 @@ The progress cost given by @progress-cost-equation pushes #path-parameter to mov
 
 For the collision cost, we need to be able to compute minimum distances to obstacles. Although not necessary, distance measurement can also be used for collision detection. Depending on the geometry of the ego and obstacles, as well as the desired precision and available computational resources, different methods can be used.
 
-== Separating Axis Theorem (SAT) Method @Gottschalk1997
+== Separating Axis Theorem (SAT) Method
 
 In the simplest case, we can assume that both the ego robot and the obstacles can be represented as rectangles. For example, when dealing with vehicles or wheeled mobile robots, this is a reasonable assumption. We can then compute the minimum distance between the ego and an obstacle by using the *separating axis theorem*.
 
-#definition(title: "Separating Axis")[
+#definition(title: [Separating Axis @Gottschalk1997])[
   An axis is *separating* if the projections of the two rectangles onto this axis do not overlap.
 
   More formally, given rectangles $A$ and $B$ with vertices ${a_i}$ and ${b_j}$, define their projections onto axis $n$ as:
@@ -402,7 +456,7 @@ In the simplest case, we can assume that both the ego robot and the obstacles ca
 
 If we find an axis that separates the two rectangles, we can compute the minimum distance between them as the gap between their projections onto this axis. Now there's a lot of possible axes we could check (infinitely many), but we only need to check just a few of them to find the minimum distance.
 
-#definition(title: "Separating Axis Theorem (SAT)")[
+#definition(title: [Separating Axis Theorem (SAT) @Gottschalk1997])[
   Two convex polygons do not intersect if and only if there exists a separating axis. Furthermore, if such an axis exists, it must be parallel to an edge of one of the polygons.
 
   For two rectangles, this reduces to checking only 4 axes: the two edge normals of each rectangle. The minimum distance is the maximum gap between projections across all separating axes:
@@ -419,11 +473,11 @@ You can see the idea in the below figure#footnote[This approach is not limited t
   caption: [The ego robot (blue) and an obstacle (red) are represented as rectangles. The minimum distance between them can be computed by projecting their corners onto the separating axes (dashed gray lines) and finding the largest gap between the projections. In this example, the minimum distance is given by the gap along the separating axis $n_0$. Only two of the four possible separating axes are shown for clarity.],
 ) <sat-figure>
 
-== Circle Approximation Method @Tolksdorf2024
+== Circle Approximation Method
 
 Although using the SAT method is accurate and comparatively efficient, even faster methods exist. One such method is to approximate the rectangular shapes of the ego robot and obstacles with circles. Computing distances between circles is much easier and faster than using the SAT method. Depending on how accurately we want to approximate the rectangles with circles, we can use more or fewer circles.
 
-#definition(title: "Circle Approximation Distance")[
+#definition(title: [Circle Approximation Distance @Tolksdorf2024])[
   Let the ego robot be approximated by $N$ circles with centers $c_i$ and radii $r_i$, $i = 1, ..., N$. Similarly, let an obstacle be approximated by $M$ circles with centers $d_j$ and radii $s_j$, $j = 1, ..., M$. The minimum distance between the ego and the obstacle can then be computed as:
 
   $
@@ -553,7 +607,7 @@ In the case of the hinge loss more circles lead to a better cost landscape, as c
 
 To effectively avoid collisions, only considering the current state of moving obstacles is insufficient in most cases. Instead, we need to predict how the obstacles will move in the near future. Several of the many possible motion prediction models are described below. The assumed system dynamics for the prediction models are formulated differently from the underlying dynamical models. Namely, the state of the system is always augmented to include the inputs of the system as well. As will be seen in the state estimation section (@state-estimation), formulating the prediction models in this way allows us to easily incorporate knowledge about the uncertainty of our assumptions into the predictions.
 
-== Constant Velocity (CV) Model @Schubert2008 <cv-model>
+== Constant Velocity (CV) Model <cv-model>
 
 #let state-single-(at: none) = $#state-single _(#at)$
 #let state-transition-matrix-(at: none) = function(name: $sans(A)$, sub: at)
@@ -561,7 +615,9 @@ To effectively avoid collisions, only considering the current state of moving ob
 
 A simple method to predict the future motion of obstacles is to assume they will continue moving with their current velocity. We call this a *constant velocity model*.
 
-#definition(title: "Constant Velocity Model for Planar Obstacles")[
+#definition(
+  title: [Constant Velocity Model for Planar Obstacles @Schubert2008],
+)[
   Let the state of an obstacle moving on a plane be given as $#state-single = [x quad y quad v_x quad v_y]$. Assuming the obstacle will continue moving at a constant velocity $(v_x, v_y)$, its motion can be approximated by the following equations:
   $
     #state-single-(at: $t$) = #state-single-(at: $t-1$) + vec(v_(x,t-1) dot #delta-t, v_(y,t-1) dot #delta-t, 0, 0, delim: "[") quad <=> quad #state-single-(at: $t$) = #state-transition-matrix-(at: $t$) #state-single-(at: $t-1$), quad #state-transition-matrix-(at: $t$) := mat(
@@ -576,7 +632,7 @@ A simple method to predict the future motion of obstacles is to assume they will
   Where #delta-t is the time step size for prediction. Since the dynamics are linear, we can also represent it in matrix form as shown above.
 ]
 
-== Constant Steering Angle & Acceleration (CSAA) Model @Schubert2008 <csaa-model>
+== Constant Steering Angle & Acceleration (CSAA) Model <csaa-model>
 
 #let state-transition-function-(..args) = function(name: $f$, ..args)
 #let state-transition-function = state-transition-function-()
@@ -588,7 +644,9 @@ For many applications#footnote[For pedestrian motion prediction, the constant ve
 If the obstacle is a vehicle, both assumptions are frequently violated (e.g. when following a curved road, turning or slowing down at an intersection). Thus, the model will frequently yield inaccurate predictions. A more sophisticated option is to assume the obstacle follows the kinematic bicycle model (@kinematic-bicycle-equations) and that the acceleration $a$ and
 the steering angle $delta$ remain constant. The resulting model is called a *constant steering angle & acceleration model*.
 
-#definition(title: "Constant Steering Angle & Acceleration Model")[
+#definition(
+  title: [Constant Steering Angle & Acceleration Model @Schubert2008],
+)[
   Let the state of an obstacle moving on a plane be given as $#state-single = [x quad y quad theta quad v quad a quad delta]$. Assuming the obstacle will continue moving with constant acceleration $a$ and steering angle $delta$, its motion can be approximated by the following equations:
 
   $
@@ -606,13 +664,15 @@ the steering angle $delta$ remain constant. The resulting model is called a *con
   Where $L$ is the wheelbase of the obstacle and #delta-t is the time step size for prediction.
 ]
 
-== Constant Turn Rate & Velocity (CTRV) Model @Schubert2008 <ctrv-model>
+== Constant Turn Rate & Velocity (CTRV) Model <ctrv-model>
 
 Alternatively, we can assume the obstacle follows the unicycle model (@unicycle-equations) and that both the linear velocity $v$ and angular velocity $omega$ remain constant. The resulting model is called a *constant turn rate & velocity model*.
 
 This model can be used, for example, if the obstacles are known to be other robots using a differential drive.
 
-#definition(title: "Constant Turn Rate & Velocity Model for Planar Obstacles")[
+#definition(
+  title: [Constant Turn Rate & Velocity Model for Planar Obstacles @Schubert2008],
+)[
   Let the state of an obstacle moving on a plane be given as $#state-single = [x quad y quad theta quad v quad omega]$. Assuming the obstacle will continue moving with constant linear velocity $v$ and angular velocity $omega$, its motion can be approximated by the following equations:
 
   $
@@ -629,9 +689,9 @@ This model can be used, for example, if the obstacles are known to be other robo
   Where #delta-t is the time step size for prediction.
 ]
 
-== Curvilinear Motion Models @Schubert2008 <curvilinear-models>
+== Curvilinear Motion Models <curvilinear-models>
 
-The CV, CSAA and CTRV models described above can all be classified as *curvilinear motion models*. Furthermore, additional assumptions can be imposed onto CSAA and CTRV to create more specialized curvilinear motion models. For example, the CSAA model can be simplified to a *constant steering angle & velocity (CSAV) model* by assuming the acceleration $a$ is zero.
+The CV, CSAA and CTRV models described above can all be classified as *curvilinear motion models* @Schubert2008. Furthermore, additional assumptions can be imposed onto CSAA and CTRV to create more specialized curvilinear motion models. For example, the CSAA model can be simplified to a *constant steering angle & velocity (CSAV) model* by assuming the acceleration $a$ is zero.
 
 = State Estimation <state-estimation>
 
