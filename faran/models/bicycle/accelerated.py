@@ -618,6 +618,7 @@ class JaxBicycleModel(
     _time_step_size: float
     time_step_size_scalar: Scalar
     wheelbase: Scalar
+    rear_axle_distance: Scalar
     speed_limits: tuple[Scalar, Scalar]
     steering_limits: tuple[Scalar, Scalar]
     acceleration_limits: tuple[Scalar, Scalar]
@@ -627,6 +628,7 @@ class JaxBicycleModel(
         *,
         time_step_size: float,
         wheelbase: float = 1.0,
+        rear_axle_distance: float = 0.0,
         speed_limits: tuple[float, float] | None = None,
         steering_limits: tuple[float, float] | None = None,
         acceleration_limits: tuple[float, float] | None = None,
@@ -636,6 +638,7 @@ class JaxBicycleModel(
             _time_step_size=time_step_size,
             time_step_size_scalar=jnp.asarray(time_step_size),
             wheelbase=jnp.asarray(wheelbase),
+            rear_axle_distance=jnp.asarray(rear_axle_distance),
             speed_limits=wrap(speed_limits) if speed_limits is not None else NO_LIMITS,
             steering_limits=wrap(steering_limits)
             if steering_limits is not None
@@ -665,6 +668,7 @@ class JaxBicycleModel(
                 initial,
                 time_step_size=self.time_step_size_scalar,
                 wheelbase=self.wheelbase,
+                rear_axle_distance=self.rear_axle_distance,
                 speed_limits=self.speed_limits,
                 steering_limits=self.steering_limits,
                 acceleration_limits=self.acceleration_limits,
@@ -680,6 +684,7 @@ class JaxBicycleModel(
                 inputs.array[0].reshape(-1, 1),
                 time_step_size=self.time_step_size_scalar,
                 wheelbase=self.wheelbase,
+                rear_axle_distance=self.rear_axle_distance,
                 speed_limits=self.speed_limits,
                 steering_limits=self.steering_limits,
                 acceleration_limits=self.acceleration_limits,
@@ -701,6 +706,7 @@ class JaxBicycleStateEstimationModel(NamedTuple):
 
     time_step_size: Scalar
     wheelbase: Scalar
+    rear_axle_distance: Scalar
     initial_state_covariance: EstimationStateCovarianceArray
 
     @staticmethod
@@ -708,6 +714,7 @@ class JaxBicycleStateEstimationModel(NamedTuple):
         *,
         time_step_size: float,
         wheelbase: float,
+        rear_axle_distance: float = 0.0,
         initial_state_covariance: Float[
             Array, "BicycleEstimationD_x BicycleEstimationD_x"
         ]
@@ -722,6 +729,7 @@ class JaxBicycleStateEstimationModel(NamedTuple):
         return JaxBicycleStateEstimationModel(
             time_step_size=jnp.asarray(time_step_size),
             wheelbase=jnp.asarray(wheelbase),
+            rear_axle_distance=jnp.asarray(rear_axle_distance),
             initial_state_covariance=jnp.asarray(initial_state_covariance),
         )
 
@@ -757,12 +765,16 @@ class JaxBicycleStateEstimationModel(NamedTuple):
     @jaxtyped
     def step(self, state: Float[JaxArray, " D_x"]) -> Float[JaxArray, " D_x"]:
         dt = self.time_step_size
+        l_r = self.rear_axle_distance
         x, y, theta, v, a, delta = state
+
+        beta = jnp.arctan(l_r / self.wheelbase * jnp.tan(delta))
+
         return jnp.array(
             [
-                x + v * jnp.cos(theta) * dt,
-                y + v * jnp.sin(theta) * dt,
-                theta + (v / self.wheelbase) * jnp.tan(delta) * dt,
+                x + v * jnp.cos(theta + beta) * dt,
+                y + v * jnp.sin(theta + beta) * dt,
+                theta + v * jnp.cos(beta) * jnp.tan(delta) / self.wheelbase * dt,
                 v + a * dt,
                 a,
                 delta,
@@ -833,6 +845,7 @@ class JaxBicycleObstacleModel(
         *,
         time_step_size: float,
         wheelbase: float = 1.0,
+        rear_axle_distance: float = 0.0,
         process_noise_covariance: JaxNoiseCovarianceDescription = 1e-3,
         sigma_point_spread: float = 1.0,
         prior_knowledge: float = 2.0,
@@ -844,6 +857,7 @@ class JaxBicycleObstacleModel(
         Args:
             time_step_size: Time step size for state propagation.
             wheelbase: Distance between front and rear axles.
+            rear_axle_distance: Distance from the reference point to the rear axle.
             process_noise_covariance: The process noise covariance, either as a
                 full covariance array, a diagonal covariance vector, or a scalar
                 variance representing isotropic noise.
@@ -857,7 +871,9 @@ class JaxBicycleObstacleModel(
         )
         return JaxBicycleObstacleModel(
             model=JaxBicycleStateEstimationModel.create(
-                time_step_size=time_step_size, wheelbase=wheelbase
+                time_step_size=time_step_size,
+                wheelbase=wheelbase,
+                rear_axle_distance=rear_axle_distance,
             ),
             process_noise_covariance=standardized_covariance,
             predictor=JaxUnscentedKalmanFilter.create(
@@ -896,13 +912,16 @@ class JaxFiniteDifferenceBicycleStateEstimator(
 ):
     time_step_size: Scalar
     wheelbase: Scalar
+    rear_axle_distance: Scalar
 
     @staticmethod
     def create(
-        *, time_step_size: float, wheelbase: float
+        *, time_step_size: float, wheelbase: float, rear_axle_distance: float = 0.0
     ) -> "JaxFiniteDifferenceBicycleStateEstimator":
         return JaxFiniteDifferenceBicycleStateEstimator(
-            time_step_size=jnp.asarray(time_step_size), wheelbase=jnp.asarray(wheelbase)
+            time_step_size=jnp.asarray(time_step_size),
+            wheelbase=jnp.asarray(wheelbase),
+            rear_axle_distance=jnp.asarray(rear_axle_distance),
         )
 
     def estimate_from(
@@ -916,8 +935,8 @@ class JaxFiniteDifferenceBicycleStateEstimator(
         Computes the following quantities from the kinematic bicycle model:
 
         **Speed** (requires T ≥ 2):
-            Projection of displacement onto the heading direction (negative for reverse):
-            $$v_t = \\frac{(x_t - x_{t-1}) \\cos(\\theta_t) + (y_t - y_{t-1}) \\sin(\\theta_t)}{\\Delta t}$$
+            Magnitude of displacement with sign from heading projection:
+            $$v_t = \\text{sign}(v_t) \\cdot \\frac{\\sqrt{(x_t - x_{t-1})^2 + (y_t - y_{t-1})^2}}{\\Delta t}$$
 
         **Acceleration** (requires T ≥ 3):
             Change in speed over time:
@@ -925,8 +944,8 @@ class JaxFiniteDifferenceBicycleStateEstimator(
 
         **Steering angle** (requires T ≥ 2):
             Derived from the kinematic bicycle model, where $\\omega = \\frac{d\\theta}{dt}$ is the heading rate:
-            $$\\delta_t = \\arctan\\left(\\frac{L \\cdot \\omega_t}{v_t}\\right)$$
-            Zero when $|v_t| < \\epsilon$ (estimate becomes unreliable).
+            $$\\delta_t = \\arctan\\left(\\frac{L \\cdot \\omega_t}{\\sqrt{v_t^2 - l_r^2 \\omega_t^2}}\\right)$$
+            Zero when $|v_t| < \\epsilon$ or $v_t^2 \\leq l_r^2 \\omega_t^2$ (estimate becomes unreliable).
 
         Args:
             history: Obstacle pose history containing at least one entry.
@@ -939,6 +958,7 @@ class JaxFiniteDifferenceBicycleStateEstimator(
             heading_history=history.heading_array,
             time_step_size=self.time_step_size,
             wheelbase=self.wheelbase,
+            rear_axle_distance=self.rear_axle_distance,
         )
 
         return EstimatedObstacleStates(
@@ -978,6 +998,7 @@ class JaxKfBicycleStateEstimator(
         *,
         time_step_size: float,
         wheelbase: float,
+        rear_axle_distance: float = 0.0,
         process_noise_covariance: JaxNoiseCovarianceDescription,
         observation_noise_covariance: JaxNoiseCovarianceDescription,
         initial_state_covariance: Float[
@@ -993,6 +1014,7 @@ class JaxKfBicycleStateEstimator(
         Args:
             time_step_size: The time step size for the state transition model.
             wheelbase: The wheelbase of the bicycle.
+            rear_axle_distance: Distance from the reference point to the rear axle.
             process_noise_covariance: The process noise covariance, either as a full
                 matrix, a vector of diagonal entries, or a scalar for isotropic noise.
             observation_noise_covariance: The observation noise covariance, either as a
@@ -1012,6 +1034,7 @@ class JaxKfBicycleStateEstimator(
             model=JaxBicycleStateEstimationModel.create(
                 time_step_size=time_step_size,
                 wheelbase=wheelbase,
+                rear_axle_distance=rear_axle_distance,
                 initial_state_covariance=initial_state_covariance,
             ),
             estimator=JaxExtendedKalmanFilter.create(noise_model=noise_model),
@@ -1022,6 +1045,7 @@ class JaxKfBicycleStateEstimator(
         *,
         time_step_size: float,
         wheelbase: float,
+        rear_axle_distance: float = 0.0,
         process_noise_covariance: JaxNoiseCovarianceDescription,
         observation_noise_covariance: JaxNoiseCovarianceDescription,
         initial_state_covariance: Float[
@@ -1037,6 +1061,7 @@ class JaxKfBicycleStateEstimator(
         Args:
             time_step_size: The time step size for the state transition model.
             wheelbase: The wheelbase of the bicycle.
+            rear_axle_distance: Distance from the reference point to the rear axle.
             process_noise_covariance: The process noise covariance, either as a full
                 matrix, a vector of diagonal entries, or a scalar for isotropic noise.
             observation_noise_covariance: The observation noise covariance, either as a
@@ -1056,6 +1081,7 @@ class JaxKfBicycleStateEstimator(
             model=JaxBicycleStateEstimationModel.create(
                 time_step_size=time_step_size,
                 wheelbase=wheelbase,
+                rear_axle_distance=rear_axle_distance,
                 initial_state_covariance=initial_state_covariance,
             ),
             estimator=JaxUnscentedKalmanFilter.create(noise_model=noise_model),
@@ -1105,6 +1131,7 @@ def simulate(
     *,
     time_step_size: Scalar,
     wheelbase: Scalar,
+    rear_axle_distance: Scalar,
     speed_limits: tuple[Scalar, Scalar],
     steering_limits: tuple[Scalar, Scalar],
     acceleration_limits: tuple[Scalar, Scalar],
@@ -1117,6 +1144,7 @@ def simulate(
             control,
             time_step_size=time_step_size,
             wheelbase=wheelbase,
+            rear_axle_distance=rear_axle_distance,
             speed_limits=speed_limits,
             steering_limits=steering_limits,
             acceleration_limits=acceleration_limits,
@@ -1135,6 +1163,7 @@ def step(
     *,
     time_step_size: Scalar,
     wheelbase: Scalar,
+    rear_axle_distance: Scalar,
     speed_limits: tuple[Scalar, Scalar],
     steering_limits: tuple[Scalar, Scalar],
     acceleration_limits: tuple[Scalar, Scalar],
@@ -1144,9 +1173,13 @@ def step(
     acceleration = jnp.clip(a, *acceleration_limits)
     steering = jnp.clip(delta, *steering_limits)
 
-    new_x = x + v * jnp.cos(theta) * time_step_size
-    new_y = y + v * jnp.sin(theta) * time_step_size
-    new_theta = theta + v * jnp.tan(steering) / wheelbase * time_step_size
+    beta = jnp.arctan(rear_axle_distance / wheelbase * jnp.tan(steering))
+
+    new_x = x + v * jnp.cos(theta + beta) * time_step_size
+    new_y = y + v * jnp.sin(theta + beta) * time_step_size
+    new_theta = (
+        theta + v * jnp.cos(beta) * jnp.tan(steering) / wheelbase * time_step_size
+    )
     new_v = jnp.clip(v + acceleration * time_step_size, *speed_limits)
 
     return jnp.stack([new_x, new_y, new_theta, new_v])
@@ -1161,6 +1194,7 @@ def estimate_states(
     heading_history: Float[JaxArray, "T K"],
     time_step_size: Scalar,
     wheelbase: Scalar,
+    rear_axle_distance: Scalar,
 ) -> "EstimatedBicycleObstacleStates":
     filter_invalid_short = invalid_obstacle_filter_from(
         x_history, y_history, heading_history, check_recent=2
@@ -1196,6 +1230,7 @@ def estimate_states(
                 speed_current=speed,
                 time_step_size=time_step_size,
                 wheelbase=wheelbase,
+                rear_axle_distance=rear_axle_distance,
             )
         ),
     )
@@ -1225,9 +1260,9 @@ def estimate_speed(
         delta_x = x_current - x_previous
         delta_y = y_current - y_previous
 
-        speeds = (
-            delta_x * jnp.cos(heading) + delta_y * jnp.sin(heading)
-        ) / time_step_size
+        projection = delta_x * jnp.cos(heading) + delta_y * jnp.sin(heading)
+        magnitude = jnp.sqrt(delta_x**2 + delta_y**2)
+        speeds = jnp.sign(projection) * magnitude / time_step_size
 
         return speeds
 
@@ -1283,6 +1318,7 @@ def estimate_steering_angle(
     speed_current: Float[JaxArray, " K"],
     time_step_size: Scalar,
     wheelbase: Scalar,
+    rear_axle_distance: Scalar,
 ) -> Float[JaxArray, " K"]:
     horizon = heading_history.shape[0]
     obstacle_count = heading_history.shape[1]
@@ -1295,9 +1331,19 @@ def estimate_steering_angle(
     ) -> Float[JaxArray, " K"]:
         heading_velocity = (heading_current - heading_previous) / time_step_size
 
+        denominator_squared = (
+            speed_current**2 - rear_axle_distance**2 * heading_velocity**2
+        )
+        is_reliable = (jnp.abs(speed_current) > 1e-6) & (denominator_squared > 0)
+
         steering_angles = jnp.where(
-            jnp.abs(speed_current) > 1e-6,
-            jnp.arctan(heading_velocity * wheelbase / speed_current),
+            is_reliable,
+            jnp.arctan(
+                heading_velocity
+                * wheelbase
+                * jnp.sign(speed_current)
+                / jnp.sqrt(jnp.maximum(denominator_squared, 1e-12))
+            ),
             jnp.zeros_like(speed_current),
         )
 

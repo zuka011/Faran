@@ -22,7 +22,9 @@ class test_that_vehicle_position_does_not_change_when_velocity_and_input_are_zer
     def cases(create_model, data) -> Sequence[tuple]:
         return [
             (
-                model := create_model.bicycle.dynamical(time_step_size=0.1),
+                model := create_model.bicycle.dynamical(
+                    time_step_size=0.1, rear_axle_distance=rear_axle_distance
+                ),
                 inputs := data.control_input_batch(
                     time_horizon=(T := 5),
                     rollout_count=(M := 3),
@@ -41,7 +43,8 @@ class test_that_vehicle_position_does_not_change_when_velocity_and_input_are_zer
                 y_0,
                 theta_0,
                 v_0,
-            ),
+            )
+            for rear_axle_distance in [0.0, 0.5, 0.9]
         ]
 
     @mark.parametrize(
@@ -98,7 +101,9 @@ class test_that_vehicle_follows_straight_line_when_velocity_is_constant:
     def cases(create_model, data) -> Sequence[tuple]:
         return [
             (
-                model := create_model.bicycle.dynamical(time_step_size=(dt := 0.25)),
+                model := create_model.bicycle.dynamical(
+                    time_step_size=(dt := 0.25), rear_axle_distance=rear_axle_distance
+                ),
                 inputs := data.control_input_batch(
                     time_horizon=(T := 4),
                     rollout_count=(M := 3),
@@ -132,7 +137,8 @@ class test_that_vehicle_follows_straight_line_when_velocity_is_constant:
                 ),
                 expected_theta := array([[theta_0] * M] * T, shape=(T, M)),
                 expected_v := array([[v_0] * M] * T, shape=(T, M)),
-            ),
+            )
+            for rear_axle_distance in [0.0, 0.5, 0.9]
         ]
 
     @mark.parametrize(
@@ -185,7 +191,9 @@ class test_that_vehicle_follows_straight_line_when_acceleration_is_constant:
     def cases(create_model, data) -> Sequence[tuple]:
         return [
             (  # Time step has to be small for 1st order integrators in these tests.
-                model := create_model.bicycle.dynamical(time_step_size=(dt := 0.001)),
+                model := create_model.bicycle.dynamical(
+                    time_step_size=(dt := 0.001), rear_axle_distance=rear_axle_distance
+                ),
                 inputs := data.control_input_batch(
                     time_horizon=(T := 20),
                     rollout_count=(M := 2),
@@ -225,7 +233,8 @@ class test_that_vehicle_follows_straight_line_when_acceleration_is_constant:
                     [v_0 + a * ((T // 2 + 1) * dt)] * M, shape=(M,)
                 ),
                 expected_v_final := array([v_0 + a * (T * dt)] * M, shape=(M,)),
-            ),
+            )
+            for rear_axle_distance in [0.0, 0.5, 0.9]
         ]
 
     @mark.parametrize(
@@ -282,7 +291,9 @@ class test_that_vehicle_orientation_returns_to_start_when_steering_is_reversed:
     def cases(create_model, data) -> Sequence[tuple]:
         return [
             (  # Reverse steering halfway through. Final orientation should be the same as start.
-                model := create_model.bicycle.dynamical(time_step_size=0.5),
+                model := create_model.bicycle.dynamical(
+                    time_step_size=0.5, rear_axle_distance=rear_axle_distance
+                ),
                 inputs := data.control_input_batch(
                     rollout_count=(M := 8),
                     acceleration=array([0.0] * (T := 6), shape=(T,)),
@@ -292,7 +303,8 @@ class test_that_vehicle_orientation_returns_to_start_when_steering_is_reversed:
                     x=2.0, y=4.0, heading=(theta_0 := 1.23), speed=1.0
                 ),
                 expected_final_theta := array([theta_0] * M, shape=(M,)),
-            ),
+            )
+            for rear_axle_distance in [0.0, 0.5, 0.9]
         ]
 
     @mark.parametrize(
@@ -331,7 +343,9 @@ class test_that_vehicle_velocity_returns_to_start_when_acceleration_is_reversed:
     def cases(create_model, data) -> Sequence[tuple]:
         return [
             (  # Reverse acceleration halfway through. Final velocity should be the same as start.
-                model := create_model.bicycle.dynamical(time_step_size=0.5),
+                model := create_model.bicycle.dynamical(
+                    time_step_size=0.5, rear_axle_distance=rear_axle_distance
+                ),
                 inputs := data.control_input_batch(
                     rollout_count=(M := 8),
                     acceleration=array(
@@ -343,7 +357,8 @@ class test_that_vehicle_velocity_returns_to_start_when_acceleration_is_reversed:
                     x=2.0, y=4.0, heading=1.23, speed=(v_0 := 1.0)
                 ),
                 expected_final_v := array([v_0] * M, shape=(M,)),
-            ),
+            )
+            for rear_axle_distance in [0.0, 0.5, 0.9]
         ]
 
     @mark.parametrize(
@@ -383,7 +398,9 @@ class test_that_vehicle_returns_to_starting_position_when_initially_not_moving_a
         return [
             (
                 # Reverse acceleration halfway through. Final position and orientation should be the same as start.
-                model := create_model.bicycle.dynamical(time_step_size=0.5),
+                model := create_model.bicycle.dynamical(
+                    time_step_size=0.5, rear_axle_distance=rear_axle_distance
+                ),
                 inputs := data.control_input_batch(
                     rollout_count=(M := 8),
                     acceleration=array(
@@ -399,7 +416,8 @@ class test_that_vehicle_returns_to_starting_position_when_initially_not_moving_a
                 expected_final_x := array([x_0] * M, shape=(M,)),
                 expected_final_y := array([y_0] * M, shape=(M,)),
                 expected_final_theta := array([theta_0] * M, shape=(M,)),
-            ),
+            )
+            for rear_axle_distance in [0.0, 0.5, 0.9]
         ]
 
     @mark.parametrize(
@@ -449,7 +467,9 @@ class test_that_displacement_is_consistent_with_velocity_state:
     def cases(create_model, data) -> Sequence[tuple]:
         return [
             (  # Time step and maximum steering angle must be small for 1st order integrators in these tests.
-                model := create_model.bicycle.dynamical(time_step_size=(dt := 0.1)),
+                model := create_model.bicycle.dynamical(
+                    time_step_size=(dt := 0.1), rear_axle_distance=rear_axle_distance
+                ),
                 inputs := data.control_input_batch(
                     rollout_count=(M := 2),
                     acceleration=np.random.uniform(-1.0, 1.0, size=(T := 12)),
@@ -457,7 +477,8 @@ class test_that_displacement_is_consistent_with_velocity_state:
                 ),
                 initial_state := data.state(x=4.0, y=5.0, heading=1.2, speed=2.0),
                 time_step_size := dt,
-            ),
+            )
+            for rear_axle_distance in [0.0, 0.5, 0.9]
         ]
 
     @mark.parametrize(
@@ -515,11 +536,10 @@ class test_that_vehicle_returns_to_start_when_completing_a_circle_with_constant_
     @staticmethod
     def cases(create_model, data) -> Sequence[tuple]:
         return [
-            (
-                # Full circle with bicycle model:
+            (  # Full circle with bicycle model and no slip.
                 # angular_velocity = v * tan(steering) / L
                 # For 2π rotation: T * dt * angular_velocity = 2π
-                # So steering = atan(2π / (T * dt * v / L))
+                # So steering = atan(2π * L / (T * dt * v))
                 model := create_model.bicycle.dynamical(
                     time_step_size=(dt := 0.1), wheelbase=(L := 2.0)
                 ),
@@ -527,7 +547,41 @@ class test_that_vehicle_returns_to_start_when_completing_a_circle_with_constant_
                     rollout_count=(M := 2),
                     acceleration=array([0.0] * (T := 100), shape=(T,)),
                     steering=array(
-                        [steering := np.arctan(2 * np.pi / (T * dt * (v := 1.2) / L))]
+                        [steering := np.arctan(2 * np.pi * L / (T * dt * (v := 1.2)))]
+                        * T,
+                        shape=(T,),
+                    ),
+                ),
+                initial_state := data.state(
+                    x=(x_0 := 2.4), y=(y_0 := 3.6), heading=(theta_0 := 0.5), speed=v
+                ),
+                expected_final_x := array([x_0] * M, shape=(M,)),
+                expected_final_y := array([y_0] * M, shape=(M,)),
+                expected_final_theta := array([theta_0] * M, shape=(M,)),
+            ),
+            (  # Full circle with bicycle model and slip
+                # slip = arctan(l_r/L * tan(steering))
+                # angular_velocity = v / l_r * sin(slip)
+                # For 2π rotation: T * dt * angular_velocity = 2π
+                # So steering = atan(L / l_r * tan(asin(2π * l_r / (T * dt * v))))
+                model := create_model.bicycle.dynamical(
+                    time_step_size=(dt := 0.1),
+                    wheelbase=(L := 2.0),
+                    rear_axle_distance=(l_r := 1.5),
+                ),
+                inputs := data.control_input_batch(
+                    rollout_count=(M := 2),
+                    acceleration=array([0.0] * (T := 100), shape=(T,)),
+                    steering=array(
+                        [
+                            steering := np.arctan(
+                                L
+                                / l_r
+                                * np.tan(
+                                    np.arcsin(2 * np.pi * l_r / (T * dt * (v := 1.2)))
+                                )
+                            )
+                        ]
                         * T,
                         shape=(T,),
                     ),
@@ -609,6 +663,28 @@ class test_that_angular_velocity_depends_on_wheelbase:
                     [v * np.tan(delta) / L] * M, shape=(M,)
                 ),
             ),
+            (  # For non-zero rear axle distance:
+                # slip = arctan(l_r/L * tan(steering)) -> angular velocity = v / l_r * sin(slip)
+                model := create_model.bicycle.dynamical(
+                    time_step_size=(dt := 0.1),
+                    wheelbase=(L := 2.5),
+                    rear_axle_distance=(l_r := 1.25),
+                ),
+                inputs := data.control_input_batch(
+                    time_horizon=(T := 10),
+                    rollout_count=(M := 2),
+                    acceleration=0.0,
+                    steering=(delta := 1.0),
+                ),
+                initial_state := data.state(
+                    x=2.0, y=4.0, heading=5.0, speed=(v := 2.0)
+                ),
+                dt,
+                expected_angular_velocity := array(
+                    [v / l_r * np.sin(np.arctan(l_r / L * np.tan(delta)))] * M,
+                    shape=(M,),
+                ),
+            ),
         ]
 
     @mark.parametrize(
@@ -660,7 +736,9 @@ class test_that_velocity_is_clamped_to_speed_limits:
             *[
                 (
                     model := create_model.bicycle.dynamical(
-                        time_step_size=1.0, speed_limits=(v_min := -5.0, v_max := 10.0)
+                        time_step_size=1.0,
+                        rear_axle_distance=rear_axle_distance,
+                        speed_limits=(v_min := -5.0, v_max := 10.0),
                     ),
                     inputs := data.control_input_batch(
                         time_horizon=(T := 20),
@@ -673,6 +751,7 @@ class test_that_velocity_is_clamped_to_speed_limits:
                     v_min,
                 )
                 for a in [1.0, -1.0]
+                for rear_axle_distance in [0.0, 0.9]
             ],
         ]
 
@@ -718,11 +797,13 @@ class test_that_steering_input_is_clipped_to_max_steering:
             *[
                 (
                     # Steering input is larger than max_steering, but should be clipped
-                    # angular velocity = v * tan(clipped_steering) / L
+                    # beta = arctan(l_r / L * tan(clipped_steering))
+                    # angular velocity = v * cos(beta) * tan(clipped_steering) / L
                     # Total theta_change = angular_velocity * dt * T
                     model := create_model.bicycle.dynamical(
                         time_step_size=(dt := 1.0),
                         wheelbase=(L := 1.0),
+                        rear_axle_distance=rear_axle_distance,
                         steering_limits=(delta_min := -0.2, delta_max := 0.3),
                     ),
                     inputs := data.control_input_batch(
@@ -736,11 +817,22 @@ class test_that_steering_input_is_clipped_to_max_steering:
                     ),
                     expected_theta_change := array(
                         [
-                            (
-                                v
-                                * np.tan(delta_max if expected == "max" else delta_min)
-                                / L
+                            v
+                            * np.cos(
+                                np.arctan(
+                                    rear_axle_distance
+                                    / L
+                                    * np.tan(
+                                        clipped := (
+                                            delta_max
+                                            if expected == "max"
+                                            else delta_min
+                                        )
+                                    )
+                                )
                             )
+                            * np.tan(clipped)
+                            / L
                             * (dt * T)
                         ]
                         * M,
@@ -748,6 +840,7 @@ class test_that_steering_input_is_clipped_to_max_steering:
                     ),
                 )
                 for (delta, expected) in [(1.0, "max"), (-1.0, "min")]
+                for rear_axle_distance in [0.0, 0.9]
             ],
         ]
 
@@ -795,6 +888,7 @@ class test_that_acceleration_input_is_clipped_to_max_acceleration:
                     # Total velocity change = clipped_acceleration * dt * T
                     model := create_model.bicycle.dynamical(
                         time_step_size=(dt := 1.0),
+                        rear_axle_distance=rear_axle_distance,
                         acceleration_limits=(a_min := -2.0, a_max := 3.0),
                     ),
                     inputs := data.control_input_batch(
@@ -812,6 +906,7 @@ class test_that_acceleration_input_is_clipped_to_max_acceleration:
                     ),
                 )
                 for (a, expected) in [(10.0, "max"), (-5.0, "min")]
+                for rear_axle_distance in [0.0, 0.9]
             ],
         ]
 
@@ -856,6 +951,7 @@ class test_that_simulating_individual_steps_matches_horizon_simulation:
                 model := create_model.bicycle.dynamical(
                     time_step_size=(dt := 0.1),
                     wheelbase=1.5,
+                    rear_axle_distance=rear_axle_distance,
                     speed_limits=(0.0, 20.0),
                     steering_limits=(-0.4, 0.4),
                     acceleration_limits=(-5.0, 5.0),
@@ -870,7 +966,8 @@ class test_that_simulating_individual_steps_matches_horizon_simulation:
                 input_of := lambda input_batch, t: types.bicycle.control_input_sequence(
                     input_batch.array[t:, :, 0]
                 ),
-            ),
+            )
+            for rear_axle_distance in [0.0, 0.5, 0.9]
         ]
 
     @mark.parametrize(
@@ -925,6 +1022,7 @@ class test_that_simulating_individual_input_sequence_matches_horizon_simulation:
                 model := create_model.bicycle.dynamical(
                     time_step_size=(dt := 0.1),
                     wheelbase=1.5,
+                    rear_axle_distance=rear_axle_distance,
                     speed_limits=(0.0, 20.0),
                     steering_limits=(-0.4, 0.4),
                     acceleration_limits=(-5.0, 5.0),
@@ -938,7 +1036,8 @@ class test_that_simulating_individual_input_sequence_matches_horizon_simulation:
                 input_of := lambda input_batch, t: types.bicycle.control_input_sequence(
                     input_batch.array[..., t]
                 ),
-            ),
+            )
+            for rear_axle_distance in [0.0, 0.5, 0.9]
         ]
 
     @mark.parametrize(

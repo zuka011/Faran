@@ -114,7 +114,7 @@ async def visualizer_arguments_from[T](
                 Example: @pytest.mark.visualize.with_args(my_visualizer, "my-test-key")
                 """
 
-    visualizer: Visualizer = factory()
+    visualizer = cast(Visualizer, factory())
 
     assert await visualizer.can_visualize(capture.data), (
         f"Visualizer {visualizer} cannot visualize data of type "

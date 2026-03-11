@@ -902,9 +902,17 @@ class test_that_bicycle_input_estimates_are_close_to_true_values_when_inputs_are
         kalman_tolerance = 0.2
         cases = []
 
-        def trajectory_for(*, wheelbase: float, acceleration: float, steering: float):
+        def trajectory_for(
+            *,
+            wheelbase: float,
+            rear_axle_distance: float,
+            acceleration: float,
+            steering: float,
+        ):
             return model.bicycle.dynamical(
-                time_step_size=dt, wheelbase=wheelbase
+                time_step_size=dt,
+                wheelbase=wheelbase,
+                rear_axle_distance=rear_axle_distance,
             ).simulate(
                 inputs=model_data.bicycle.control_input_batch(
                     time_horizon=T,
@@ -923,13 +931,16 @@ class test_that_bicycle_input_estimates_are_close_to_true_values_when_inputs_are
         def steering_angle_of(result: EstimatedObstacleStates):
             return result.inputs.steering_angles()
 
-        for wheelbase, acceleration, steering in [
-            (1.0, 0.5, 0.15),
-            (2.0, -0.5, -0.1),
-            (1.5, 0.0, 0.2),
+        for wheelbase, rear_axle_distance, acceleration, steering in [
+            (1.0, 0.0, 0.5, 0.15),
+            (2.0, 0.5, -0.5, -0.1),
+            (1.5, 1.25, 0.0, 0.2),
         ]:
             trajectory = trajectory_for(
-                wheelbase=wheelbase, acceleration=acceleration, steering=steering
+                wheelbase=wheelbase,
+                rear_axle_distance=rear_axle_distance,
+                acceleration=acceleration,
+                steering=steering,
             )
             history = data.obstacle_2d_poses(
                 x=array(trajectory.positions.x(), shape=(T, 1)),

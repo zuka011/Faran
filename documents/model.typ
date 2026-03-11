@@ -156,19 +156,20 @@ The combination of Halton sequences and spline interpolation has two benefits. T
 
 == Kinematic Bicycle Model (KBM)
 
-#let speed-footnote = footnote[Note that the speed $v$ in this context is defined as the projection of the robot's velocity onto its heading direction, not the magnitude of the velocity. This means the sign of $v$ can be negative, e.g. if the vehicle is moving backwards.]
+#let speed-footnote = footnote[The speed $v$ is a signed scalar representing the forward ($v > 0$) or backward ($v < 0$) motion of the reference point along the direction $theta + beta$.]
+#let slip-angle-footnote = footnote[The name "slip" has nothing to do with tire slip, it is just a convention.]
 
 A common choice for the dynamical model of a wheeled robot is the *kinematic bicycle model*. This model represents the robot as a bicycle with a single front and a single rear wheel. Other than simplifying the number of wheels, the model also assumes that there is no slip between the wheels and the ground. This assumption is not necessarily true at high speeds or during sharp turns, so we should keep that in mind. Here's a diagram for the model:
 
 #figure(
   kinematic-bicycle-diagram(),
-  caption: [The kinematic bicycle model. The robot state is defined by position $(x, y)$, heading $theta$, and speed $v_r$. The control inputs are acceleration $a := dot(v)_r$ and steering angle $delta$. The wheelbase $L = l_r + l_f$ is the distance between the front and rear axles. $R$ denotes the turning radius for the current $delta$.],
+  caption: [The kinematic bicycle model. The robot state is defined by position $(x, y)$, heading $theta$, and speed $v$. The control inputs are acceleration $a := dot(v)$ and steering angle $delta$. The wheelbase $L = l_r + l_f$ is the distance between the front and rear axles. $R$ denotes the turning radius for the current $delta$.],
 )
 
-The model can be formulated with respect to different reference points on the vehicle. Let $l_r$ and $l_f$ denote the distances from the reference point to the rear and front axles, respectively, such that the wheelbase is $L = l_r + l_f$. The slip angle $beta$ at the reference point is given by:
+The model can be formulated with respect to different reference points on the vehicle. Let $l_r$ and $l_f$ denote the distances from the reference point to the rear and front axles, respectively, such that the wheelbase is $L = l_r + l_f$. The slip angle#slip-angle-footnote $beta$ at the reference point is given by:
 
 $
-  beta = arctan(l_r / (l_r + l_f) tan(delta))
+  beta = arctan(l_r / L tan(delta))
 $ <slip-angle-equation>
 
 
@@ -180,7 +181,7 @@ The state $#state-single := [x quad y quad theta quad v]$ of the robot is repres
 - $x$: Position along the x-axis
 - $y$: Position along the y-axis
 - $theta$: Heading angle (orientation) in radians
-- $v$: Speed#speed-footnote of the robot (corresponds to $v_r$ in the diagram)
+- $v$: Speed#speed-footnote of the robot
 
 #model(title: [Kinematic Bicycle Model @Kong2015])[
   The continuous-time dynamics of the kinematic bicycle model, with respect to a reference point at distances $l_r$ and $l_f$ from the rear and front axles, are given as:
@@ -189,44 +190,42 @@ The state $#state-single := [x quad y quad theta quad v]$ of the robot is repres
     dot(x) = v cos(theta + beta), quad dot(y) = v sin(theta + beta), quad dot(theta) = v / l_r sin(beta), quad dot(v) = a
   $ <kinematic-bicycle-equations>
 
-  where $beta$ is the slip angle given by @slip-angle-equation at the reference point. When the reference point is at the rear axle ($l_r -> 0$), the slip angle vanishes ($beta -> 0$) and the equations simplify to:
-
-  $
-    dot(x) = v cos(theta), quad dot(y) = v sin(theta), quad dot(theta) = v / L tan(delta), quad dot(v) = a
-  $ <simplified-kinematic-bicycle-equations>
+  where $beta$ is the slip angle given by @slip-angle-equation at the reference point.
 ]
 
 === Euler Integration for KBM
 
 #let delta-t = $Delta t$
 
-To simulate the model, we discretize @simplified-kinematic-bicycle-equations with a time step size of #delta-t to get:
+To simulate the model, we discretize @kinematic-bicycle-equations with a time step size of #delta-t to get:
 
 $
-  x_(t+1) = x_t + v_t cos(theta_t) dot #delta-t \
-  y_(t+1) = y_t + v_t sin(theta_t) dot #delta-t \
-  theta_(t+1) = theta_t + v_t / L tan(delta_t) dot #delta-t \
+  beta_t = arctan(l_r / L tan(delta_t)) \
+  x_(t+1) = x_t + v_t cos(theta_t + beta_t) dot #delta-t \
+  y_(t+1) = y_t + v_t sin(theta_t + beta_t) dot #delta-t \
+  theta_(t+1) = theta_t + v_t / l_r sin(beta_t) dot #delta-t \
   v_(t+1) = v_t + a_t dot #delta-t
 $ <kinematic-bicycle-discretized-equations>
 
-Where $(dot)_t$ represents the value of $(dot)$ at time step $t$. Note that the slip angle $beta$ is no longer present in the discretized equations, since we assume the reference point $(x_0, y_0)$ is transformed to the rear axle beforehand. This can be done as follows:
+Where $(dot)_t$ represents the value of $(dot)$ at time step $t$. When $l_r = 0$ the heading update equation is numerically unstable, so the following equivalent form is used instead (see @kinematic-bicycle-heading-update-derivation):
 
 $
-  x = x_0 - l_r cos(theta), quad y = y_0 - l_r sin(theta)
-$ <reference-point-transformation-equation>
+  theta_(t+1) = theta_t + v_t / L cos(beta_t) tan(delta_t) dot #delta-t
+$
 
-Then a single Euler integration step for this discretized model looks like this:
+This avoids division by $l_r$. A single Euler integration step for this discretized model then looks like this:
 
 #algorithm(title: "Euler Integration Step for the Kinematic Bicycle Model")[
   #pseudocode-list(hooks: .5em)[
     + *Given:*
       - Control input #input-single $= [a quad delta]$, Current state #state-single $= [x quad y quad theta quad v]$
-      - Time step #delta-t, Wheelbase $L$
+      - Time step #delta-t, Rear axle distance $l_r$, wheelbase $L$
 
     + *Compute next state:*
-      + $x' arrow.l x + v dot cos(theta) dot #delta-t$ #h(1fr) ➤ Update x position
-      + $y' arrow.l y + v dot sin(theta) dot #delta-t$ #h(1fr) ➤ Update y position
-      + $theta' arrow.l theta + (v / L) dot tan(delta) dot #delta-t$ #h(1fr) ➤ Update heading
+      + $beta arrow.l arctan(l_r / L tan(delta))$ #h(1fr) ➤ Compute slip angle
+      + $x' arrow.l x + v dot cos(theta + beta) dot #delta-t$ #h(1fr) ➤ Update x position
+      + $y' arrow.l y + v dot sin(theta + beta) dot #delta-t$ #h(1fr) ➤ Update y position
+      + $theta' arrow.l theta + v / L dot cos(beta) dot tan(delta) dot #delta-t$ #h(1fr) ➤ Update heading
       + $v' arrow.l v + a dot #delta-t$ #h(1fr) ➤ Update speed
 
       + *return* $#state-single ' = [x' quad y' quad theta' quad v']$
@@ -673,8 +672,7 @@ For many applications#footnote[For pedestrian motion prediction, the constant ve
 1. The obstacle will continue moving with the same velocity,
 2. The obstacle's heading will remain constant.
 
-If the obstacle is a vehicle, both assumptions are frequently violated (e.g. when following a curved road, turning or slowing down at an intersection). Thus, the model will frequently yield inaccurate predictions. A more sophisticated option is to assume the obstacle follows the kinematic bicycle model (@kinematic-bicycle-equations) and that the acceleration $a$ and
-the steering angle $delta$ remain constant. The resulting model is called a *constant steering angle & acceleration model*.
+If the obstacle is a vehicle, both assumptions are frequently violated (e.g. when following a curved road, turning or slowing down at an intersection). Thus, the model will frequently yield inaccurate predictions. A more sophisticated option is to assume the obstacle follows the kinematic bicycle model (@kinematic-bicycle-equations) and that the acceleration $a$ and the steering angle $delta$ remain constant. The resulting model is called a *constant steering angle & acceleration model*.
 
 #definition(
   title: [Constant Steering Angle & Acceleration Model @Schubert2008],
@@ -682,10 +680,10 @@ the steering angle $delta$ remain constant. The resulting model is called a *con
   Let the state of an obstacle moving on a plane be given as $#state-single = [x quad y quad theta quad v quad a quad delta]$. Assuming the obstacle will continue moving with constant acceleration $a$ and steering angle $delta$, its motion can be approximated by the following equations:
 
   $
-    #state-single-(at: $t$) = #state-single-(at: $t-1$) + vec(v_(t-1) cos(theta_(t-1)) dot #delta-t, v_(t-1) sin(theta_(t-1)) dot #delta-t, v_(t-1) / L tan(delta_(t-1)) dot #delta-t, a_(t-1) dot #delta-t, 0, 0, delim: "[") quad <=> quad #state-single-(at: $t$) = #state-transition-function-(state-single-(at: $t-1$)), quad #state-transition-function-(state-single) := vec(
-      x + v cos(theta) dot #delta-t,
-      y + v sin(theta) dot #delta-t,
-      theta + v / L tan(delta) dot #delta-t,
+    #state-single-(at: $t$) = #state-single-(at: $t-1$) + vec(v_(t-1) cos(theta_(t-1) + beta_(t-1)) dot #delta-t, v_(t-1) sin(theta_(t-1) + beta_(t-1)) dot #delta-t, v_(t-1) / L cos(beta_(t-1)) tan(delta_(t-1)) dot #delta-t, a_(t-1) dot #delta-t, 0, 0, delim: "[") quad <=> quad #state-transition-function-(state-single) := vec(
+      x + v cos(theta + beta) dot #delta-t,
+      y + v sin(theta + beta) dot #delta-t,
+      theta + v / L cos(beta) tan(delta) dot #delta-t,
       v + a dot #delta-t,
       a,
       delta,
@@ -693,9 +691,7 @@ the steering angle $delta$ remain constant. The resulting model is called a *con
     ) quad
   $
 
-  Where $L$ is the wheelbase of the obstacle and #delta-t is the time step size for prediction.
-
-  As in @kinematic-bicycle-discretized-equations, we assume here that the reference position $(x, y)$ is at the rear axle of the obstacle. If the reference position is somewhere else, it should first be transformed to the rear axle using @reference-point-transformation-equation.
+  Where $L$ is the wheelbase, $l_r$ is the distance from the reference point to the rear axle, $beta$ is the slip angle defined by @slip-angle-equation, and #delta-t is the time step size for prediction.
 ]
 
 == Constant Turn Rate & Velocity (CTRV) Model <ctrv-model>
@@ -710,7 +706,7 @@ This model can be used, for example, if the obstacles are known to be other robo
   Let the state of an obstacle moving on a plane be given as $#state-single = [x quad y quad theta quad v quad omega]$. Assuming the obstacle will continue moving with constant linear velocity $v$ and angular velocity $omega$, its motion can be approximated by the following equations:
 
   $
-    #state-single-(at: $t$) = #state-single-(at: $t-1$) + vec(v_(t-1) cos(theta_(t-1)) dot #delta-t, v_(t-1) sin(theta_(t-1)) dot #delta-t, omega_(t-1) dot #delta-t, 0, 0, delim: "[") quad <=> quad #state-single-(at: $t$) = #state-transition-function-(state-single-(at: $t-1$)), quad #state-transition-function-(state-single) := vec(
+    #state-single-(at: $t$) = #state-single-(at: $t-1$) + vec(v_(t-1) cos(theta_(t-1)) dot #delta-t, v_(t-1) sin(theta_(t-1)) dot #delta-t, omega_(t-1) dot #delta-t, 0, 0, delim: "[") quad <=> quad #state-transition-function-(state-single) := vec(
       x + v cos(theta) dot #delta-t,
       y + v sin(theta) dot #delta-t,
       theta + omega dot #delta-t,
@@ -742,7 +738,8 @@ A simple approach to estimate the speed $v$ of the robot is to compute the backw
   Considering only the last two observed poses $(x_(t-1), y_(t-1), theta_(t-1))$ and $(x_t, y_t, theta_t)$ at time steps $t-1$ and $t$, we can estimate the speed at time step $t$ as:
 
   $
-    v_t approx ((x_t - x_(t-1)) cos(theta_t) + (y_t - y_(t-1)) sin(theta_t)) / #delta-t
+    v_t approx "sign"(v_t) dot sqrt((x_t - x_(t-1))^2 + (y_t - y_(t-1))^2) / #delta-t \
+    "sign"(v_t) = "sgn"((x_t - x_(t-1)) cos(theta_t) + (y_t - y_(t-1)) sin(theta_t))
   $
 ]
 
@@ -758,19 +755,13 @@ If more observations are available, the acceleration $a$ can also be estimated.
 
 == Heading Rate & Steering Angle
 
-From @kinematic-bicycle-equations, we know that the heading rate $dot(theta)$ is related to the steering angle $delta$ as:
+From @kinematic-bicycle-equations, the heading rate $omega := dot(theta)$ is related to the steering angle $delta$ via the slip angle $beta$ as:
 
-#align(
-  center,
-  $dot(theta) = v / L tan(delta)$,
-)
+$omega = v / l_r sin(beta), quad beta = arctan(l_r / L tan(delta))$
 
-Inverting this relationship gives:
+Inverting this relationship (see @finite-difference-steering-angle-derivation) gives:
 
-#align(
-  center,
-  $delta = arctan(L dot(theta) / v)$,
-)
+$delta = arctan("sgn"(v) dot L omega / sqrt(v^2 - l_r^2 omega^2))$
 
 #definition(title: "Finite Difference Steering Angle Estimate")[
 
@@ -783,11 +774,11 @@ Inverting this relationship gives:
   Subsequently the steering angle is:
 
   $
-    delta_t approx arctan(L dot(theta)_t / v_t)
+    delta_t approx arctan("sgn"(v) dot L omega_t / sqrt(v_t^2 - l_r^2 omega_t^2))
   $ <finite-difference-steering-angle-equation>
 ]
 
-If the speed $v_t$ is very small, the steering angle estimate $delta_t$ will be unreliable. In such cases, we can assume the steering angle is zero. If a unicycle model is used instead of the kinematic bicycle model, then the angular velocity $omega_t$ can be estimated using @finite-difference-heading-rate-equation.
+If the speed $v_t$ is very small or $v_t^2 < l_r^2 omega_t^2$, the steering angle estimate $delta_t$ will be unreliable. In such cases, we can assume the steering angle is zero. If a unicycle model is used instead of the kinematic bicycle model, then the angular velocity $omega_t$ can be estimated using @finite-difference-heading-rate-equation.
 
 == Kalman Filter (KF)
 
@@ -1010,10 +1001,12 @@ For estimating the acceleration and steering angle of a moving obstacle using th
 ]
 
 #estimation-example-entry(title: [*Jacobian of System Dynamics*])[
+  Let $beta = arctan(l_r / L tan(delta))$, $lambda := l_r / L$ and $beta_delta := (partial beta) / (partial delta) = lambda sec^2(delta) / ((1 + lambda^2 tan^2(delta)))$. Then:
+
   $#state-transition-matrix-() := mat(
-    1, 0, -v sin(theta) #delta-t, cos(theta) #delta-t, 0, 0, ;
-    0, 1, v cos(theta) #delta-t, sin(theta) #delta-t, 0, 0, ;
-    0, 0, 1, tan(delta) / L dot #delta-t, 0, v / L sec(delta)^2 #delta-t, ;
+    1, 0, -v sin(theta + beta) #delta-t, cos(theta + beta) #delta-t, 0, -v sin(theta + beta) beta_delta #delta-t, ;
+    0, 1, v cos(theta + beta) #delta-t, sin(theta + beta) #delta-t, 0, v cos(theta + beta) beta_delta #delta-t, ;
+    0, 0, 1, cos(beta) tan(delta) / L dot #delta-t, 0, v / L (cos(beta) sec^2(delta) - sin(beta) tan(delta) beta_delta) #delta-t, ;
     0, 0, 0, 1, #delta-t, 0, ;
     0, 0, 0, 0, 1, 0, ;
     0, 0, 0, 0, 0, 1, ;
@@ -1460,6 +1453,91 @@ Cost terms related to obstacle avoidance typically also require measuring distan
     $#min-distance-batch-(state-batch) = {#min-distance-($#state _1$), #min-distance-($#state _2$), ..., #min-distance-($#state _#rollouts$)} = {#min-distance _1, #min-distance _2, ..., #min-distance _#rollouts} := #min-distance-batch$,
   )
 ]
+
+= Proofs & Derivations
+
+== Numerically Stable Form of Kinematic Bicycle Model Heading Update <kinematic-bicycle-heading-update-derivation>
+
+The kinematic bicycle model heading update can be written in two forms:
+
+$
+  dot(theta) = v / l_r sin(beta) quad "and" quad dot(theta) = v / L cos(beta) tan(delta)
+$
+
+where $beta = arctan(l_r / L tan(delta))$. We show these are equivalent, and that the second form is preferred since it avoids division by $l_r$.
+
+Starting from $tan(beta) = l_r / L tan(delta)$, we express $sin(beta)$ as:
+
+$
+  sin(beta) = tan(beta) / sqrt(1 + tan^2(beta)) = (l_r / L tan(delta)) / sqrt(1 + l_r^2 / L^2 tan^2(delta))
+$
+
+Substituting into $v / l_r sin(beta)$:
+
+$
+  v / l_r sin(beta) = v / l_r dot (l_r / L tan(delta)) / sqrt(1 + l_r^2 / L^2 tan^2(delta)) = (v tan(delta)) / (L sqrt(1 + l_r^2 / L^2 tan^2(delta)))
+$
+
+Since $cos(beta) = 1 / sqrt(1 + tan^2(beta)) = 1 / sqrt(1 + l_r^2 / L^2 tan^2(delta))$:
+
+$
+  v / l_r sin(beta) = v / L cos(beta) tan(delta) quad qed
+$
+
+Note that $l_r$ cancels in the second step, so the right-hand form is well-defined for all $l_r >= 0$.
+
+== Finite Difference Approximation of Steering Angle <finite-difference-steering-angle-derivation>
+
+
+Given the heading rate equation from the kinematic bicycle model (@kinematic-bicycle-equations):
+
+$
+  omega = v / L cos(beta) tan(delta), quad beta = arctan(l_r / L tan(delta))
+$
+
+we wish to solve for $delta$ in terms of $omega$ and $v$.
+
+Isolating $tan(delta)$:
+
+$
+  tan(delta) = (L omega) / (v cos(beta))
+$ <steering-inversion-step-1>
+
+Since $cos(beta) > 0$ for all $beta in (-pi / 2, pi / 2)$, we have:
+
+$
+  "sgn"(tan(delta)) = "sgn"(omega / v) = "sgn"(omega) dot "sgn"(v)
+$ <steering-sign-constraint>
+
+Substituting $cos(beta) = 1 / sqrt(1 + l_r^2 / L^2 tan^2(delta))$ into @steering-inversion-step-1:
+
+$
+  tan(delta) = (L omega) / v sqrt(1 + l_r^2 / L^2 tan^2(delta))
+$
+
+Letting $u := tan(delta)$ and squaring both sides:
+
+$
+  u^2 = (L^2 omega^2) / v^2 (1 + l_r^2 / L^2 u^2)
+$
+
+$
+  u^2 v^2 = L^2 omega^2 + l_r^2 omega^2 u^2
+$
+
+$
+  u^2 (v^2 - l_r^2 omega^2) = L^2 omega^2
+$
+
+$
+  u = plus.minus (L omega) / sqrt(v^2 - l_r^2 omega^2)
+$
+
+The expression $L omega / sqrt(v^2 - l_r^2 omega^2)$ has $"sgn"(omega)$ as its sign, but from @steering-sign-constraint we require $"sgn"(u) = "sgn"(omega) dot "sgn"(v)$. Thus:
+
+$
+  delta = arctan("sgn"(v) dot (L omega) / sqrt(v^2 - l_r^2 omega^2)) qed
+$ <steering-angle-inversion>
 
 #pagebreak()
 

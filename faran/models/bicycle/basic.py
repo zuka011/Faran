@@ -536,6 +536,7 @@ class NumPyBicycleModel(
 
     _time_step_size: float
     wheelbase: float
+    rear_axle_distance: float
     speed_limits: tuple[float, float]
     steering_limits: tuple[float, float]
     acceleration_limits: tuple[float, float]
@@ -545,6 +546,7 @@ class NumPyBicycleModel(
         *,
         time_step_size: float,
         wheelbase: float = 1.0,
+        rear_axle_distance: float = 0.0,
         speed_limits: tuple[float, float] | None = None,
         steering_limits: tuple[float, float] | None = None,
         acceleration_limits: tuple[float, float] | None = None,
@@ -553,6 +555,7 @@ class NumPyBicycleModel(
         return NumPyBicycleModel(
             _time_step_size=time_step_size,
             wheelbase=wheelbase,
+            rear_axle_distance=rear_axle_distance,
             speed_limits=speed_limits if speed_limits is not None else NO_LIMITS,
             steering_limits=steering_limits
             if steering_limits is not None
@@ -582,6 +585,7 @@ class NumPyBicycleModel(
                 initial,
                 time_step_size=self.time_step_size,
                 wheelbase=self.wheelbase,
+                rear_axle_distance=self.rear_axle_distance,
                 speed_limits=self.speed_limits,
                 steering_limits=self.steering_limits,
                 acceleration_limits=self.acceleration_limits,
@@ -600,6 +604,7 @@ class NumPyBicycleModel(
                 first_input,
                 time_step_size=self.time_step_size,
                 wheelbase=self.wheelbase,
+                rear_axle_distance=self.rear_axle_distance,
                 speed_limits=self.speed_limits,
                 steering_limits=self.steering_limits,
                 acceleration_limits=self.acceleration_limits,
@@ -622,6 +627,7 @@ class NumPyBicycleStateEstimationModel:
 
     time_step_size: float
     wheelbase: float
+    rear_axle_distance: float
     initial_state_covariance: EstimationStateCovarianceArray
 
     @staticmethod
@@ -629,6 +635,7 @@ class NumPyBicycleStateEstimationModel:
         *,
         time_step_size: float,
         wheelbase: float,
+        rear_axle_distance: float = 0.0,
         initial_state_covariance: EstimationStateCovarianceArray | None = None,
     ) -> "NumPyBicycleStateEstimationModel":
         if initial_state_covariance is None:
@@ -639,6 +646,7 @@ class NumPyBicycleStateEstimationModel:
         return NumPyBicycleStateEstimationModel(
             time_step_size=time_step_size,
             wheelbase=wheelbase,
+            rear_axle_distance=rear_axle_distance,
             initial_state_covariance=initial_state_covariance,
         )
 
@@ -663,13 +671,16 @@ class NumPyBicycleStateEstimationModel:
 
     def __call__(self, state: Float[Array, "D_x K"]) -> Float[Array, "D_x K"]:
         dt = self.time_step_size
+        l_r = self.rear_axle_distance
         x, y, theta, v, a, delta = state
+
+        beta = np.arctan(l_r / self.wheelbase * np.tan(delta))
 
         return np.array(
             [
-                x + v * np.cos(theta) * dt,
-                y + v * np.sin(theta) * dt,
-                theta + (v / self.wheelbase) * np.tan(delta) * dt,
+                x + v * np.cos(theta + beta) * dt,
+                y + v * np.sin(theta + beta) * dt,
+                theta + v * np.cos(beta) * np.tan(delta) / self.wheelbase * dt,
                 v + a * dt,
                 a,
                 delta,
@@ -679,30 +690,43 @@ class NumPyBicycleStateEstimationModel:
     def jacobian(self, state: Float[Array, "D_x K"]) -> Float[Array, "D_x D_x K"]:
         D_x, K = state.shape
         dt = self.time_step_size
+        l_r = self.rear_axle_distance
+        L = self.wheelbase
         x, y, theta, v, a, delta = state
 
-        cos_theta = np.cos(theta)
-        sin_theta = np.sin(theta)
         tan_delta = np.tan(delta)
         sec_delta_squared = 1 / np.cos(delta) ** 2
+
+        beta = np.arctan(l_r / L * tan_delta)
+        cos_beta = np.cos(beta)
+        sin_beta = np.sin(beta)
+        cos_theta_beta = np.cos(theta + beta)
+        sin_theta_beta = np.sin(theta + beta)
+
+        dbeta_ddelta = (l_r / L * sec_delta_squared) / (1 + (l_r / L * tan_delta) ** 2)
 
         jacobian = np.zeros((D_x, D_x, K))
 
         # Partial derivatives for x
         jacobian[0, 0, :] = 1  # ∂x_next/∂x
-        jacobian[0, 2, :] = -v * sin_theta * dt  # ∂x_next/∂theta
-        jacobian[0, 3, :] = cos_theta * dt  # ∂x_next/∂v
+        jacobian[0, 2, :] = -v * sin_theta_beta * dt  # ∂x_next/∂theta
+        jacobian[0, 3, :] = cos_theta_beta * dt  # ∂x_next/∂v
+        jacobian[0, 5, :] = -v * sin_theta_beta * dbeta_ddelta * dt  # ∂x_next/∂delta
 
         # Partial derivatives for y
         jacobian[1, 1, :] = 1  # ∂y_next/∂y
-        jacobian[1, 2, :] = v * cos_theta * dt  # ∂y_next/∂theta
-        jacobian[1, 3, :] = sin_theta * dt  # ∂y_next/∂v
+        jacobian[1, 2, :] = v * cos_theta_beta * dt  # ∂y_next/∂theta
+        jacobian[1, 3, :] = sin_theta_beta * dt  # ∂y_next/∂v
+        jacobian[1, 5, :] = v * cos_theta_beta * dbeta_ddelta * dt  # ∂y_next/∂delta
 
         # Partial derivatives for theta
         jacobian[2, 2, :] = 1  # ∂theta_next/∂theta
-        jacobian[2, 3, :] = (1 / self.wheelbase) * tan_delta * dt  # ∂theta_next/∂v
+        jacobian[2, 3, :] = cos_beta * tan_delta / L * dt  # ∂theta_next/∂v
         jacobian[2, 5, :] = (
-            (v / self.wheelbase) * sec_delta_squared * dt
+            v
+            / L
+            * (cos_beta * sec_delta_squared - sin_beta * dbeta_ddelta * tan_delta)
+            * dt
         )  # ∂theta_next/∂delta
 
         # Partial derivatives for v
@@ -777,6 +801,7 @@ class NumPyBicycleObstacleModel(
         *,
         time_step_size: float,
         wheelbase: float = 1.0,
+        rear_axle_distance: float = 0.0,
         process_noise_covariance: NumPyNoiseCovarianceDescription = 1e-3,
         sigma_point_spread: float = 1.0,
         prior_knowledge: float = 2.0,
@@ -788,6 +813,7 @@ class NumPyBicycleObstacleModel(
         Args:
             time_step_size: Time step size for state propagation.
             wheelbase: The wheelbase length of the bicycle.
+            rear_axle_distance: Distance from the reference point to the rear axle.
             process_noise_covariance: The process noise covariance, either as a
                 full covariance array, a diagonal covariance vector, or a scalar
                 variance representing isotropic noise.
@@ -798,7 +824,9 @@ class NumPyBicycleObstacleModel(
         """
         return NumPyBicycleObstacleModel(
             model=NumPyBicycleStateEstimationModel.create(
-                time_step_size=time_step_size, wheelbase=wheelbase
+                time_step_size=time_step_size,
+                wheelbase=wheelbase,
+                rear_axle_distance=rear_axle_distance,
             ),
             process_noise_covariance=numpy_kalman_filter.standardize_noise_covariance(
                 process_noise_covariance, dimension=BICYCLE_ESTIMATION_D_X
@@ -843,13 +871,16 @@ class NumPyFiniteDifferenceBicycleStateEstimator(
 ):
     time_step_size: float
     wheelbase: float
+    rear_axle_distance: float = 0.0
 
     @staticmethod
     def create(
-        *, time_step_size: float, wheelbase: float
+        *, time_step_size: float, wheelbase: float, rear_axle_distance: float = 0.0
     ) -> "NumPyFiniteDifferenceBicycleStateEstimator":
         return NumPyFiniteDifferenceBicycleStateEstimator(
-            time_step_size=time_step_size, wheelbase=wheelbase
+            time_step_size=time_step_size,
+            wheelbase=wheelbase,
+            rear_axle_distance=rear_axle_distance,
         )
 
     def estimate_from(
@@ -863,8 +894,8 @@ class NumPyFiniteDifferenceBicycleStateEstimator(
         Computes the following quantities from the kinematic bicycle model:
 
         **Speed** (requires T ≥ 2):
-            Projection of displacement onto the heading direction (negative for reverse):
-            $$v_t = \\frac{(x_t - x_{t-1}) \\cos(\\theta_t) + (y_t - y_{t-1}) \\sin(\\theta_t)}{\\Delta t}$$
+            Magnitude of displacement with sign from heading projection:
+            $$v_t = \\text{sign}(v_t) \\cdot \\frac{\\sqrt{(x_t - x_{t-1})^2 + (y_t - y_{t-1})^2}}{\\Delta t}$$
 
         **Acceleration** (requires T ≥ 3):
             Change in speed over time:
@@ -872,8 +903,8 @@ class NumPyFiniteDifferenceBicycleStateEstimator(
 
         **Steering angle** (requires T ≥ 2):
             Derived from the kinematic bicycle model, where $\\omega = \\frac{d\\theta}{dt}$ is the heading rate:
-            $$\\delta_t = \\arctan\\left(\\frac{L \\cdot \\omega_t}{v_t}\\right)$$
-            Zero when $|v_t| < \\epsilon$ (estimate becomes unreliable).
+            $$\\delta_t = \\arctan\\left(\\frac{L \\cdot \\omega_t}{\\sqrt{v_t^2 - l_r^2 \\omega_t^2}}\\right)$$
+            Zero when $|v_t| < \\epsilon$ or $v_t^2 \\leq l_r^2 \\omega_t^2$ (estimate becomes unreliable).
 
         Args:
             history: Obstacle pose history containing at least one entry.
@@ -977,9 +1008,11 @@ class NumPyFiniteDifferenceBicycleStateEstimator(
         delta_x = x_current - x_previous
         delta_y = y_current - y_previous
 
-        speeds = (
-            delta_x * np.cos(heading_current) + delta_y * np.sin(heading_current)
-        ) / self.time_step_size
+        projection = delta_x * np.cos(heading_current) + delta_y * np.sin(
+            heading_current
+        )
+        magnitude = np.sqrt(delta_x**2 + delta_y**2)
+        speeds = np.sign(projection) * magnitude / self.time_step_size
 
         assert speeds.shape == (x_current.shape[0],)
 
@@ -998,11 +1031,20 @@ class NumPyFiniteDifferenceBicycleStateEstimator(
         speeds: Float[Array, " K"],
     ) -> Float[Array, " K"]:
         heading_velocity = (heading_current - heading_previous) / self.time_step_size
+        l_r = self.rear_axle_distance
 
         with np.errstate(invalid="ignore"):
+            denominator_squared = speeds**2 - l_r**2 * heading_velocity**2
+            is_reliable = (np.abs(speeds) > 1e-6) & (denominator_squared > 0)
+
             steering_angles = np.where(
-                np.abs(speeds) > 1e-6,
-                np.arctan(heading_velocity * self.wheelbase / speeds),
+                is_reliable,
+                np.arctan(
+                    heading_velocity
+                    * self.wheelbase
+                    * np.sign(speeds)
+                    / np.sqrt(np.maximum(denominator_squared, 1e-12))
+                ),
                 0.0,
             )
 
@@ -1031,6 +1073,7 @@ class NumPyKfBicycleStateEstimator(
         *,
         time_step_size: float,
         wheelbase: float,
+        rear_axle_distance: float = 0.0,
         process_noise_covariance: NumPyNoiseCovarianceDescription,
         observation_noise_covariance: NumPyNoiseCovarianceDescription,
         initial_state_covariance: EstimationStateCovarianceArray | None = None,
@@ -1042,6 +1085,7 @@ class NumPyKfBicycleStateEstimator(
         Args:
             time_step_size: The time step size for the state transition model.
             wheelbase: The wheelbase of the bicycle.
+            rear_axle_distance: Distance from the reference point to the rear axle.
             process_noise_covariance: The process noise covariance, either as a full
                 matrix, a vector of diagonal entries, or a scalar for isotropic noise.
             observation_noise_covariance: The observation noise covariance, either as a
@@ -1061,6 +1105,7 @@ class NumPyKfBicycleStateEstimator(
             model=NumPyBicycleStateEstimationModel.create(
                 time_step_size=time_step_size,
                 wheelbase=wheelbase,
+                rear_axle_distance=rear_axle_distance,
                 initial_state_covariance=initial_state_covariance,
             ),
             estimator=NumPyExtendedKalmanFilter.create(noise_model=noise_model),
@@ -1071,6 +1116,7 @@ class NumPyKfBicycleStateEstimator(
         *,
         time_step_size: float,
         wheelbase: float,
+        rear_axle_distance: float = 0.0,
         process_noise_covariance: NumPyNoiseCovarianceDescription,
         observation_noise_covariance: NumPyNoiseCovarianceDescription,
         initial_state_covariance: EstimationStateCovarianceArray | None = None,
@@ -1082,6 +1128,7 @@ class NumPyKfBicycleStateEstimator(
         Args:
             time_step_size: The time step size for the state transition model.
             wheelbase: The wheelbase of the bicycle.
+            rear_axle_distance: Distance from the reference point to the rear axle.
             process_noise_covariance: The process noise covariance, either as a full
                 matrix, a vector of diagonal entries, or a scalar for isotropic noise.
             observation_noise_covariance: The observation noise covariance, either as a
@@ -1101,6 +1148,7 @@ class NumPyKfBicycleStateEstimator(
             model=NumPyBicycleStateEstimationModel.create(
                 time_step_size=time_step_size,
                 wheelbase=wheelbase,
+                rear_axle_distance=rear_axle_distance,
                 initial_state_covariance=initial_state_covariance,
             ),
             estimator=NumPyUnscentedKalmanFilter.create(noise_model=noise_model),
@@ -1138,6 +1186,7 @@ def simulate(
     *,
     time_step_size: float,
     wheelbase: float,
+    rear_axle_distance: float = 0.0,
     speed_limits: tuple[float, float],
     steering_limits: tuple[float, float],
     acceleration_limits: tuple[float, float],
@@ -1153,6 +1202,7 @@ def simulate(
             inputs[t],
             time_step_size=time_step_size,
             wheelbase=wheelbase,
+            rear_axle_distance=rear_axle_distance,
             speed_limits=speed_limits,
             steering_limits=steering_limits,
             acceleration_limits=acceleration_limits,
@@ -1168,6 +1218,7 @@ def step(
     *,
     time_step_size: float,
     wheelbase: float,
+    rear_axle_distance: float = 0.0,
     speed_limits: tuple[float, float],
     steering_limits: tuple[float, float],
     acceleration_limits: tuple[float, float],
@@ -1177,9 +1228,11 @@ def step(
     acceleration = np.clip(a, *acceleration_limits)
     steering = np.clip(delta, *steering_limits)
 
-    new_x = x + v * np.cos(theta) * time_step_size
-    new_y = y + v * np.sin(theta) * time_step_size
-    new_theta = theta + v * np.tan(steering) / wheelbase * time_step_size
+    beta = np.arctan(rear_axle_distance / wheelbase * np.tan(steering))
+
+    new_x = x + v * np.cos(theta + beta) * time_step_size
+    new_y = y + v * np.sin(theta + beta) * time_step_size
+    new_theta = theta + v * np.cos(beta) * np.tan(steering) / wheelbase * time_step_size
     new_v = np.clip(v + acceleration * time_step_size, *speed_limits)
 
     return np.stack([new_x, new_y, new_theta, new_v])
