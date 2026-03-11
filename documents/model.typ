@@ -1,23 +1,15 @@
-#import "@preview/lovelace:0.3.0": pseudocode-list, indent
+#import "@preview/lovelace:0.3.0": indent, pseudocode-list
 #import "@preview/subpar:0.2.2"
 
 #import "examples.typ": (
-  mppi-example-diagram,
-  kinematic-bicycle-diagram,
-  kinematic-unicycle-diagram,
+  circle-approximation-diagram, kinematic-bicycle-diagram,
+  kinematic-unicycle-diagram, mppi-example-diagram, sat-diagram,
   tracking-error-diagram,
-  sat-diagram,
-  circle-approximation-diagram,
 )
 #import "plots.typ": plot-hinge-loss
 
-#import "@local/roboter:0.3.9": (
-  function,
-  algorithm,
-  definition,
-  model,
-  draw,
-  vehicle-theme,
+#import "@local/roboter:0.3.10": (
+  algorithm, definition, draw, function, model, vehicle-theme,
 )
 
 #set math.equation(numbering: "(1)", supplement: "eq.")
@@ -71,11 +63,11 @@ The exact algorithm is as follows:
         + $#input _#rollout = "sample"(#input, #distribution)$ #h(1fr) ➤ Sample around nominal control sequence
         + $#state _#rollout = "simulate"(#input _#rollout, #state-single, #dynamics)$ #h(1fr) ➤ Simulate trajectory
         + $#cost-() _#rollout = #cost-($#input _#rollout$, $#state _#rollout$)$ #h(1fr) ➤ Compute trajectory cost
-      + $#cost-()_min arrow.l limits(min) #cost-()_#rollout$ #h(1fr) ➤ Find minimum cost for $#rollout = 1, ..., #rollouts$
-      + $eta arrow.l sum_(#rollout=1)^(#rollouts) exp(-1 / #temperature (#cost-()_#rollout - #cost-()_min))$ #h(1fr) ➤ Compute normalizing constant
+      + $#cost-() _min arrow.l limits(min) #cost-() _#rollout$ #h(1fr) ➤ Find minimum cost for $#rollout = 1, ..., #rollouts$
+      + $eta arrow.l sum_(#rollout=1)^(#rollouts) exp(-1 / #temperature (#cost-() _#rollout - #cost-() _min))$ #h(1fr) ➤ Compute normalizing constant
 
       + *for* $#rollout=1$ *to* $#rollouts$ *do*
-        + $#weight _#rollout arrow.l 1 / eta exp(-1 / #temperature (#cost-()_#rollout - #cost-()_min))$ #h(1fr) ➤ Compute importance weights
+        + $#weight _#rollout arrow.l 1 / eta exp(-1 / #temperature (#cost-() _#rollout - #cost-() _min))$ #h(1fr) ➤ Compute importance weights
 
       + $#input _("opt.") arrow.l "filter"(sum_(#rollout=1)^(#rollouts) #weight _#rollout #input _#rollout)$ #h(1fr) ➤ Compute optimal control sequence
       + $#input arrow.l "update"(#input, #input _("opt."))$ #h(1fr) ➤ Update nominal control sequence
@@ -109,10 +101,11 @@ The SG filter is applied independently to each control dimension of the optimal 
 == Halton Spline Sampling
 
 #let control-dimension = $D_u$
+#let input-perturbation = $delta #input$
 
 Vanilla MPPI samples independent perturbations at each time step, typically from a Gaussian distribution. This produces control sequences that can change abruptly between consecutive time steps, which is both physically implausible and sample-inefficient. That is, many rollouts are wasted on trajectories that no reasonable controller would execute.
 
-*Halton spline sampling* addresses this by sampling smooth perturbations. The process involves two parts:
+*Halton spline sampling* @Bhardwaj2022 addresses this by sampling smooth perturbations. The process involves two parts:
 1. Using a *Halton sequence* to generate well-distributed quasi-random numbers, and
 2. using *spline interpolation* to produce temporally smooth perturbations from a small number of sampled control points.
 
@@ -129,14 +122,32 @@ This procedure corresponds to the $"sample"(dot)$ operation in the MPPI algorith
   For a $d$-dimensional sequence, a different prime base is used for each dimension (e.g., bases 2, 3, 5, 7, ...). The resulting points in $[0, 1]^d$ can be transformed to other distributions (e.g., Gaussian) via the inverse cumulative distribution function.
 ]
 
-#definition(title: "Spline-Based Control Perturbation Sampling")[
-  Rather than sampling $#horizon times #control-dimension$ independent perturbation values, the control horizon is divided into $K$ knot points ($K << #horizon$) at evenly spaced time steps $t_0, t_1, ..., t_(K-1)$. The sampling procedure for a single rollout is:
+The sampling algorithm is then:
 
-  1. Generate $K times #control-dimension$ quasi-random values using the Halton sequence.
-  2. Transform these values to the desired perturbation distribution.
-  3. Interpolate between the $K$ knot values using a cubic spline to obtain perturbation values at all $#horizon$ time steps.
-  4. Scale the perturbations by the standard deviation $sigma in bb(R)^(#control-dimension)$.
-  5. Add the resulting smooth perturbation to the nominal control sequence.
+#algorithm(title: "Halton Spline Sampling")[
+  #pseudocode-list(hooks: .5em)[
+    + *Given:*
+      - Nominal control sequence #input, Number of rollouts #rollouts
+      - Number of knot points $K$, Standard deviation $sigma in bb(R)^(#control-dimension)$
+      - Halton sequence start index $i_0$
+
+    + *Initialize:*
+      + $t_1, t_2, ..., t_K arrow.l "linspace"(1, #horizon, K)$ #h(1fr) ➤ Evenly spaced knot times
+      + $t_("eval") arrow.l [1, 2, ..., #horizon]$ #h(1fr) ➤ Evaluation times
+
+    + *Sample:*
+      + $bold(H) arrow.l "halton"(d = K times #control-dimension, n = #rollouts, "start" = i_0)$ #h(1fr) ➤ Quasi-random samples in $[0, 1]^(K dot #control-dimension)$
+      + $i_0 arrow.l i_0 + #rollouts$ #h(1fr) ➤ Advance Halton index
+      + $bold(G) arrow.l Phi^(-1)("clip"(bold(H), epsilon, 1 - epsilon))$ #h(1fr) ➤ Transform to Gaussian via inverse CDF
+
+    + *Interpolate and scale:*
+      + *for* $#rollout = 1$ *to* #rollouts *do*
+        + $bold(s)_#rollout arrow.l "CubicSpline"(t_1, ..., t_K, bold(G)_#rollout)$ #h(1fr) ➤ Fit spline through knot values
+        + $#input-perturbation _#rollout arrow.l bold(s)_#rollout (t_("eval"))$ #h(1fr) ➤ Evaluate spline at all time steps
+        + $#input _#rollout arrow.l #input + sigma dot.o #input-perturbation _#rollout$ #h(1fr) ➤ Scale and add to nominal
+
+    + *return* ${ #input _1, #input _2, ..., #input _#rollouts }$
+  ]
 ]
 
 The combination of Halton sequences and spline interpolation has two benefits. The low-discrepancy property of the Halton sequence ensures that the sampled perturbations cover the space of possible control profiles more uniformly than independent random sampling, improving sample efficiency. The spline interpolation enforces temporal smoothness, so that the sampled rollouts resemble physically plausible control inputs.
@@ -151,8 +162,15 @@ A common choice for the dynamical model of a wheeled robot is the *kinematic bic
 
 #figure(
   kinematic-bicycle-diagram(),
-  caption: [The kinematic bicycle model. The robot state is defined by position $(x, y)$, heading $theta$, and speed $v_r$. The control inputs are acceleration $a := dot(v)_r$ and steering angle $delta$. The wheelbase $L$ is the distance between the front and rear axles. $R$ denotes the turning radius for the current $delta$.],
+  caption: [The kinematic bicycle model. The robot state is defined by position $(x, y)$, heading $theta$, and speed $v_r$. The control inputs are acceleration $a := dot(v)_r$ and steering angle $delta$. The wheelbase $L = l_r + l_f$ is the distance between the front and rear axles. $R$ denotes the turning radius for the current $delta$.],
 )
+
+The model can be formulated with respect to different reference points on the vehicle. Let $l_r$ and $l_f$ denote the distances from the reference point to the rear and front axles, respectively, such that the wheelbase is $L = l_r + l_f$. The slip angle $beta$ at the reference point is given by:
+
+$
+  beta = arctan(l_r / (l_r + l_f) tan(delta))
+$ <slip-angle-equation>
+
 
 The control inputs $#input-single := [a quad delta]$ are:
 - $a$: Acceleration
@@ -164,21 +182,25 @@ The state $#state-single := [x quad y quad theta quad v]$ of the robot is repres
 - $theta$: Heading angle (orientation) in radians
 - $v$: Speed#speed-footnote of the robot (corresponds to $v_r$ in the diagram)
 
-#model(title: [Kinematic Bicycle Model @Polack2017])[
-  The continuous-time dynamics of the kinematic bicycle model are given as:
+#model(title: [Kinematic Bicycle Model @Kong2015])[
+  The continuous-time dynamics of the kinematic bicycle model, with respect to a reference point at distances $l_r$ and $l_f$ from the rear and front axles, are given as:
+
+  $
+    dot(x) = v cos(theta + beta), quad dot(y) = v sin(theta + beta), quad dot(theta) = v / l_r sin(beta), quad dot(v) = a
+  $ <kinematic-bicycle-equations>
+
+  where $beta$ is the slip angle given by @slip-angle-equation at the reference point. When the reference point is at the rear axle ($l_r -> 0$), the slip angle vanishes ($beta -> 0$) and the equations simplify to:
 
   $
     dot(x) = v cos(theta), quad dot(y) = v sin(theta), quad dot(theta) = v / L tan(delta), quad dot(v) = a
-  $ <kinematic-bicycle-equations>
-
-  where $L$ is the wheelbase (distance between the front and rear axles).
+  $ <simplified-kinematic-bicycle-equations>
 ]
 
 === Euler Integration for KBM
 
 #let delta-t = $Delta t$
 
-To simulate the model, we discretize @kinematic-bicycle-equations with a time step size of #delta-t to get:
+To simulate the model, we discretize @simplified-kinematic-bicycle-equations with a time step size of #delta-t to get:
 
 $
   x_(t+1) = x_t + v_t cos(theta_t) dot #delta-t \
@@ -187,7 +209,13 @@ $
   v_(t+1) = v_t + a_t dot #delta-t
 $ <kinematic-bicycle-discretized-equations>
 
-Where $(dot)_t$ represents the value of $(dot)$ at time step $t$. A Euler integration step for this discretized model then looks like this:
+Where $(dot)_t$ represents the value of $(dot)$ at time step $t$. Note that the slip angle $beta$ is no longer present in the discretized equations, since we assume the reference point $(x_0, y_0)$ is transformed to the rear axle beforehand. This can be done as follows:
+
+$
+  x = x_0 - l_r cos(theta), quad y = y_0 - l_r sin(theta)
+$ <reference-point-transformation-equation>
+
+Then a single Euler integration step for this discretized model looks like this:
 
 #algorithm(title: "Euler Integration Step for the Kinematic Bicycle Model")[
   #pseudocode-list(hooks: .5em)[
@@ -277,9 +305,9 @@ When using MPPI to control the motion of a mobile robot, the terms of the cost f
 #let theta-at-arc-length = $theta_(#path-parameter)$
 #let augmented-state-single = $#state-single _phi$
 #let augmented-input-single = $#input-single _phi$
-#let contouring-cost = $#cost-()_c$
-#let lag-cost = $#cost-()_l$
-#let progress-cost = $#cost-()_p$
+#let contouring-cost = $#cost-() _c$
+#let lag-cost = $#cost-() _l$
+#let progress-cost = $#cost-() _p$
 #let contouring-weight = $k_c$
 #let lag-weight = $k_l$
 #let contouring-error = $e_c$
@@ -312,7 +340,7 @@ The tracking cost requires a global reference trajectory that is to be followed.
   #align(
     center,
     $#contouring-error = sin(#theta-at-arc-length) (x - #x-at-arc-length) - cos(#theta-at-arc-length) (y - #y-at-arc-length) \
-      #lag-error = - cos(#theta-at-arc-length) (x - #x-at-arc-length) - sin(#theta-at-arc-length) (y - #y-at-arc-length)$,
+    #lag-error = - cos(#theta-at-arc-length) (x - #x-at-arc-length) - sin(#theta-at-arc-length) (y - #y-at-arc-length)$,
   )
 
   Then, the *contouring cost* #contouring-cost and *lag cost* #lag-cost for time step $t$ are defined as:
@@ -398,8 +426,8 @@ The progress cost given by @progress-cost-equation pushes #path-parameter to mov
 
 #let input-single-(at: none) = $#input-single _(#at)$
 #let state-dimension = $D_x$
-#let smoothing-cost = $#cost-()_s$
-#let effort-cost = $#cost-()_n$
+#let smoothing-cost = $#cost-() _s$
+#let effort-cost = $#cost-() _n$
 #let input-change = $Delta #input-single$
 #let input-smooth-weight = $K_u$
 #let control-effort-weight = $K_n$
@@ -429,7 +457,7 @@ The progress cost given by @progress-cost-equation pushes #path-parameter to mov
   With #temperature being the temperature parameter. However, for flexibility, we define this cost more generally as:
 
   $
-    #effort-cost = #control-effort-weight #input-single-(at: $t$)^top #input-single-(at: $t$) = #control-effort-weight || #input-single-(at: $t$) ||^2
+    #effort-cost = #input-single-(at: $t$)^top #control-effort-weight #input-single-(at: $t$)
   $ <control-effort-cost-equation>
 
   And the user can decide what the weighting factors #control-effort-weight should be.
@@ -513,6 +541,7 @@ Typically, the circles are used to get a conservative approximation of the recta
     ),
     caption: [Three-circle approximation],
   ),
+
   figure(
     circle-approximation-diagram(
       circle-count: 2,
@@ -545,6 +574,7 @@ Typically, the circles are used to get a conservative approximation of the recta
     ),
     caption: [Three-circle approximation with additional safety margin],
   ),
+
   columns: (1fr, 1fr),
   caption: [A vehicle (red rectangle) approximated by circles (blue). The green lines show the smallest safety distance from the rectangle sides to the circles. As long as this safety distance is not negative, the rectangle is fully contained within the circles, and the approximation is conservative (b, c, d). Depending on the cost function, an additional safety margin ($#min-distance-single-(sub: 0)$) can be added to the circle radii.],
 )
@@ -576,6 +606,7 @@ In the case of the hinge loss more circles lead to a better cost landscape, as c
     caption: [Three-circle approximation],
     placement: alignment.bottom,
   ),
+
   figure(
     plot-hinge-loss(
       centers: ((-1.5, 0), (1.5, 0)),
@@ -596,6 +627,7 @@ In the case of the hinge loss more circles lead to a better cost landscape, as c
     caption: [Three-circle approximation with additional safety margin],
     placement: alignment.bottom,
   ),
+
   columns: (1fr, 1fr),
   caption: [
     The collision cost given by @collision-cost-equation can be visualized by plotting the cost #collision-cost as a function of the position of a circular obstacle ($r = sqrt(2)$) at position $(x, y)$ relative to the ego robot. We can see the function then has saddle points in the two-circle cases (a, c), but has only one peak in the cases (b, d). Furthermore, the points between the approximating circles in case (a) have slightly lower costs than other points, which could be undesirable. Ego circle radius $r = sqrt(2)$ in all cases, #min-distance-single-(sub: 0) = 1.5 in cases (c) and (d).
@@ -662,6 +694,8 @@ the steering angle $delta$ remain constant. The resulting model is called a *con
   $
 
   Where $L$ is the wheelbase of the obstacle and #delta-t is the time step size for prediction.
+
+  As in @kinematic-bicycle-discretized-equations, we assume here that the reference position $(x, y)$ is at the rear axle of the obstacle. If the reference position is somewhere else, it should first be transformed to the rear axle using @reference-point-transformation-equation.
 ]
 
 == Constant Turn Rate & Velocity (CTRV) Model <ctrv-model>
@@ -813,7 +847,7 @@ Unlike the previous approaches, we no longer consider exact values of the unobse
 
   #align(
     center,
-    $#mean-state-single-(at: $t$, prediction: true) = #state-transition-matrix-(at: $t$) #mean-state-single-(at: $t-1$) + #control-input-matrix-(at: $t$) #input-single-(at: $t$), quad #covariance-state-single-(at: $t$, prediction: true) = #state-transition-matrix-(at: $t$) #covariance-state-single-(at: $t-1$) #state-transition-matrix-(at: $t$) ^top + #process-noise-covariance-(at: $t$)$,
+    $#mean-state-single-(at: $t$, prediction: true) = #state-transition-matrix-(at: $t$) #mean-state-single-(at: $t-1$) + #control-input-matrix-(at: $t$) #input-single-(at: $t$), quad #covariance-state-single-(at: $t$, prediction: true) = #state-transition-matrix-(at: $t$) #covariance-state-single-(at: $t-1$) #state-transition-matrix-(at: $t$)^top + #process-noise-covariance-(at: $t$)$,
   )
 
   *Update Step:*
@@ -822,7 +856,7 @@ Unlike the previous approaches, we no longer consider exact values of the unobse
 
   #align(
     center,
-    $#kalman-gain-(at: $t$) = #covariance-state-single-(at: $t$, prediction: true) #observation-matrix-(at: $t$) ^top (#observation-matrix-(at: $t$) #covariance-state-single-(at: $t$, prediction: true) #observation-matrix-(at: $t$) ^top + #observation-noise-covariance-(at: $t$))^(-1)$,
+    $#kalman-gain-(at: $t$) = #covariance-state-single-(at: $t$, prediction: true) #observation-matrix-(at: $t$)^top (#observation-matrix-(at: $t$) #covariance-state-single-(at: $t$, prediction: true) #observation-matrix-(at: $t$)^top + #observation-noise-covariance-(at: $t$))^(-1)$,
   )
 
   Then, we can compute the updated belief $#belief-state-single-(at: $t$) := #gaussian-(mean-state-single-(at: $t$), covariance-state-single-(at: $t$))$ as:
@@ -830,7 +864,7 @@ Unlike the previous approaches, we no longer consider exact values of the unobse
   #align(
     center,
     $#mean-state-single-(at: $t$) = #mean-state-single-(at: $t$, prediction: true) + #kalman-gain-(at: $t$) (#observed-state-single-(at: $t$) - #observation-matrix-(at: $t$) #mean-state-single-(at: $t$, prediction: true)), quad
-      #covariance-state-single-(at: $t$) = (I - #kalman-gain-(at: $t$) #observation-matrix-(at: $t$)) #covariance-state-single-(at: $t$, prediction: true)$,
+    #covariance-state-single-(at: $t$) = (I - #kalman-gain-(at: $t$) #observation-matrix-(at: $t$)) #covariance-state-single-(at: $t$, prediction: true)$,
   )
 
   The dimensions of the matrices and vectors in the above equations are as follows:
@@ -849,9 +883,9 @@ Formulating this as an algorithm, we get:
 
     + *Predict:*
       + $#mean-state-single-(at: $t$, prediction: true) arrow.l #state-transition-matrix-(at: $t$) #mean-state-single-(at: $t-1$) + #control-input-matrix-(at: $t$) #input-single-(at: $t$)$ #h(1fr) ➤ Predict the mean state
-      + $#covariance-state-single-(at: $t$, prediction: true) arrow.l #state-transition-matrix-(at: $t$) #covariance-state-single-(at: $t-1$) #state-transition-matrix-(at: $t$) ^top + #process-noise-covariance-(at: $t$)$ #h(1fr) ➤ Predict the state covariance
+      + $#covariance-state-single-(at: $t$, prediction: true) arrow.l #state-transition-matrix-(at: $t$) #covariance-state-single-(at: $t-1$) #state-transition-matrix-(at: $t$)^top + #process-noise-covariance-(at: $t$)$ #h(1fr) ➤ Predict the state covariance
     + *Update:*
-      + $#kalman-gain-(at: $t$) arrow.l #covariance-state-single-(at: $t$, prediction: true) #observation-matrix-(at: $t$) ^top (#observation-matrix-(at: $t$) #covariance-state-single-(at: $t$, prediction: true) #observation-matrix-(at: $t$) ^top + #observation-noise-covariance-(at: $t$))^(-1)$ #h(1fr) ➤ Compute the Kalman gain
+      + $#kalman-gain-(at: $t$) arrow.l #covariance-state-single-(at: $t$, prediction: true) #observation-matrix-(at: $t$)^top (#observation-matrix-(at: $t$) #covariance-state-single-(at: $t$, prediction: true) #observation-matrix-(at: $t$)^top + #observation-noise-covariance-(at: $t$))^(-1)$ #h(1fr) ➤ Compute the Kalman gain
       + $#mean-state-single-(at: $t$) arrow.l #mean-state-single-(at: $t$, prediction: true) + #kalman-gain-(at: $t$) (#observed-state-single-(at: $t$) - #observation-matrix-(at: $t$) #mean-state-single-(at: $t$, prediction: true))$ #h(1fr) ➤ Update the mean state
       + $#covariance-state-single-(at: $t$) arrow.l (I - #kalman-gain-(at: $t$) #observation-matrix-(at: $t$)) #covariance-state-single-(at: $t$, prediction: true)$ #h(1fr) ➤ Update the state covariance
       - *return* $#belief-state-single-(at: $t$) = #gaussian-(mean-state-single-(at: $t$), covariance-state-single-(at: $t$))$.
@@ -875,12 +909,12 @@ For estimating the linear velocity of a moving obstacle using the Kalman filter,
 
 #estimation-example-entry(title: [*State*])[
   $#mean-state-single-() := vec(x, y, v_x, v_y, delim: "["), quad #covariance-state-single-() := mat(
-      sigma_x^2, rho_(x y), rho_(x v_x), rho_(x v_y), ;
-      rho_(x y), sigma_y^2, rho_(y v_x), rho_(y v_y), ;
-      rho_(x v_x), rho_(y v_x), sigma_(v_x)^2, rho_(v_x v_y), ;
-      rho_(x v_y), rho_(y v_y), rho_(v_x v_y), sigma_(v_y)^2, ;
-      delim: "["
-    )$
+    sigma_x^2, rho_(x y), rho_(x v_x), rho_(x v_y), ;
+    rho_(x y), sigma_y^2, rho_(y v_x), rho_(y v_y), ;
+    rho_(x v_x), rho_(y v_x), sigma_(v_x)^2, rho_(v_x v_y), ;
+    rho_(x v_y), rho_(y v_y), rho_(v_x v_y), sigma_(v_y)^2, ;
+    delim: "["
+  )$
 ]
 
 #estimation-example-entry(title: [*Noise Covariances*])[
@@ -891,10 +925,10 @@ For estimating the linear velocity of a moving obstacle using the Kalman filter,
 
 #estimation-example-entry(title: [*Observation Matrix*])[
   $#observation-matrix-() := mat(
-      1, 0, 0, 0;
-      0, 1, 0, 0;
-      delim: "["
-    )$
+    1, 0, 0, 0;
+    0, 1, 0, 0;
+    delim: "["
+  )$
 ]
 
 Although this approach works, we cannot use it when assuming that the obstacle follows the kinematic bicycle model, or any nonlinear model in general#footnote[We could compute the mean of the speed with the KF estimate of the linear velocity, but not the covariance.].
@@ -910,7 +944,7 @@ Although this approach works, we cannot use it when assuming that the obstacle f
 ) = function(
   name: [$(partial of) / (partial wrt)$ #if at != none {
       $|_#at$
-    } else { }],
+    } else {}],
   at: at,
 )
 #let state-transition-jacobian-(wrt: state-single, at: none) = jacobian-(
@@ -932,7 +966,7 @@ For nonlinear dynamics, we can use the Extended Kalman Filter (EKF). The only di
   #align(
     center,
     $#state-transition-matrix-(at: $t$) = #state-transition-jacobian-(wrt: state-single, at: $#state-single = #mean-state-single-(at: $t-1$), #input-single = #input-single-(at: $t$)$), quad
-      #observation-matrix-(at: $t$) = #observation-jacobian-(wrt: state-single, at: $#state-single = #mean-state-single-(at: $t-1$), #input-single = #input-single-(at: $t$)$)$,
+    #observation-matrix-(at: $t$) = #observation-jacobian-(wrt: state-single, at: $#state-single = #mean-state-single-(at: $t-1$), #input-single = #input-single-(at: $t$)$)$,
   )
 
   Note that the approximation at time step $t$ is done around the predicted mean state at time step $t-1$, but uses the (assumed) control input at time step $t$.
@@ -951,11 +985,11 @@ The EKF algorithm is then formulated similarly to KF, but with the above lineari
     + *Predict:*
       + $#state-transition-matrix-(at: $t$) arrow.l #state-transition-jacobian-(wrt: state-single, at: $#state-single = #mean-state-single-(at: $t-1$), #input-single = #input-single-(at: $t$)$)$ #h(1fr) ➤ Jacobian of dynamics w.r.t. state
       + $#mean-state-single-(at: $t$, prediction: true) arrow.l #state-transition-function-(mean-state-single-(at: $t-1$), $#input-single-(at: $t$)$)$ #h(1fr) ➤ Predict mean using system dynamics
-      + $#covariance-state-single-(at: $t$, prediction: true) arrow.l #state-transition-matrix-(at: $t$) #covariance-state-single-(at: $t-1$) #state-transition-matrix-(at: $t$) ^top + #process-noise-covariance-(at: $t$)$ #h(1fr) ➤ Predict covariance using linearized dynamics
+      + $#covariance-state-single-(at: $t$, prediction: true) arrow.l #state-transition-matrix-(at: $t$) #covariance-state-single-(at: $t-1$) #state-transition-matrix-(at: $t$)^top + #process-noise-covariance-(at: $t$)$ #h(1fr) ➤ Predict covariance using linearized dynamics
 
     + *Update:*
       + $#observation-matrix-(at: $t$) arrow.l #observation-jacobian-(wrt: state-single, at: $#state-single = #mean-state-single-(at: $t$, prediction: true)$)$ #h(1fr) ➤ Jacobian of observation w.r.t. state
-      + $#kalman-gain-(at: $t$) arrow.l #covariance-state-single-(at: $t$, prediction: true) #observation-matrix-(at: $t$) ^top (#observation-matrix-(at: $t$) #covariance-state-single-(at: $t$, prediction: true) #observation-matrix-(at: $t$) ^top + #observation-noise-covariance-(at: $t$))^(-1)$ #h(1fr) ➤ Compute Kalman gain
+      + $#kalman-gain-(at: $t$) arrow.l #covariance-state-single-(at: $t$, prediction: true) #observation-matrix-(at: $t$)^top (#observation-matrix-(at: $t$) #covariance-state-single-(at: $t$, prediction: true) #observation-matrix-(at: $t$)^top + #observation-noise-covariance-(at: $t$))^(-1)$ #h(1fr) ➤ Compute Kalman gain
       + $#mean-state-single-(at: $t$) arrow.l #mean-state-single-(at: $t$, prediction: true) + #kalman-gain-(at: $t$) (#observed-state-single-(at: $t$) - #observation-function-(mean-state-single-(at: $t$, prediction: true)))$ #h(1fr) ➤ Update mean
       + $#covariance-state-single-(at: $t$) arrow.l (I - #kalman-gain-(at: $t$) #observation-matrix-(at: $t$)) #covariance-state-single-(at: $t$, prediction: true)$ #h(1fr) ➤ Update covariance
       - *return* $#belief-state-single-(at: $t$) = #gaussian-(mean-state-single-(at: $t$), covariance-state-single-(at: $t$))$.
@@ -968,32 +1002,32 @@ For estimating the acceleration and steering angle of a moving obstacle using th
 
 #estimation-example-entry(title: [*State*])[
   $#mean-state-single-() := vec(x, y, theta, v, a, delta, delim: "["), quad #covariance-state-single-() := mat(
-      sigma_x^2, dots.c, rho_(x delta), ;
-      dots.v, dots.down, dots.v, ;
-      rho_(x delta), dots.c, sigma_delta^2, ;
-      delim: "["
-    )$
+    sigma_x^2, dots.c, rho_(x delta), ;
+    dots.v, dots.down, dots.v, ;
+    rho_(x delta), dots.c, sigma_delta^2, ;
+    delim: "["
+  )$
 ]
 
 #estimation-example-entry(title: [*Jacobian of System Dynamics*])[
   $#state-transition-matrix-() := mat(
-      1, 0, -v sin(theta) #delta-t, cos(theta) #delta-t, 0, 0, ;
-      0, 1, v cos(theta) #delta-t, sin(theta) #delta-t, 0, 0, ;
-      0, 0, 1, tan(delta) / L dot #delta-t, 0, v / L sec(delta)^2 #delta-t, ;
-      0, 0, 0, 1, #delta-t, 0, ;
-      0, 0, 0, 0, 1, 0, ;
-      0, 0, 0, 0, 0, 1, ;
-      delim: "["
-    )$
+    1, 0, -v sin(theta) #delta-t, cos(theta) #delta-t, 0, 0, ;
+    0, 1, v cos(theta) #delta-t, sin(theta) #delta-t, 0, 0, ;
+    0, 0, 1, tan(delta) / L dot #delta-t, 0, v / L sec(delta)^2 #delta-t, ;
+    0, 0, 0, 1, #delta-t, 0, ;
+    0, 0, 0, 0, 1, 0, ;
+    0, 0, 0, 0, 0, 1, ;
+    delim: "["
+  )$
 ]
 
 #estimation-example-entry(title: [*Observation Function and Jacobian*])[
   $#observation-function-(state-single) := vec(x, y, theta, delim: "["), quad #observation-matrix-() := mat(
-      1, 0, 0, 0, 0, 0;
-      0, 1, 0, 0, 0, 0;
-      0, 0, 1, 0, 0, 0;
-      delim: "["
-    )$
+    1, 0, 0, 0, 0, 0;
+    0, 1, 0, 0, 0, 0;
+    0, 0, 1, 0, 0, 0;
+    delim: "["
+  )$
 ]
 
 #estimation-example-entry(title: [*Noise Covariances*])[
@@ -1006,31 +1040,31 @@ Alternatively, we can use the constant turn rate and velocity (CTRV) model (@ctr
 
 #estimation-example-entry(title: [*State*])[
   $#mean-state-single-() := vec(x, y, theta, v, omega, delim: "["), quad #covariance-state-single-() := mat(
-      sigma_x^2, dots.c, rho_(x omega), ;
-      dots.v, dots.down, dots.v, ;
-      rho_(x omega), dots.c, sigma_omega^2, ;
-      delim: "["
-    )$
+    sigma_x^2, dots.c, rho_(x omega), ;
+    dots.v, dots.down, dots.v, ;
+    rho_(x omega), dots.c, sigma_omega^2, ;
+    delim: "["
+  )$
 ]
 
 #estimation-example-entry(title: [*Jacobian of System Dynamics*])[
   $#state-transition-matrix-() := mat(
-      1, 0, -v sin(theta) #delta-t, cos(theta) #delta-t, 0, ;
-      0, 1, v cos(theta) #delta-t, sin(theta) #delta-t, 0, ;
-      0, 0, 1, 0, #delta-t, ;
-      0, 0, 0, 1, 0, ;
-      0, 0, 0, 0, 1, ;
-      delim: "["
-    )$
+    1, 0, -v sin(theta) #delta-t, cos(theta) #delta-t, 0, ;
+    0, 1, v cos(theta) #delta-t, sin(theta) #delta-t, 0, ;
+    0, 0, 1, 0, #delta-t, ;
+    0, 0, 0, 1, 0, ;
+    0, 0, 0, 0, 1, ;
+    delim: "["
+  )$
 ]
 
 #estimation-example-entry(title: [*Observation Function and Jacobian*])[
   $#observation-function-(state-single) := vec(x, y, theta, delim: "["), quad #observation-matrix-() := mat(
-      1, 0, 0, 0, 0;
-      0, 1, 0, 0, 0;
-      0, 0, 1, 0, 0;
-      delim: "["
-    )$
+    1, 0, 0, 0, 0;
+    0, 1, 0, 0, 0;
+    0, 0, 1, 0, 0;
+    delim: "["
+  )$
 ]
 
 #estimation-example-entry(title: [*Noise Covariances*])[
@@ -1081,18 +1115,18 @@ The UKF is another extension of KF that can handle nonlinear dynamics. Instead o
   Let $n$ be the dimension of the state #state-single, and #sigma-point-spread be a parameter that determines how spread out the sigma points are. The $2n + 1$ sigma points are generated#secondary-scaling-parameter-note as follows:
 
   $\
-    #sigma-point-(0) = #mean-state-single\
-    #sigma-point-($i$) = #mean-state-single + (sqrt((#state-dimension-short + #primary-scaling-parameter) #covariance-state-single))_i "for" i = 1, ..., #state-dimension-short\
-    #sigma-point-($i$) = #mean-state-single - (sqrt((#state-dimension-short + #primary-scaling-parameter) #covariance-state-single))_(i-#state-dimension-short) "for" i = #state-dimension-short+1, ..., 2#state-dimension-short\
-    #primary-scaling-parameter := (#sigma-point-spread ^2 - 1) #state-dimension-short$
+  #sigma-point-(0) = #mean-state-single\
+  #sigma-point-($i$) = #mean-state-single + (sqrt((#state-dimension-short + #primary-scaling-parameter) #covariance-state-single))_i "for" i = 1, ..., #state-dimension-short\
+  #sigma-point-($i$) = #mean-state-single - (sqrt((#state-dimension-short + #primary-scaling-parameter) #covariance-state-single))_(i-#state-dimension-short) "for" i = #state-dimension-short+1, ..., 2#state-dimension-short\
+  #primary-scaling-parameter := (#sigma-point-spread^2 - 1) #state-dimension-short$
 
   Where $( dot )_i$ denotes the $i$-th column of the matrix.
 
   Furthermore, let #prior-knowledge-parameter be a parameter that can be used to incorporate prior knowledge about the distribution (set $#prior-knowledge-parameter = 2$ if the distribution is Gaussian). Then, each sigma point is assigned a weight for computing the mean and covariance of the transformed distribution. The weights are computed as:
 
   $\
-    #sigma-mean-weight-(0) = #primary-scaling-parameter / (#state-dimension-short + #primary-scaling-parameter), quad #sigma-covariance-weight-(0) = #primary-scaling-parameter / (#state-dimension-short + #primary-scaling-parameter) + (1 - #sigma-point-spread^2 + #prior-knowledge-parameter)\
-    #sigma-mean-weight-($i$) = #sigma-covariance-weight-($i$) = 1 / (2(#state-dimension-short + #primary-scaling-parameter)) "for" i = 1, ..., 2#state-dimension-short$
+  #sigma-mean-weight-(0) = #primary-scaling-parameter / (#state-dimension-short + #primary-scaling-parameter), quad #sigma-covariance-weight-(0) = #primary-scaling-parameter / (#state-dimension-short + #primary-scaling-parameter) + (1 - #sigma-point-spread^2 + #prior-knowledge-parameter)\
+  #sigma-mean-weight-($i$) = #sigma-covariance-weight-($i$) = 1 / (2(#state-dimension-short + #primary-scaling-parameter)) "for" i = 1, ..., 2#state-dimension-short$
 
   *Propagating Sigma Points:*
 
@@ -1103,7 +1137,7 @@ The UKF is another extension of KF that can handle nonlinear dynamics. Instead o
   Finally, we can compute the mean and covariance of the transformed distribution as:
 
   $\
-    #mean-state-single-(prediction: true) = sum_(i=0)^(2#state-dimension-short) #sigma-mean-weight-($i$) #transformed-sigma-point-($i$), quad #covariance-state-single-(prediction: true) = sum_(i=0)^(2#state-dimension-short) #sigma-covariance-weight-($i$) (#transformed-sigma-point-($i$) - #mean-state-single-(prediction: true))(#transformed-sigma-point-($i$) - #mean-state-single-(prediction: true))^top$
+  #mean-state-single-(prediction: true) = sum_(i=0)^(2#state-dimension-short) #sigma-mean-weight-($i$) #transformed-sigma-point-($i$), quad #covariance-state-single-(prediction: true) = sum_(i=0)^(2#state-dimension-short) #sigma-covariance-weight-($i$) (#transformed-sigma-point-($i$) - #mean-state-single-(prediction: true))(#transformed-sigma-point-($i$) - #mean-state-single-(prediction: true))^top$
 ]
 
 We now formulate the UKF algorithm for state estimation similarly to KF and EKF:
@@ -1147,7 +1181,7 @@ We now formulate the UKF algorithm for state estimation similarly to KF and EKF:
       + $#cross-covariance-(at: $t$) arrow.l sum_(i=0)^(2#state-dimension-short) #sigma-covariance-weight-($i$) (#sigma-point-($i$, prediction: true) - #mean-state-single-(at: $t$, prediction: true))(#predicted-observation-($i$) - #mean-predicted-observation-(at: $t$))^top$ #h(1fr) ➤ Compute cross covariance
       + $#kalman-gain-(at: $t$) arrow.l #cross-covariance-(at: $t$) (#innovation-covariance(at: $t$))^(-1)$ #h(1fr) ➤ Compute Kalman gain
       + $#mean-state-single-(at: $t$) arrow.l #mean-state-single-(at: $t$, prediction: true) + #kalman-gain-(at: $t$) (#observed-state-single-(at: $t$) - #mean-predicted-observation-(at: $t$))$ #h(1fr) ➤ Update mean
-      + $#covariance-state-single-(at: $t$) arrow.l #covariance-state-single-(at: $t$, prediction: true) - #kalman-gain-(at: $t$) #innovation-covariance(at: $t$) #kalman-gain-(at: $t$) ^top$ #h(1fr) ➤ Update covariance
+      + $#covariance-state-single-(at: $t$) arrow.l #covariance-state-single-(at: $t$, prediction: true) - #kalman-gain-(at: $t$) #innovation-covariance(at: $t$) #kalman-gain-(at: $t$)^top$ #h(1fr) ➤ Update covariance
       - *return* $#belief-state-single-(at: $t$) = #gaussian-(mean-state-single-(at: $t$), covariance-state-single-(at: $t$))$.
   ]
 ]
@@ -1166,7 +1200,7 @@ The above algorithm is slightly more complex, since it accounts for nonlinear ob
       + same as before...
 
     + *Update:*
-      + $#kalman-gain-(at: $t$) arrow.l #covariance-state-single-(at: $t$, prediction: true) #observation-matrix-(at: $t$) ^top (#observation-matrix-(at: $t$) #covariance-state-single-(at: $t$, prediction: true) #observation-matrix-(at: $t$) ^top + #observation-noise-covariance-(at: $t$))^(-1)$ #h(1fr) ➤ Compute Kalman gain
+      + $#kalman-gain-(at: $t$) arrow.l #covariance-state-single-(at: $t$, prediction: true) #observation-matrix-(at: $t$)^top (#observation-matrix-(at: $t$) #covariance-state-single-(at: $t$, prediction: true) #observation-matrix-(at: $t$)^top + #observation-noise-covariance-(at: $t$))^(-1)$ #h(1fr) ➤ Compute Kalman gain
       + $#mean-state-single-(at: $t$) arrow.l #mean-state-single-(at: $t$, prediction: true) + #kalman-gain-(at: $t$) (#observed-state-single-(at: $t$) - #observation-matrix-(at: $t$) #mean-state-single-(at: $t$, prediction: true))$ #h(1fr) ➤ Update mean
       + $#covariance-state-single-(at: $t$) arrow.l (I - #kalman-gain-(at: $t$) #observation-matrix-(at: $t$)) #covariance-state-single-(at: $t$, prediction: true)$ #h(1fr) ➤ Update covariance
       - *return* $#belief-state-single-(at: $t$) = #gaussian-(mean-state-single-(at: $t$), covariance-state-single-(at: $t$))$.
@@ -1241,7 +1275,7 @@ Using this idea, we can now formulate the innovation-based adaptation algorithm 
       + $t_0 arrow.l t - #innovation-window + 1$ #h(1fr) ➤ Start of time window
       + *if* $t_0 < 0$ *then* *return* #adapted-process-noise-covariance-(at: $t$) = #process-noise-covariance-(at: $t$), #adapted-observation-noise-covariance-(at: $t$) = #observation-noise-covariance-(at: $t$) #h(1fr) ➤ Insufficient data
       + $#innovation-matrix-(at: $t$) arrow.l 1 / #innovation-window sum_(i=t_0)^t #innovation-(at: $i$) #innovation-(at: $i$)^top$ #h(1fr) ➤ Compute innovation matrix
-      + $#kalman-gain-(at: $t$) arrow.l #covariance-state-single-(at: $t$, prediction: true) #observation-matrix-(at: $t$) ^top (#observation-matrix-(at: $t$) #covariance-state-single-(at: $t$, prediction: true) #observation-matrix-(at: $t$) ^top + #observation-noise-covariance-(at: $t$))^(-1)$ #h(1fr) ➤ Compute Kalman gain
+      + $#kalman-gain-(at: $t$) arrow.l #covariance-state-single-(at: $t$, prediction: true) #observation-matrix-(at: $t$)^top (#observation-matrix-(at: $t$) #covariance-state-single-(at: $t$, prediction: true) #observation-matrix-(at: $t$)^top + #observation-noise-covariance-(at: $t$))^(-1)$ #h(1fr) ➤ Compute Kalman gain
       + $#adapted-process-noise-covariance-(at: $t$) arrow.l #kalman-gain-(at: $t$) #innovation-matrix-(at: $t$) #kalman-gain-(at: $t$)^top$ #h(1fr) ➤ Adapt process noise covariance
       + $#adapted-observation-noise-covariance-(at: $t$) arrow.l #innovation-matrix-(at: $t$) - #observation-matrix-(at: $t$) #covariance-state-single-(at: $t$, prediction: true) #observation-matrix-(at: $t$)^top$ #h(1fr) ➤ Adapt observation noise covariance
       - *return* #adapted-process-noise-covariance-(at: $t$), #adapted-observation-noise-covariance-(at: $t$)
@@ -1357,7 +1391,7 @@ Alternatively, the Unscented transform (prediction step of UKF) can be used if h
 
       + *for* $tau$ = 1 *to* #horizon
         + *for* i = 0 *to* $2#state-dimension-short$ *do*
-          + $#sigma-point-($i,tau$) arrow.l "compute-sigma-point"($i$,$tau$)$ #h(1fr) ➤ Compute sigma points
+          + $#sigma-point-($i,tau$) arrow.l "compute-sigma-point"(i,tau)$ #h(1fr) ➤ Compute sigma points
           + $#transformed-sigma-point-($i,tau$) arrow.l #state-transition-function-(sigma-point-($i,tau$))$ #h(1fr) ➤ Propagate sigma points
         + $#mean-state-single-(at: $tau$, prediction: true) arrow.l sum_(i=0)^(2#state-dimension-short) #sigma-mean-weight-($i$) #transformed-sigma-point-($i,tau$)$ #h(1fr) ➤ Predict mean
         + $#covariance-state-single-(at: $tau$, prediction: true) arrow.l sum_(i=0)^(2#state-dimension-short) #sigma-covariance-weight-($i$) (#transformed-sigma-point-($i,tau$) - #mean-state-single-(at: $tau$, prediction: true))(#transformed-sigma-point-($i,tau$) - #mean-state-single-(at: $tau$, prediction: true))^top + #process-noise-covariance-()$ #h(1fr) ➤ Predict covariance

@@ -53,6 +53,32 @@
   year          = 1960,
   language      = "en"
 }
+@inproceedings{Bhardwaj2022,
+  title         = {STORM: An Integrated Framework for Fast Joint-Space Model-Predictive Control for Reactive Manipulation},
+  author        = {Bhardwaj, Mohak and Sundaralingam, Balakumar and Mousavian, Arsalan and Ratliff, Nathan D. and Fox, Dieter and Ramos, Fabio and Boots, Byron},
+  booktitle     = {Proceedings of the 5th Conference on Robot Learning},
+  pages         = {750--759},
+  year          = {2022},
+  editor        = {Faust, Aleksandra and Hsu, David and Neumann, Gerhard},
+  volume        = {164},
+  series        = {Proceedings of Machine Learning Research},
+  month         = {08--11 Nov},
+  publisher     = {PMLR},
+  pdf           = {https://proceedings.mlr.press/v164/bhardwaj22a/bhardwaj22a.pdf},
+  url           = {https://proceedings.mlr.press/v164/bhardwaj22a.html},
+  abstract      = {Sampling-based model-predictive control (MPC) is a promising tool for feedback control of robots with complex, non-smooth dynamics, and cost functions. However, the computationally demanding nature of sampling-based MPC algorithms has been a key bottleneck in their application to high-dimensional robotic manipulation problems in the real world. Previous methods have addressed this issue by running MPC in the task space while relying on a low-level operational space controller for joint control. However, by not using the joint space of the robot in the MPC formulation, existing methods cannot directly account for non-task space related constraints such as avoiding joint limits, singular configurations, and link collisions. In this paper, we develop a system for fast, joint space sampling-based MPC for manipulators that is efficiently parallelized using GPUs. Our approach can handle task and joint space constraints while taking less than 8ms\&nbsp;(125Hz) to compute the next control command. Further, our method can tightly integrate perception into the control problem by utilizing learned cost functions from raw sensor data. We validate our approach by deploying it on a Franka Panda robot for a variety of dynamic manipulation tasks. We study the effect of different cost formulations and MPC parameters on the synthesized behavior and provide key insights that pave the way for the application of sampling-based MPC for manipulators in a principled manner. We also provide highly optimized, open-source code to be used by the wider robot learning and control community. Videos of experiments can be found at: https://sites.google.com/view/manipulation-mpc}
+}
+@inproceedings{Kong2015,
+  author        = {Kong, Jason and Pfeiffer, Mark and Schildbach, Georg and Borrelli, Francesco},
+  booktitle     = {2015 IEEE Intelligent Vehicles Symposium (IV)},
+  title         = {Kinematic and dynamic vehicle models for autonomous driving control design},
+  year          = {2015},
+  volume        = {},
+  number        = {},
+  pages         = {1094--1099},
+  keywords      = {Kinematics;Vehicle dynamics;Predictive models;Bicycles;Tires;Trajectory},
+  doi           = {10.1109/IVS.2015.7225830}
+}
 @inproceedings{Polack2017,
   author        = {Polack, Philip and Altch\'{e}, Florent and d'Andr\'{e}a-Novel, Brigitte and de La Fortelle, Arnaud},
   booktitle     = {2017 IEEE Intelligent Vehicles Symposium (IV)},

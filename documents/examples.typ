@@ -1,25 +1,12 @@
 #import "@preview/zero:0.5.0": num
 #import "@preview/suiji:0.4.0": gen-rng-f, normal-f
 #import "@preview/cetz:0.4.2"
-#import "@local/roboter:0.3.9": (
-  draw,
-  curves,
+#import "@local/roboter:0.3.10": (
+  bicycle-theme, curves, draw, kinematic-bicycle, kinematic-unicycle,
+  optimal-trajectory-for, rollout-trajectories, rollout-trajectory,
+  sample-inputs-for, sat, unicycle-theme, vehicle-approximation, vehicle-theme,
+  visualize-robot, visualize-rollout, visualize-rollouts, with-visualizers,
   zero-inputs,
-  rollout-trajectory,
-  rollout-trajectories,
-  sample-inputs-for,
-  optimal-trajectory-for,
-  visualize-robot,
-  visualize-rollout,
-  visualize-rollouts,
-  with-visualizers,
-  kinematic-bicycle,
-  bicycle-theme,
-  kinematic-unicycle,
-  unicycle-theme,
-  sat,
-  vehicle-theme,
-  vehicle-approximation,
 )
 
 #let grid-color = gray.transparentize(80%)
@@ -131,7 +118,11 @@
   )
 
   draw.diagram({
-    draw.grid((0, -2), (14, 3), color: grid-color)
+    draw.grid(
+      (0, -2),
+      (14, 3),
+      color: grid-color,
+    )
     draw.label((12, -0), [*$<-$ Desired Route*])
     draw.trajectory(
       curves.bezier(start: ego.position, end: (12, -2), c1: (7, 0), c2: (8, 1)),
@@ -152,11 +143,19 @@
 
 #let kinematic-bicycle-diagram() = {
   draw.diagram({
-    draw.grid((-3, -3), (11, 8), color: grid-color)
+    draw.grid(
+      (-3, -3),
+      (11, 8),
+      color: grid-color,
+    )
     kinematic-bicycle(
-      rear-position: (5, 0),
+      position: (5, 2),
       chassis-width: 3.5,
       heading: 45deg,
+      steering: 45deg,
+      rear-wheelbase: 2.75,
+      front-wheelbase: 2.25,
+      position-label-offset: (-0.5, 0.2),
       theme: bicycle-theme(angle: red, velocity: blue),
     )
   })
@@ -164,7 +163,11 @@
 
 #let kinematic-unicycle-diagram() = {
   draw.diagram({
-    draw.grid((0, 0), (8, 4), color: grid-color)
+    draw.grid(
+      (0, 0),
+      (8, 4),
+      color: grid-color,
+    )
     kinematic-unicycle(
       position: (4, 2),
       heading: 45deg,
@@ -283,7 +286,7 @@
     [
       #set text(size: 8pt)
       $#text(fill: contour-color, $e_c = #num(contouring-error, digits: 2)$) \
-        #text(fill: lag-color, $e_l = #num(lag-error, digits: 2)$)$
+      #text(fill: lag-color, $e_l = #num(lag-error, digits: 2)$)$
     ],
     offset: (0, 0),
   )
@@ -338,7 +341,11 @@
   let path-points = curves.bezier(..curve, samples: 50)
 
   draw.diagram({
-    draw.grid((-0.5, 0), (10, 6), color: grid-color)
+    draw.grid(
+      (-0.5, 0),
+      (10, 6),
+      color: grid-color,
+    )
 
     draw.trajectory(path-points, color: reference-color, dash: "solid")
     visualize-robot(ego)
@@ -371,7 +378,11 @@
 
 #let sat-diagram() = {
   draw.diagram({
-    draw.grid((-5, -4), (10, 4), color: grid-color)
+    draw.grid(
+      (-5, -4),
+      (10, 4),
+      color: grid-color,
+    )
     sat(
       rectangles: (
         (length: 3.0, width: 1.5, offset: (0, 1), rotation: -30deg, color: red),
@@ -411,7 +422,12 @@
   theme: vehicle-theme(),
 ) = {
   draw.diagram({
-    draw.grid((-3.75, -3), (3.75, 3), color: grid-color, step: 0.75)
+    draw.grid(
+      (-3.75, -3),
+      (3.75, 3),
+      color: grid-color,
+      step: 0.75,
+    )
     draw.transformed-group(
       vehicle-approximation(
         length: 5.0,
