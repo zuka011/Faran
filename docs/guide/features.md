@@ -47,7 +47,7 @@ Everything listed below is implemented, tested, and available in both the NumPy 
 
     ---
 
-    4-state model ($x, y, \theta, v$) with acceleration and steering inputs. Configurable wheelbase and input limits.
+    4-state model ($x, y, \theta, v$) with acceleration and steering inputs. Configurable wheelbase, rear axle distance, and input limits.
 
     [:octicons-arrow-right-24: API](../api/model.md)
 

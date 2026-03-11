@@ -133,7 +133,7 @@ class NumPyCollisionCost[
                 - self.distance(states=states, obstacle_states=samples).array
             )
 
-            return self.weight * np.clip(cost, 0, None).sum(axis=1)
+            return np.clip(cost, 0, None).sum(axis=1)
 
         horizon, rollouts = inputs.horizon, inputs.rollout_count
 
@@ -141,7 +141,8 @@ class NumPyCollisionCost[
             (
                 np.zeros((horizon, rollouts))
                 if (obstacle_states := self.obstacle_states()).count == 0
-                else self.metric.compute(
+                else self.weight
+                * self.metric.compute(
                     cost,
                     states=states,
                     obstacle_states=obstacle_states,

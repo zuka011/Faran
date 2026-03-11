@@ -1467,6 +1467,126 @@ class test_that_collision_cost_increases_with_higher_variance_in_obstacle_state_
         )
 
 
+class test_that_collision_cost_increases_linearly_with_weight:
+    @staticmethod
+    def cases(
+        data,
+        costs,
+        distance_measure,
+        obstacles,
+        risk,
+        types,
+        types_obstacle=types.obstacle,
+    ) -> Sequence[tuple]:
+        return [
+            (
+                inputs := data.control_input_batch(
+                    np.zeros((T := 10, D_u := 2, M := 5))
+                ),
+                states := data.state_batch(
+                    array(
+                        np.tile(
+                            [
+                                [[-1.0], [-2.0], [np.pi / 4]],
+                            ],
+                            (T, 1, M),
+                        ),
+                        shape=(T, D_x := 3, M),
+                    )
+                ),
+                create_cost := lambda weight: costs.safety.collision(
+                    obstacle_states=stubs.ObstacleStateProvider.returns(
+                        obstacle_states := data.obstacle_2d_poses(
+                            x=(rng := np.random.default_rng(seed=42)).uniform(
+                                low=-1.0, high=1.0, size=(T := 10, K := 5)
+                            ),
+                            y=rng.uniform(low=0.0, high=2.0, size=(T, K)),
+                            heading=rng.uniform(low=-np.pi, high=np.pi, size=(T, K)),
+                            covariance=array(
+                                (0.5 * np.eye(D_O := types_obstacle.POSE_D_O))[
+                                    None, ..., None
+                                ]
+                                * np.ones((T, D_O, D_O, K)),
+                                shape=(T, D_O, D_O, K),
+                            ),
+                        )
+                    ),
+                    sampler=obstacles.sampler.gaussian(),
+                    distance=distance_measure.circles(
+                        ego=Circles(
+                            origins=array([[0.0, 0.0]], shape=(V := 1, 2)),
+                            radii=array([2.5], shape=(V,)),
+                        ),
+                        obstacle=Circles(
+                            origins=array([[0.0, 0.0]], shape=(C := 1, 2)),
+                            radii=array([2.5], shape=(C,)),
+                        ),
+                        position_extractor=lambda states: types.positions(
+                            x=states.array[:, 0],
+                            y=states.array[:, 1],
+                        ),
+                        heading_extractor=lambda states: types.headings(
+                            heading=states.array[:, 2]
+                        ),
+                        obstacle_position_extractor=lambda states: states.positions(),
+                        obstacle_heading_extractor=lambda states: states.headings(),
+                    ),
+                    distance_threshold=array([0.5], shape=(V,)),
+                    weight=weight,
+                    metric=risk_metric,
+                ),
+            )
+            for risk_metric in [
+                risk.none(),
+                risk.expected_value(sample_count=50),
+                risk.mean_variance(gamma=2.0, sample_count=50),
+                risk.var(alpha=0.95, sample_count=50),
+                risk.cvar(alpha=0.95, sample_count=50),
+                risk.entropic_risk(theta=0.5, sample_count=50),
+            ]
+        ]
+
+    @mark.parametrize(
+        ["inputs", "states", "create_cost"],
+        [
+            *cases(
+                data=data.numpy,
+                costs=costs.numpy,
+                distance_measure=distance_measure.numpy,
+                obstacles=obstacles.numpy,
+                risk=risk.numpy,
+                types=types.numpy,
+            ),
+            *cases(
+                data=data.jax,
+                costs=costs.jax,
+                distance_measure=distance_measure.jax,
+                obstacles=obstacles.jax,
+                risk=risk.jax,
+                types=types.jax,
+            ),
+        ],
+    )
+    def test[ControlInputBatchT, StateBatchT, CostsT: Costs](
+        self,
+        inputs: ControlInputBatchT,
+        states: StateBatchT,
+        create_cost: Callable[
+            [float], CostFunction[ControlInputBatchT, StateBatchT, CostsT]
+        ],
+    ) -> None:
+        J_weighted = np.asarray(
+            create_cost(weight := 5)(inputs=inputs, states=states)
+        ).sum(axis=0)
+
+        J_unit = np.asarray(create_cost(1.0)(inputs=inputs, states=states)).sum(axis=0)
+
+        assert np.allclose(J_weighted, weight * J_unit, rtol=0.05), (
+            f"The risk metric should scale linearly with the weight parameter. "
+            f"Got weighted cost: {J_weighted} vs unit cost: {J_unit}"
+        )
+
+
 class test_that_boundary_cost_is_zero_when_boundary_is_far:
     @staticmethod
     def cases(data, costs) -> Sequence[tuple]:

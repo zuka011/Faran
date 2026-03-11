@@ -16,21 +16,25 @@ Estimation fills in these unobserved variables and provides a covariance matrix 
 
 ### Finite Difference
 
-The simplest approach: estimate derivatives from consecutive observations.
+The simplest approach: estimate derivatives from consecutive observations. The speed estimate uses the displacement magnitude, and the steering angle accounts for the rear axle distance $l_r$:
 
 $$
-v_t \approx \frac{(x_t - x_{t-1})\cos\theta_t + (y_t - y_{t-1})\sin\theta_t}{\Delta t}
+v_t \approx \operatorname{sign}\!\big((x_t - x_{t-1})\cos\theta_t + (y_t - y_{t-1})\sin\theta_t\big) \,
+\frac{\sqrt{(x_t - x_{t-1})^2 + (y_t - y_{t-1})^2}}{\Delta t}
 $$
 
 $$
-a_t = \frac{v_t - v_{t-1}}{\Delta t}, \quad \delta_t \approx \arctan\!\left(\frac{L \, \dot\theta_t}{v_t}\right)
+a_t = \frac{v_t - v_{t-1}}{\Delta t}, \quad
+\delta_t \approx \arctan\!\left(\frac{L \, \dot\theta_t \operatorname{sign}(v_t)}{\sqrt{v_t^2 - l_r^2 \, \dot\theta_t^2}}\right)
 $$
+
+When $l_r = 0$, the steering formula simplifies to $\delta_t \approx \arctan(L \, \dot\theta_t / v_t)$.
 
 ```python
 from faran.numpy import model
 
 estimator = model.bicycle.estimator.finite_difference(
-    time_step_size=0.1, wheelbase=2.5,
+    time_step_size=0.1, wheelbase=2.5, rear_axle_distance=1.0,
 )
 ```
 
@@ -71,6 +75,7 @@ For **nonlinear** models (bicycle, unicycle). Linearizes the dynamics around the
 estimator = model.bicycle.estimator.ekf(
     time_step_size=0.1,
     wheelbase=2.5,
+    rear_axle_distance=1.0,
     process_noise_covariance=1e-3,
     observation_noise_covariance=1e-2,
 )
@@ -88,6 +93,7 @@ The UKF captures mean and covariance to second order (vs. first order for EKF), 
 estimator = model.bicycle.estimator.ukf(
     time_step_size=0.1,
     wheelbase=2.5,
+    rear_axle_distance=1.0,
     process_noise_covariance=1e-3,
     observation_noise_covariance=1e-2,
 )
@@ -128,6 +134,7 @@ adaptive = noise.adaptive(window_size=10)
 estimator = model.bicycle.estimator.ekf(
     time_step_size=0.1,
     wheelbase=2.5,
+    rear_axle_distance=1.0,
     process_noise_covariance=1e-3,
     observation_noise_covariance=1e-2,
     noise_model=adaptive,

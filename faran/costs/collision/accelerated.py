@@ -21,7 +21,7 @@ from faran.types import (
 )
 from faran.states import JaxSimpleCosts
 
-from jaxtyping import Array as JaxArray, Float, Scalar
+from jaxtyping import Array as JaxArray, Float
 
 import numpy as np
 import jax
@@ -139,13 +139,13 @@ class JaxCollisionCost[
             return collision_cost(
                 distance=self.distance(states=states, obstacle_states=samples).array,
                 distance_threshold=self.distance_threshold,
-                weight=self.weight,
             )
 
         return JaxSimpleCosts(
             jnp.zeros((inputs.horizon, inputs.rollout_count))
             if (obstacle_states := self.obstacle_states()).count == 0
-            else self.metric.compute(
+            else self.weight
+            * self.metric.compute(
                 cost,
                 states=states,
                 obstacle_states=obstacle_states,
@@ -160,7 +160,6 @@ def collision_cost(
     *,
     distance: Float[JaxArray, "T V M N"],
     distance_threshold: Float[JaxArray, " V"],
-    weight: Scalar,
 ) -> Float[JaxArray, "T M N"]:
     cost = distance_threshold[jnp.newaxis, :, jnp.newaxis, jnp.newaxis] - distance
-    return weight * jnp.clip(cost, 0, None).sum(axis=1)
+    return jnp.clip(cost, 0, None).sum(axis=1)

@@ -388,6 +388,7 @@ The progress cost given by @progress-cost-equation pushes #path-parameter to mov
 #let min-distance-single = min-distance-single-()
 #let distance-threshold = min-distance-single-(sub: 0)
 #let collision-weight = $k_("col")$
+#let risk-metric = $rho$
 
 #definition(title: [Collision Cost @Schulman2013])[
   To avoid collisions with obstacles, a *collision cost* #collision-cost can be used.
@@ -403,7 +404,14 @@ The progress cost given by @progress-cost-equation pushes #path-parameter to mov
     )
   $ <collision-cost-equation>
 
-  where $#collision-weight > 0$ is a weighting factor.
+  where $#collision-weight > 0$ is a weighting factor. If a risk metric $#risk-metric (dot)$ is used, the weighting factor is applied after the risk metric is computed:
+
+  $
+    #collision-cost-(sub: $,i$) = #collision-weight cases(
+      #risk-metric (#distance-threshold - #min-distance-single-(sub: $i$)) comma quad "if" #min-distance-single-(sub: $i$) < #distance-threshold,
+      0 comma quad "otherwise"
+    )
+  $
 ]
 
 #definition(title: "Boundary Cost")[

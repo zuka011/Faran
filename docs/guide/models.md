@@ -6,23 +6,29 @@ Faran provides three models. All support both NumPy and JAX backends, and each h
 
 ## Kinematic Bicycle Model
 
-The standard model for wheeled vehicles[@Polack2017]. Four state variables and two control inputs, discretized via Euler integration:
+The standard model for wheeled vehicles[@Polack2017]. Four state variables and two control inputs, discretized via Euler integration. The model supports an optional **rear axle distance** $l_r$ that shifts the reference point from the rear axle toward the center of gravity:
 
 $$
-x_{t+1} = x_t + v_t \cos(\theta_t) \, \Delta t, \quad
-y_{t+1} = y_t + v_t \sin(\theta_t) \, \Delta t
+\beta = \arctan\!\left(\frac{l_r}{L} \tan(\delta_t)\right)
 $$
 
 $$
-\theta_{t+1} = \theta_t + \frac{v_t}{L} \tan(\delta_t) \, \Delta t, \quad
+x_{t+1} = x_t + v_t \cos(\theta_t + \beta) \, \Delta t, \quad
+y_{t+1} = y_t + v_t \sin(\theta_t + \beta) \, \Delta t
+$$
+
+$$
+\theta_{t+1} = \theta_t + \frac{v_t}{L} \cos(\beta) \tan(\delta_t) \, \Delta t, \quad
 v_{t+1} = v_t + a_t \, \Delta t
 $$
+
+where $L$ is the wheelbase, $l_r$ is the distance from the rear axle to the reference point, and $\beta$ is the slip angle. When $l_r = 0$ (the default), the reference point is at the rear axle and the equations simplify to the standard form ($\beta = 0$).
 
 | Component | Variables | Meaning |
 |-----------|-----------|---------|
 | State | $[x, y, \theta, v]$ | Position, heading, speed |
 | Controls | $[a, \delta]$ | Acceleration, steering angle |
-| Parameter | $L$ | Wheelbase |
+| Parameters | $L$, $l_r$ | Wheelbase, rear axle distance |
 
 ```python
 from faran.numpy import model
@@ -36,7 +42,20 @@ bicycle = model.bicycle.dynamical(
 )
 ```
 
-**When to use:** Vehicles with front-axle steering (cars, trucks). The bicycle approximation is valid at moderate speeds and steering angles where tire slip is negligible.
+To place the reference point at the center of gravity, set `rear_axle_distance` to the distance from the rear axle:
+
+```python
+bicycle = model.bicycle.dynamical(
+    time_step_size=0.1,
+    wheelbase=2.5,
+    rear_axle_distance=1.0,  # reference point 1m ahead of rear axle
+    speed_limits=(0.0, 15.0),
+    steering_limits=(-0.5, 0.5),
+    acceleration_limits=(-3.0, 3.0),
+)
+```
+
+**When to use:** Vehicles with front-axle steering (cars, trucks). The bicycle approximation is valid at moderate speeds and steering angles where tire slip is negligible. Use `rear_axle_distance` when the tracked position is not the rear axle (e.g., a GPS antenna or center of gravity).
 
 ## Unicycle Model
 
@@ -79,7 +98,7 @@ Each dynamics model has a corresponding **obstacle model** for predicting how ob
 
 ```python
 obstacle_model = model.bicycle.obstacle(
-    time_step_size=0.1, wheelbase=2.5,
+    time_step_size=0.1, wheelbase=2.5, rear_axle_distance=1.0,
 )
 ```
 

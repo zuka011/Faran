@@ -4,23 +4,28 @@ Dynamical models define the state transition function $f(\mathbf{u}, \mathbf{x})
 
 ## Kinematic Bicycle Model
 
-The kinematic bicycle model [^1] represents a wheeled vehicle with four state variables and two control inputs, discretized via Euler integration:
+The kinematic bicycle model [^1] represents a wheeled vehicle with four state variables and two control inputs, discretized via Euler integration. An optional rear axle distance $l_r$ shifts the reference point from the rear axle toward the center of gravity, introducing a slip angle $\beta$:
+
+$$
+\beta = \arctan\!\left(\frac{l_r}{L} \tan(\delta_t)\right)
+$$
 
 $$
 \begin{gathered}
-x_{t+1} = x_t + v_t \cos(\theta_t) \, \Delta t, \quad
-y_{t+1} = y_t + v_t \sin(\theta_t) \, \Delta t \\
-\theta_{t+1} = \theta_t + \frac{v_t}{L} \tan(\delta_t) \, \Delta t, \quad
+x_{t+1} = x_t + v_t \cos(\theta_t + \beta) \, \Delta t, \quad
+y_{t+1} = y_t + v_t \sin(\theta_t + \beta) \, \Delta t \\
+\theta_{t+1} = \theta_t + \frac{v_t}{L} \cos(\beta) \tan(\delta_t) \, \Delta t, \quad
 v_{t+1} = v_t + a_t \, \Delta t
 \end{gathered}
 $$
 
-where $L$ is the wheelbase and $\Delta t$ the time step size.
+where $L$ is the wheelbase, $l_r$ is the rear axle distance (default $0$), and $\Delta t$ the time step size. When $l_r = 0$, $\beta = 0$ and the equations reduce to the standard rear-axle model.
 
 | Component | Variables |
 |-----------|-----------|
 | State | $[x, y, \theta, v]$ — position, heading, speed |
 | Controls | $[a, \delta]$ — acceleration, steering angle |
+| Parameters | $L$, $l_r$ — wheelbase, rear axle distance |
 
 [^1]: P. Polack et al., "The Kinematic Bicycle Model: A Consistent Model for Planning Feasible Trajectories for Autonomous Vehicles?," IEEE IV, 2017.
 
@@ -122,18 +127,20 @@ Estimators recover unobserved state variables and quantify uncertainty from nois
 from faran.numpy import model
 
 # Finite difference (no covariance)
-fd = model.bicycle.estimator.finite_difference(time_step_size=0.1, wheelbase=2.5)
+fd = model.bicycle.estimator.finite_difference(
+    time_step_size=0.1, wheelbase=2.5, rear_axle_distance=1.0,
+)
 
 # Extended Kalman Filter
 ekf = model.bicycle.estimator.ekf(
-    time_step_size=0.1, wheelbase=2.5,
+    time_step_size=0.1, wheelbase=2.5, rear_axle_distance=1.0,
     process_noise_covariance=1e-3,
     observation_noise_covariance=1e-2,
 )
 
 # Unscented Kalman Filter
 ukf = model.bicycle.estimator.ukf(
-    time_step_size=0.1, wheelbase=2.5,
+    time_step_size=0.1, wheelbase=2.5, rear_axle_distance=1.0,
     process_noise_covariance=1e-3,
     observation_noise_covariance=1e-2,
 )
