@@ -8,7 +8,7 @@ from faran.types import (
     NumPyNoiseCovariances,
 )
 
-from jaxtyping import Float
+from jaxtyping import Bool, Float
 
 import numpy as np
 
@@ -92,10 +92,14 @@ class NumPyAdaptiveNoise(NamedTuple):
         observation: Float[Array, "D_z K"],
         state: NumPyAdaptiveNoiseState,
     ) -> tuple[NumPyNoiseCovariances, NumPyAdaptiveNoiseState]:
-        if np.any(np.isnan(prediction.mean)) or np.any(np.isnan(prediction.covariance)):
+        valid = valid_obstacle_mask(prediction)
+
+        if not np.any(valid):
             return noise, state
 
-        innovation = observation - self.observation_matrix @ prediction.mean
+        innovation = (
+            observation[:, valid] - self.observation_matrix @ prediction.mean[:, valid]
+        )
         state.buffer.append(np.mean(innovation, axis=1))
 
         if len(state.buffer) > self.window_size:
@@ -105,7 +109,7 @@ class NumPyAdaptiveNoise(NamedTuple):
             return noise, state
 
         innovation_matrix = compute_innovation_matrix(state.buffer)
-        mean_covariance = np.mean(prediction.covariance, axis=2)
+        mean_covariance = np.mean(prediction.covariance[:, :, valid], axis=2)
         kalman_gain = compute_kalman_gain(
             mean_covariance=mean_covariance,
             observation_matrix=self.observation_matrix,
@@ -151,6 +155,17 @@ class NumPyAdaptiveNoiseProvider(NamedTuple):
         return NumPyAdaptiveNoise(
             observation_matrix=observation_matrix, window_size=self.window_size
         )
+
+
+def valid_obstacle_mask(
+    prediction: NumPyGaussianBelief,
+) -> Bool[Array, " K"]:
+    mean_valid = ~np.any(np.isnan(prediction.mean), axis=0)
+    covariance_valid = ~np.any(
+        np.isnan(prediction.covariance.reshape(-1, prediction.covariance.shape[2])),
+        axis=0,
+    )
+    return mean_valid & covariance_valid
 
 
 def compute_innovation_matrix(

@@ -221,7 +221,7 @@ class MpccUnicyclePlannerConfiguration[
         ),
     ],
 )
-@mark.visualize.with_args(visualizer.mpcc(), lambda seed: seed)
+@mark.visualize.with_args(visualizer.mpcc, lambda seed: seed)
 @mark.filterwarnings("ignore:.*'obstacle_states'.*not.*data.*")
 @mark.filterwarnings("error")
 @mark.integration
@@ -537,7 +537,7 @@ def test_that_mpcc_planner_follows_trajectory_without_collision_when_obstacles_a
         ),
     ],
 )
-@mark.visualize.with_args(visualizer.mpcc(), lambda seed: f"{seed}-three-laps")
+@mark.visualize.with_args(visualizer.mpcc, lambda seed: f"{seed}-three-laps")
 @mark.filterwarnings("error")
 @mark.integration
 def test_that_mpcc_planner_completes_three_laps_without_collision[
@@ -666,7 +666,7 @@ def test_that_mpcc_planner_completes_three_laps_without_collision[
         ),
     ],
 )
-@mark.visualize.with_args(visualizer.mpcc(), lambda seed: f"{seed}-pedestrian")
+@mark.visualize.with_args(visualizer.mpcc, lambda seed: f"{seed}-pedestrian")
 @mark.filterwarnings("error")
 @mark.integration
 def test_that_planner_avoids_pedestrians[

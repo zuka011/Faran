@@ -956,6 +956,159 @@ class test_that_observations_older_than_window_size_do_not_affect_noise:
         )
 
 
+class test_that_noise_is_adapted_when_not_all_obstacles_have_enough_observations:
+    @staticmethod
+    def cases(provider, covariances, belief, to_array) -> Sequence[tuple]:
+        rng = np.random.default_rng(0)
+        window = 5
+        H = array(
+            [
+                [1, 0, 0, 0, 0, 0],
+                [0, 1, 0, 0, 0, 0],
+                [0, 0, 1, 0, 0, 0],
+            ],
+            shape=(D_z := 3, D_x := 6),
+        )
+        history = [rng.normal(size=(D_z, 1)) for _ in range(window)]
+
+        def some_noise_for(*, index: int):
+            return np.random.default_rng(index).normal(scale=2.0, size=(D_x, 1))
+
+        def initial_estimate_from(observation):
+            return np.vstack([observation, np.zeros((D_x - D_z, 1))])
+
+        def missing_estimate():
+            return np.full((D_x, 1), np.nan)
+
+        def initial_covariance():
+            return np.eye(D_x)[:, :, np.newaxis] * 0.01
+
+        def missing_covariance():
+            return np.full((D_x, D_x, 1), np.nan)
+
+        def input_without_missing_estimates(observation, *, index: int):
+            return NoiseModelInputs(
+                observation=to_array(observation),
+                prediction=belief(
+                    mean=to_array(
+                        initial_estimate_from(observation) + some_noise_for(index=index)
+                    ),
+                    covariance=to_array(initial_covariance()),
+                ),
+            )
+
+        def input_with_missing_estimates(observation, *, index: int):
+            return NoiseModelInputs(
+                observation=to_array(np.hstack([observation, np.zeros((D_z, 1))])),
+                prediction=belief(
+                    mean=to_array(
+                        np.hstack(
+                            [
+                                initial_estimate_from(observation)
+                                + some_noise_for(index=index),
+                                missing_estimate(),
+                            ]
+                        )
+                    ),
+                    covariance=to_array(
+                        np.concatenate(
+                            [initial_covariance(), missing_covariance()], axis=2
+                        )
+                    ),
+                ),
+            )
+
+        return [
+            (
+                noise := covariances(
+                    process_noise_covariance=to_array(np.eye(D_x) * 1e-8),
+                    observation_noise_covariance=to_array(np.eye(D_z) * 1e-8),
+                ),
+                observation_matrix := to_array(H),
+                provider := provider(window_size=window),
+                inputs := [
+                    input_without_missing_estimates(it, index=i)
+                    for i, it in enumerate(history)
+                ],
+                inputs_with_missing_estimates := [
+                    input_with_missing_estimates(it, index=i)
+                    for i, it in enumerate(history)
+                ],
+            ),
+        ]
+
+    @mark.parametrize(
+        [
+            "noise",
+            "observation_matrix",
+            "provider",
+            "inputs",
+            "inputs_with_missing_estimates",
+        ],
+        [
+            *cases(
+                provider=noise.numpy.adaptive,
+                covariances=NumPyNoiseCovariances,
+                belief=NumPyGaussianBelief,
+                to_array=np.asarray,
+            ),
+            *cases(
+                provider=noise.jax.adaptive,
+                covariances=JaxNoiseCovariances,
+                belief=JaxGaussianBelief,
+                to_array=jnp.asarray,
+            ),
+        ],
+    )
+    def test[NoiseT, BeliefT, ObservationT, MatrixT](
+        self,
+        noise: NoiseT,
+        observation_matrix: MatrixT,
+        provider: NoiseModelProvider[NoiseT, BeliefT, ObservationT, MatrixT],
+        inputs: Sequence[NoiseModelInputs[ObservationT, BeliefT]],
+        inputs_with_missing_estimates: Sequence[
+            NoiseModelInputs[ObservationT, BeliefT]
+        ],
+    ) -> None:
+        model_1 = provider(observation_matrix=observation_matrix, noise=noise)
+        state_1 = model_1.state
+        for observation, prediction in inputs:
+            result_1, state_1 = model_1(
+                noise=noise,
+                prediction=prediction,
+                observation=observation,
+                state=state_1,
+            )
+
+        model_2 = provider(observation_matrix=observation_matrix, noise=noise)
+        state_2 = model_2.state
+        for observation, prediction in inputs_with_missing_estimates:
+            result_2, state_2 = model_2(
+                noise=noise,
+                prediction=prediction,
+                observation=observation,
+                state=state_2,
+            )
+
+        assert np.allclose(
+            result_1.process_noise_covariance[..., :1],
+            result_2.process_noise_covariance[..., :1],
+            atol=1e-6,
+        ), (
+            f"Expected adapted noise covariance for present obstacle to be: {result_1.process_noise_covariance[..., :1]}, "
+            f"but got: {result_2.process_noise_covariance[..., :1]}"
+        )
+
+        assert np.allclose(
+            result_1.observation_noise_covariance,
+            result_2.observation_noise_covariance,
+            atol=1e-6,
+        ), (
+            f"Expected adapted observation noise covariance to be: {result_1.observation_noise_covariance}, "
+            f"but got: {result_2.observation_noise_covariance}"
+        )
+
+
 class test_that_noise_covariances_are_created_correctly:
     @staticmethod
     def cases(covariances, to_array) -> Sequence[tuple]:

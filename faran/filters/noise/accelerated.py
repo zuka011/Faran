@@ -8,7 +8,7 @@ from faran.types import (
     JaxNoiseCovariances,
 )
 
-from jaxtyping import Array as JaxArray, Float, Int
+from jaxtyping import Array as JaxArray, Bool, Float, Int
 
 import equinox as eqx
 import jax
@@ -102,14 +102,17 @@ class JaxAdaptiveNoise(eqx.Module):
         observation: Float[JaxArray, "D_z K"],
         state: JaxAdaptiveNoiseState,
     ) -> tuple[JaxNoiseCovariances, JaxAdaptiveNoiseState]:
-        has_nan = jnp.any(jnp.isnan(prediction.mean)) | jnp.any(
-            jnp.isnan(prediction.covariance)
-        )
+        valid = valid_obstacle_mask(prediction)
+        has_valid = jnp.any(valid)
 
         return jax.lax.cond(
-            ~has_nan,
+            has_valid,
             lambda _: self.adapt(
-                noise=noise, prediction=prediction, observation=observation, state=state
+                noise=noise,
+                prediction=prediction,
+                observation=observation,
+                state=state,
+                valid=valid,
             ),
             lambda _: (noise, state),
             None,
@@ -124,9 +127,15 @@ class JaxAdaptiveNoise(eqx.Module):
         prediction: JaxGaussianBelief,
         observation: Float[JaxArray, "D_z K"],
         state: JaxAdaptiveNoiseState,
+        valid: Bool[JaxArray, " K"],
     ) -> tuple[JaxNoiseCovariances, JaxAdaptiveNoiseState]:
-        innovation = observation - self.observation_matrix @ prediction.mean
-        mean_innovation = jnp.mean(innovation, axis=1)
+        safe_mean = jnp.where(jnp.isnan(prediction.mean), 0.0, prediction.mean)
+        safe_observation = jnp.where(jnp.isnan(observation), 0.0, observation)
+
+        innovation = safe_observation - self.observation_matrix @ safe_mean
+        masked_innovation = innovation * valid[jnp.newaxis, :]
+        valid_count = jnp.maximum(jnp.sum(valid), 1)
+        mean_innovation = jnp.sum(masked_innovation, axis=1) / valid_count
 
         index = state.entry_count % self.window_size
         new_buffer = state.buffer.at[index].set(mean_innovation)
@@ -144,7 +153,11 @@ class JaxAdaptiveNoise(eqx.Module):
             _: None,
         ) -> tuple[JaxNoiseCovariances, JaxAdaptiveNoiseState]:
             innovation_matrix = compute_innovation_matrix(new_buffer)
-            mean_covariance = jnp.mean(prediction.covariance, axis=2)
+            safe_covariance = jnp.where(
+                jnp.isnan(prediction.covariance), 0.0, prediction.covariance
+            )
+            masked_covariance = safe_covariance * valid[jnp.newaxis, jnp.newaxis, :]
+            mean_covariance = jnp.sum(masked_covariance, axis=2) / valid_count
             kalman_gain = compute_kalman_gain(
                 mean_covariance=mean_covariance,
                 observation_matrix=self.observation_matrix,
@@ -197,6 +210,17 @@ class JaxAdaptiveNoiseProvider(eqx.Module):
         return JaxAdaptiveNoise(
             observation_matrix=observation_matrix, window_size=self.window_size
         )
+
+
+def valid_obstacle_mask(
+    prediction: JaxGaussianBelief,
+) -> Bool[JaxArray, " K"]:
+    mean_valid = ~jnp.any(jnp.isnan(prediction.mean), axis=0)
+    covariance_valid = ~jnp.any(
+        jnp.isnan(prediction.covariance.reshape(-1, prediction.covariance.shape[2])),
+        axis=0,
+    )
+    return mean_valid & covariance_valid
 
 
 @jax.jit
