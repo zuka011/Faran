@@ -54,7 +54,7 @@ hide:
 
 ## Quick Start
 
-An [MPCC](guide/concepts.md#mpcc-model-predictive-contouring-control) planner tracking a reference path with a [kinematic bicycle model](guide/models.md#kinematic-bicycle-model):
+An [MPCC](guide/concepts/mpcc.md) planner tracking a reference path with a [kinematic bicycle model](guide/models/bicycle.md):
 
 ```python
 from faran.numpy import mppi, model, sampler, trajectory, types, extract
@@ -110,7 +110,7 @@ To use JAX, change `from faran.numpy` to `from faran.jax`. Everything else stays
 
     Core concepts, cost design, obstacle handling, state estimation, risk metrics, and more.
 
-    [:octicons-arrow-right-24: User guide](guide/concepts.md)
+    [:octicons-arrow-right-24: User guide](guide/concepts/index.md)
 
 -   :material-play-box: **Examples**
 
@@ -118,7 +118,7 @@ To use JAX, change `from faran.numpy` to `from faran.jax`. Everything else stays
 
     End-to-end scenarios with interactive visualizations: path following, boundaries, obstacle avoidance.
 
-    [:octicons-arrow-right-24: Examples](guide/examples.md)
+    [:octicons-arrow-right-24: Examples](guide/examples/index.md)
 
 -   :material-code-tags: **API Reference**
 
@@ -134,7 +134,7 @@ To use JAX, change `from faran.numpy` to `from faran.jax`. Everything else stays
 
     Known limitations, common pitfalls, and workarounds.
 
-    [:octicons-arrow-right-24: Gotchas](guide/gotchas.md)
+    [:octicons-arrow-right-24: Gotchas](guide/concepts/gotchas.md)
 
 </div>
 
@@ -155,7 +155,7 @@ Both backends expose the same API. The shared interface is designed to support a
 
 !!! info "Under Active Development"
 
-    Faran is being actively developed — expect missing features, [some gotchas](guide/gotchas.md), and possible API changes. See the [feature overview](guide/features.md) for what's available and what's coming.
+    Faran is being actively developed — expect missing features, [some gotchas](guide/concepts/gotchas.md), and possible API changes. See the [feature overview](guide/features.md) for what's available and what's coming.
 
 ---
 

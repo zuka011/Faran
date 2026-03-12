@@ -1,6 +1,6 @@
 # types
 
-Core type definitions, protocols, and type aliases used throughout Faran. For dimension and shape conventions, see [Notation and Conventions](../guide/conventions.md).
+Core type definitions, protocols, and type aliases used throughout Faran. For dimension and shape conventions, see [Notation and Conventions](../guide/concepts/conventions.md).
 
 ## Namespace Access
 

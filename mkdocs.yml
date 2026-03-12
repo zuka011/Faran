@@ -125,24 +125,73 @@ nav:
   - Home: index.md
   - User Guide:
       - Getting Started: guide/getting-started.md
-      - Feature Overview: guide/features.md
-      - Core Concepts: guide/concepts.md
-      - Notation and Conventions: guide/conventions.md
-      - Dynamics Models: guide/models.md
-      - Samplers: guide/samplers.md
-      - MPPI Planning: guide/mppi.md
-      - Cost Function Design: guide/costs.md
-      - Defining Trajectories: guide/trajectories.md
-      - Obstacle Handling: guide/obstacles.md
-      - Working with Boundaries: guide/boundaries.md
-      - State Estimation: guide/estimation.md
+      - Features: guide/features.md
+      - Planners:
+          - guide/planners/index.md
+          - MPPI: guide/planners/mppi.md
+      - Dynamics Models:
+          - guide/models/index.md
+          - Kinematic Bicycle: guide/models/bicycle.md
+          - Unicycle: guide/models/unicycle.md
+      - Samplers:
+          - guide/samplers/index.md
+          - Gaussian: guide/samplers/gaussian.md
+          - Halton Spline: guide/samplers/halton.md
+      - Filters:
+          - guide/filters/index.md
+          - Savitzky-Golay: guide/filters/savgol.md
+      - Cost Functions:
+          - guide/costs/index.md
+          - Tracking: guide/costs/tracking.md
+          - Safety: guide/costs/safety.md
+          - Comfort: guide/costs/comfort.md
+      - Trajectories:
+          - guide/trajectories/index.md
+          - Waypoints: guide/trajectories/waypoints.md
+          - Line: guide/trajectories/line.md
+      - Boundaries:
+          - guide/boundaries/index.md
+          - Fixed Width: guide/boundaries/fixed-width.md
+          - Variable Width: guide/boundaries/variable-width.md
+      - Obstacles:
+          - guide/obstacles/index.md
+          - Distance: guide/obstacles/distance.md
+          - Prediction: guide/obstacles/prediction.md
+          - ID Assignment: guide/obstacles/id-assignment.md
+      - State Estimation:
+          - guide/estimation/index.md
+          - Finite Difference: guide/estimation/finite-difference.md
+          - Kalman Filter: guide/estimation/kalman-filter.md
+          - Extended Kalman Filter: guide/estimation/ekf.md
+          - Unscented Kalman Filter: guide/estimation/ukf.md
+          - Adaptive Noise: guide/estimation/adaptive.md
       - Risk Metrics: guide/risk.md
-      - Data Collection: guide/collectors.md
-      - Metrics and Evaluation: guide/metrics.md
-      - Backend Selection: guide/backends.md
+      - Collectors:
+          - guide/collectors/index.md
+          - States: guide/collectors/states.md
+          - Obstacles: guide/collectors/obstacles.md
+      - Evaluation Metrics:
+          - guide/metrics/index.md
+          - Collision: guide/metrics/collision.md
+          - Task Completion: guide/metrics/task-completion.md
+          - MPCC Error: guide/metrics/mpcc-error.md
+          - Constraint Violation: guide/metrics/constraint-violation.md
+          - Comfort: guide/metrics/comfort.md
+      - Backends: guide/backends.md
+      - Concepts:
+          - guide/concepts/index.md
+          - MPCC: guide/concepts/mpcc.md
+          - Computational Framework: guide/concepts/framework.md
+          - Composability: guide/concepts/composability.md
+          - Conventions: guide/concepts/conventions.md
+          - Gotchas: guide/concepts/gotchas.md
       - Visualizer: guide/visualizer.md
-      - Examples: guide/examples.md
-      - Gotchas: guide/gotchas.md
+      - Examples:
+          - guide/examples/index.md
+          - Basic Path Following: guide/examples/basic-path-following.md
+          - Boundaries: guide/examples/path-following-with-boundaries.md
+          - Obstacle Avoidance: guide/examples/obstacle-avoidance.md
+          - Uncertainty: guide/examples/obstacle-avoidance-with-uncertainty.md
   - API Reference:
       - Overview: api/index.md
       - mppi: api/mppi.md

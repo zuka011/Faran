@@ -1,6 +1,6 @@
 # model
 
-Dynamical models define the state transition function $f(\mathbf{u}, \mathbf{x})$ used to simulate rollouts during MPPI planning. For a conceptual overview, see the [Dynamics Models guide](../guide/models.md).
+Dynamical models define the state transition function $f(\mathbf{u}, \mathbf{x})$ used to simulate rollouts during MPPI planning. For a conceptual overview, see the [Dynamics Models guide](../guide/models/index.md).
 
 ## Kinematic Bicycle Model
 
@@ -119,7 +119,7 @@ Obstacle models are used by predictors to propagate obstacle states forward in t
 
 ## State Estimators
 
-Estimators recover unobserved state variables and quantify uncertainty from noisy observations. For conceptual background, see [State Estimation](../guide/estimation.md).
+Estimators recover unobserved state variables and quantify uncertainty from noisy observations. For conceptual background, see [State Estimation](../guide/estimation/index.md).
 
 ### Bicycle Estimators
 
@@ -178,7 +178,7 @@ kf = model.integrator.estimator.kf(
 
 ## Noise Models
 
-Noise models adapt filter covariances at runtime. See [State Estimation](../guide/estimation.md#adaptive-noise) for usage.
+Noise models adapt filter covariances at runtime. See [Adaptive Noise](../guide/estimation/adaptive.md) for usage.
 
 ```python
 from faran.numpy import noise

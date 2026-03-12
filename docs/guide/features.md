@@ -16,7 +16,7 @@ Everything listed below is implemented, tested, and available in both the NumPy 
 
     Three factory levels: [`mppi.base`](../api/mppi.md) (custom MPC), [`mppi.augmented`](../api/mppi.md) (physical + virtual states), [`mppi.mpcc`](../api/mppi.md) (MPCC path following).
 
-    [:octicons-arrow-right-24: MPPI guide](mppi.md)
+    [:octicons-arrow-right-24: MPPI guide](planners/mppi.md)
 
 </div>
 
@@ -32,8 +32,8 @@ Everything listed below is implemented, tested, and available in both the NumPy 
 
     MPC formulation that decomposes tracking error into contouring (lateral) and lag (longitudinal) components, with a virtual path parameter driving progress.
 
-    [:octicons-arrow-right-24: Cost design](costs.md) ·
-    [:octicons-arrow-right-24: Concepts](concepts.md#mpcc-model-predictive-contouring-control)
+    [:octicons-arrow-right-24: Cost design](costs/index.md) ·
+    [:octicons-arrow-right-24: Concepts](concepts/mpcc.md)
 
 </div>
 
@@ -107,7 +107,7 @@ Everything listed below is implemented, tested, and available in both the NumPy 
     - **Lag** — longitudinal deviation from the reference point
     - **Progress** — rewards forward motion along the path
 
-    [:octicons-arrow-right-24: Cost design](costs.md)
+    [:octicons-arrow-right-24: Tracking costs](costs/tracking.md)
 
 -   **Safety**
 
@@ -116,8 +116,7 @@ Everything listed below is implemented, tested, and available in both the NumPy 
     - **Collision** — proximity to obstacles via signed distance
     - **Boundary** — states approaching corridor edges
 
-    [:octicons-arrow-right-24: Obstacles](obstacles.md) ·
-    [:octicons-arrow-right-24: Boundaries](boundaries.md)
+    [:octicons-arrow-right-24: Safety costs](costs/safety.md)
 
 -   **Comfort**
 
@@ -126,7 +125,7 @@ Everything listed below is implemented, tested, and available in both the NumPy 
     - **Control smoothing** — rate of change between consecutive inputs
     - **Control effort** — input magnitude
 
-    [:octicons-arrow-right-24: Cost design](costs.md)
+    [:octicons-arrow-right-24: Comfort costs](costs/comfort.md)
 
 -   **Composition**
 
@@ -134,7 +133,7 @@ Everything listed below is implemented, tested, and available in both the NumPy 
 
     `costs.combined(...)` sums any number of cost components. Custom cost functions can be any callable with the matching signature.
 
-    [:octicons-arrow-right-24: Cost design](costs.md)
+    [:octicons-arrow-right-24: Cost design](costs/index.md)
 
 </div>
 
@@ -162,7 +161,7 @@ Everything listed below is implemented, tested, and available in both the NumPy 
     - State prediction with model assumptions (e.g. constant velocity)
     - Gaussian sampling of predicted obstacle states for risk-aware planning
 
-    [:octicons-arrow-right-24: Obstacle guide](obstacles.md)
+    [:octicons-arrow-right-24: Obstacle guide](obstacles/index.md)
 
 </div>
 
@@ -220,7 +219,7 @@ Post-simulation evaluation for benchmarking and analysis.
 | **Constraint violation** | Boundary and limit violations                                   |
 | **Comfort**              | Jerk, lateral acceleration, smoothness                          |
 
-[:octicons-arrow-right-24: Metrics guide](metrics.md) ·
+[:octicons-arrow-right-24: Metrics guide](metrics/index.md) ·
 [:octicons-arrow-right-24: API](../api/metrics.md)
 
 ---

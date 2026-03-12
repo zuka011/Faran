@@ -1,6 +1,6 @@
 # metrics
 
-Evaluation metrics measure planning performance during or after simulation. For usage patterns and setup, see the [Metrics and Evaluation guide](../guide/metrics.md).
+Evaluation metrics measure planning performance during or after simulation. For usage patterns and setup, see the [Evaluation Metrics guide](../guide/metrics/index.md).
 
 ## Available Metrics
 
@@ -48,7 +48,7 @@ Evaluates boundary and constraint adherence:
 
 ### MPCC Error Metric
 
-Evaluates path-following error for [MPCC](../guide/concepts.md#mpcc-model-predictive-contouring-control) controllers:
+Evaluates path-following error for [MPCC](../guide/concepts/mpcc.md) controllers:
 
 ::: faran.metrics.error.MpccErrorMetric
     options:

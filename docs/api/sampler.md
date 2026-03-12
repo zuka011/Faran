@@ -1,6 +1,6 @@
 # sampler
 
-Samplers generate control input perturbations around a nominal sequence for MPPI rollout exploration. For guidance on choosing and tuning samplers, see the [Samplers guide](../guide/samplers.md).
+Samplers generate control input perturbations around a nominal sequence for MPPI rollout exploration. For guidance on choosing and tuning samplers, see the [Samplers guide](../guide/samplers/index.md).
 
 ## Gaussian Sampler
 
@@ -34,7 +34,7 @@ control_sampler = sampler.gaussian(
 
 ## Halton Spline Sampler
 
-Generates temporally smooth perturbations using Halton quasi-random sequences interpolated through cubic splines. Provides better coverage of the sampling space (low discrepancy) and smoother control sequences than Gaussian sampling. See the [Samplers guide](../guide/samplers.md#choosing-a-sampler) for a comparison.
+Generates temporally smooth perturbations using Halton quasi-random sequences interpolated through cubic splines. Provides better coverage of the sampling space (low discrepancy) and smoother control sequences than Gaussian sampling. See the [Samplers guide](../guide/samplers/index.md) for a comparison.
 
 ```python
 control_sampler = sampler.halton(

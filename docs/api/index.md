@@ -9,7 +9,7 @@ This section documents the factory functions, protocols, and types for every Far
 
 | Module | Purpose |
 |--------|---------|
-| [`mppi`](mppi.md) | [MPPI](../guide/concepts.md#mppi) planner factories |
+| [`mppi`](mppi.md) | [MPPI](../guide/planners/mppi.md) planner factories |
 | [`model`](model.md) | Dynamical models (bicycle, unicycle, integrator) |
 | [`costs`](costs.md) | Cost functions (tracking, safety, comfort) |
 | [`sampler`](sampler.md) | Control input samplers |
@@ -48,4 +48,4 @@ Both namespaces expose identical APIs. See [Backends](../guide/backends.md) for 
 
 ### State Batch Shape
 
-State batches have shape $(T, D_x, M)$ where $T$ is the time horizon, $D_x$ the state dimension, and $M$ the number of rollouts. See [Notation](../guide/conventions.md) for the complete reference.
+State batches have shape $(T, D_x, M)$ where $T$ is the time horizon, $D_x$ the state dimension, and $M$ the number of rollouts. See [Conventions](../guide/concepts/conventions.md) for the complete reference.

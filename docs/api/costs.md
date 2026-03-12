@@ -1,6 +1,6 @@
 # costs
 
-Cost functions evaluate the quality of sampled rollouts. The total cost for a rollout is the sum of per-timestep costs across all active cost components. For a conceptual overview and usage patterns, see the [Cost Function Design guide](../guide/costs.md).
+Cost functions evaluate the quality of sampled rollouts. The total cost for a rollout is the sum of per-timestep costs across all active cost components. For a conceptual overview and usage patterns, see the [Cost Functions guide](../guide/costs/index.md).
 
 ## Tracking Costs
 

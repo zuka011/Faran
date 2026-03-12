@@ -2,7 +2,7 @@
 
 When obstacle positions are uncertain, a standard collision cost evaluates the expected (average) distance to obstacles. Risk metrics replace this expected value with a measure that is more sensitive to dangerous outcomes — the tail of the cost distribution.
 
-Risk metrics are used in the [collision cost](costs.md#collision) to produce risk-aware trajectory planning. You configure them via the `metric` parameter.
+Risk metrics are used in the [collision cost](costs/safety.md#collision) for risk-aware trajectory planning. Configure them via the `metric` parameter.
 
 ## How Risk Metrics Work
 
@@ -111,4 +111,4 @@ The `sample_count` parameter controls how many obstacle position samples are dra
 
 ## API Reference
 
-See the [costs API reference](../api/costs.md) for collision cost signatures and the [feature overview](features.md) for the full list of supported risk metrics.
+See the [costs API reference](../api/costs.md) for collision cost signatures.

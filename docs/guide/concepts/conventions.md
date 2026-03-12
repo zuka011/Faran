@@ -1,6 +1,6 @@
-# Notation and Conventions
+# Conventions
 
-Quick reference for dimension symbols and array shapes used throughout the API.
+Dimension symbols and array shapes used throughout the API.
 
 ## Index Dimensions
 
@@ -18,7 +18,7 @@ Quick reference for dimension symbols and array shapes used throughout the API.
 | $D_x$ | State dimension | 4 $(x, y, \theta, v)$ | 3 $(x, y, \theta)$ | $n$ |
 | $D_u$ | Control input dimension | 2 $(a, \delta)$ | 2 $(v, \omega)$ | $n$ |
 
-[MPCC](concepts.md#mpcc-model-predictive-contouring-control) adds a virtual component with dimension $D_v = 1$ (path parameter $\phi$) and virtual control $\dot{\phi}$.
+[MPCC](mpcc.md) adds a virtual component with dimension $D_v = 1$ (path parameter $\phi$) and virtual control $\dot{\phi}$.
 
 ## Array Shapes
 

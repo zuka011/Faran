@@ -1,10 +1,10 @@
 # collectors
 
-Collectors record simulation data (states, obstacles, risk values) during planning runs for later analysis, evaluation, and visualization. For usage patterns, see the [Data Collection guide](../guide/collectors.md).
+Collectors record simulation data (states, obstacles, risk values) during planning runs for later analysis, evaluation, and visualization. For usage patterns, see the [Collectors guide](../guide/collectors/index.md).
 
 ## Overview
 
-Collectors use a decorator pattern: wrap a planner or observer, and data is captured automatically without changing the planning logic. Register collectors with a `MetricRegistry` to compute [evaluation metrics](../guide/metrics.md).
+Collectors use a decorator pattern: wrap a planner or observer, and data is captured automatically without changing the planning logic. Register collectors with a `MetricRegistry` to compute [evaluation metrics](../guide/metrics/index.md).
 
 ## Usage
 

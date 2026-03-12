@@ -1,6 +1,6 @@
 # predictor
 
-Predictors estimate future obstacle states based on motion models. When using Kalman filter-based estimators, covariance propagation is automatically performed by the obstacle model. For background on state estimation, see the [State Estimation guide](../guide/estimation.md).
+Predictors estimate future obstacle states based on motion models. When using Kalman filter-based estimators, covariance propagation is automatically performed by the obstacle model. For background on state estimation, see the [State Estimation guide](../guide/estimation/index.md).
 
 ## Overview
 
