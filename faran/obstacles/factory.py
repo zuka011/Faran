@@ -18,6 +18,7 @@ from faran.obstacles.assignment import (
     NumPyHungarianObstacleIdAssignment,
     JaxHungarianObstacleIdAssignment,
 )
+from faran.obstacles.observer import NoisyObstacleStateObserver
 
 
 class obstacles:
@@ -35,6 +36,9 @@ class obstacles:
         class id_assignment:
             hungarian: Final = NumPyHungarianObstacleIdAssignment.create
 
+        class observer:
+            noisy: Final = NoisyObstacleStateObserver.decorate
+
     class jax:
         empty: Final = JaxStaticObstacleSimulator.empty
         static: Final = JaxStaticObstacleSimulator.create
@@ -48,3 +52,6 @@ class obstacles:
 
         class id_assignment:
             hungarian: Final = JaxHungarianObstacleIdAssignment.create
+
+        class observer:
+            noisy: Final = NoisyObstacleStateObserver.decorate

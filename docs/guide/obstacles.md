@@ -86,13 +86,12 @@ provider.observe(detected_obstacle_states)
 
 ### Noisy Observations
 
-For testing or estimator tuning, you can inject zero-mean Gaussian noise into obstacle detections before they reach the provider. Wrap the observer you call from your perception loop with `NoisyObstacleStateObserver`:
+For testing or estimator tuning, you can inject zero-mean Gaussian noise into obstacle detections before they reach the provider. Wrap the observer using the factory:
 
 ```python
-from faran import NoisyObstacleStateObserver
 from numtypes import array
 
-observer = NoisyObstacleStateObserver.create(
+observer = obstacles.observer.noisy(
     provider,
     to_states=types.obstacle_2d_poses_for_time_step.wrap,
     sigma=array([0.1, 0.1, 0.05], shape=(3,)),

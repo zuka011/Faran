@@ -1,3 +1,4 @@
+from typing import Protocol
 from dataclasses import dataclass
 
 from faran.types import Array, ObstacleStatesForTimeStep, ObstacleStateObserver
@@ -7,7 +8,7 @@ from jaxtyping import Float
 import numpy as np
 
 
-class ObstacleStateCreator[ObstacleStatesFormTimeStepT]:
+class ObstacleStateCreator[ObstacleStatesFormTimeStepT](Protocol):
     def __call__(self, array: Float[Array, "D_o K"], /) -> ObstacleStatesFormTimeStepT:
         """Wraps the specified array of observed obstacle states in an object of the
         appropriate type."""

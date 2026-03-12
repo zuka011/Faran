@@ -13,7 +13,6 @@ from faran import (
     ObstaclePositionExtractor,
     ObstacleStateObserver,
     ObstacleSimulator,
-    NoisyObstacleStateObserver,
     MetricRegistry,
     MpccErrorMetric,
     CollisionMetric,
@@ -1008,7 +1007,7 @@ class configure:
         )
 
         obstacle_collector = collectors.obstacle_states.decorating(
-            NoisyObstacleStateObserver.decorate(
+            create_obstacles.observer.noisy(
                 obstacles_provider,
                 to_states=types.obstacle_2d_poses_for_time_step.wrap,
                 sigma=array([0.1, 0.1, 0.05], shape=(3,)),
