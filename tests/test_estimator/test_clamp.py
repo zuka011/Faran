@@ -79,7 +79,79 @@ class test_that_clamped_noise_does_not_go_below_floor:
         )
 
 
-class test_that_clamped_noise_is_not_changed_when_noise_is_above_floor:
+class test_that_clamped_noise_does_not_go_above_ceiling:
+    @staticmethod
+    def cases(noise, belief, to_array) -> Sequence[tuple]:
+        observation_matrix = to_array(np.eye(D_z := 3, D_x := 6))
+
+        provider = noise.clamped(
+            stubs.NoiseModelProvider.returning(
+                noise.covariances(
+                    process=10.0,
+                    observation=10.0,
+                    process_dimension=D_x,
+                    observation_dimension=D_z,
+                )
+            ),
+            ceiling=(
+                ceiling := noise.covariances(
+                    process=1.0,
+                    observation=1.0,
+                    process_dimension=D_x,
+                    observation_dimension=D_z,
+                )
+            ),
+        )
+
+        model = provider(
+            obstacle_count=(K := 1),
+            observation_matrix=observation_matrix,
+            noise=noise.covariances(
+                process=1.0,
+                observation=1.0,
+                process_dimension=D_x,
+                observation_dimension=D_z,
+            ),
+        )
+
+        return [
+            (
+                model,
+                belief(
+                    mean=np.zeros((D_x, K)), covariance=np.eye(D_x)[:, :, np.newaxis]
+                ),
+                observation_matrix,
+                ceiling,
+            )
+        ]
+
+    @mark.parametrize(
+        ["model", "belief", "observation", "ceiling"],
+        [
+            *cases(noise=noise.numpy, belief=NumPyGaussianBelief, to_array=np.asarray),
+            *cases(noise=noise.jax, belief=JaxGaussianBelief, to_array=jnp.asarray),
+        ],
+    )
+    def test[NoiseT: Noise, BeliefT, ObservationT](
+        self,
+        model: NoiseModel[NoiseT, BeliefT, ObservationT],
+        belief: BeliefT,
+        observation: ObservationT,
+        ceiling: NoiseT,
+    ) -> None:
+        result, _ = model(
+            noise=ceiling, prediction=belief, observation=observation, state=model.state
+        )
+
+        assert np.all(
+            result.process_noise_covariance <= ceiling.process_noise_covariance
+        )
+        assert np.all(
+            result.observation_noise_covariance <= ceiling.observation_noise_covariance
+        )
+
+
+class test_that_clamped_noise_is_not_changed_when_noise_is_above_floor_and_below_ceiling:
     @staticmethod
     def cases(noise, belief, to_array) -> Sequence[tuple]:
         observation_matrix = to_array(np.eye(D_z := 3, D_x := 6))
@@ -96,6 +168,12 @@ class test_that_clamped_noise_is_not_changed_when_noise_is_above_floor:
             floor=noise.covariances(
                 process=1e-5,
                 observation=1e-5,
+                process_dimension=D_x,
+                observation_dimension=D_z,
+            ),
+            ceiling=noise.covariances(
+                process=2.0,
+                observation=2.0,
                 process_dimension=D_x,
                 observation_dimension=D_z,
             ),
@@ -149,4 +227,95 @@ class test_that_clamped_noise_is_not_changed_when_noise_is_above_floor:
         )
         assert np.all(
             result.observation_noise_covariance == original.observation_noise_covariance
+        )
+
+
+class test_that_noise_is_clamped_to_floor_and_ceiling_when_both_are_provided:
+    @staticmethod
+    def cases(noise, belief, to_array) -> Sequence[tuple]:
+        observation_matrix = to_array(np.eye(D_z := 3, D_x := 6))
+
+        provider = noise.clamped(
+            stubs.NoiseModelProvider.returning(
+                original := noise.covariances(
+                    process=1e-10,
+                    observation=20,
+                    process_dimension=D_x,
+                    observation_dimension=D_z,
+                )
+            ),
+            floor=(
+                floor := noise.covariances(
+                    process=1e-5,
+                    observation=1e-5,
+                    process_dimension=D_x,
+                    observation_dimension=D_z,
+                )
+            ),
+            ceiling=(
+                ceiling := noise.covariances(
+                    process=1.0,
+                    observation=1.0,
+                    process_dimension=D_x,
+                    observation_dimension=D_z,
+                )
+            ),
+        )
+
+        model = provider(
+            obstacle_count=(K := 1),
+            observation_matrix=observation_matrix,
+            noise=noise.covariances(
+                process=1.0,
+                observation=1.0,
+                process_dimension=D_x,
+                observation_dimension=D_z,
+            ),
+        )
+
+        return [
+            (
+                model,
+                belief(
+                    mean=np.zeros((D_x, K)), covariance=np.eye(D_x)[:, :, np.newaxis]
+                ),
+                observation_matrix,
+                original,
+                floor,
+                ceiling,
+            )
+        ]
+
+    @mark.parametrize(
+        ["model", "belief", "observation", "original", "floor", "ceiling"],
+        [
+            *cases(noise=noise.numpy, belief=NumPyGaussianBelief, to_array=np.asarray),
+            *cases(noise=noise.jax, belief=JaxGaussianBelief, to_array=jnp.asarray),
+        ],
+    )
+    def test[NoiseT: Noise, BeliefT, ObservationT](
+        self,
+        model: NoiseModel[NoiseT, BeliefT, ObservationT],
+        belief: BeliefT,
+        observation: ObservationT,
+        original: NoiseT,
+        floor: NoiseT,
+        ceiling: NoiseT,
+    ) -> None:
+        result, _ = model(
+            noise=original,
+            prediction=belief,
+            observation=observation,
+            state=model.state,
+        )
+
+        assert np.all(result.process_noise_covariance >= floor.process_noise_covariance)
+        assert np.all(
+            result.observation_noise_covariance >= floor.observation_noise_covariance
+        )
+        assert np.all(
+            result.process_noise_covariance <= ceiling.process_noise_covariance
+        )
+        assert np.all(
+            result.observation_noise_covariance <= ceiling.observation_noise_covariance
         )

@@ -14,10 +14,11 @@ import numpy as np
 
 
 class NumPyClampedNoise[StateT](NamedTuple):
-    """Decorator that clamps an inner noise model's output diagonals to a floor."""
+    """Decorator that clamps an inner noise model's output diagonals to a floor and/or ceiling."""
 
     inner: NumPyNoiseModel
     floor: NumPyNoiseCovariances
+    ceiling: NumPyNoiseCovariances
 
     def __call__(
         self,
@@ -31,13 +32,15 @@ class NumPyClampedNoise[StateT](NamedTuple):
             noise=noise, prediction=prediction, observation=observation, state=state
         )
         return NumPyNoiseCovariances(
-            process_noise_covariance=apply_diagonal_floor(
+            process_noise_covariance=apply_diagonal_clamp(
                 result.process_noise_covariance,
                 floor=self.floor.process_noise_covariance,
+                ceiling=self.ceiling.process_noise_covariance,
             ),
-            observation_noise_covariance=apply_diagonal_floor(
+            observation_noise_covariance=apply_diagonal_clamp(
                 result.observation_noise_covariance,
                 floor=self.floor.observation_noise_covariance,
+                ceiling=self.ceiling.observation_noise_covariance,
             ),
         ), state
 
@@ -48,21 +51,27 @@ class NumPyClampedNoise[StateT](NamedTuple):
 
 class NumPyClampedNoiseProvider[StateT](NamedTuple):
     inner: NumPyNoiseModelProvider[StateT]
-    floor: NumPyNoiseCovariances
+    floor: NumPyNoiseCovariances | None
+    ceiling: NumPyNoiseCovariances | None
 
     @staticmethod
     def decorate[S](
-        inner: NumPyNoiseModelProvider[S], *, floor: NumPyNoiseCovariances
+        inner: NumPyNoiseModelProvider[S],
+        *,
+        floor: NumPyNoiseCovariances | None = None,
+        ceiling: NumPyNoiseCovariances | None = None,
     ) -> "NumPyClampedNoiseProvider[S]":
         """Creates a noise model provider that clamps the diagonal of the
-        noise covariances to the specified floor.
+        noise covariances to the specified floor and/or ceiling.
 
         Args:
             inner: The inner noise model provider to delegate to.
             floor: Minimum noise covariances. Diagonal entries of the inner model's
                 output will be clamped to be no smaller than these.
+            ceiling: Maximum noise covariances. Diagonal entries of the inner model's
+                output will be clamped to be no larger than these.
         """
-        return NumPyClampedNoiseProvider(floor=floor, inner=inner)
+        return NumPyClampedNoiseProvider(floor=floor, ceiling=ceiling, inner=inner)
 
     def __call__(
         self,
@@ -71,12 +80,44 @@ class NumPyClampedNoiseProvider[StateT](NamedTuple):
         observation_matrix: Float[Array, "D_z D_x"],
         noise: NumPyNoiseCovariances,
     ) -> NumPyClampedNoise:
+        floor, ceiling = self.clamp_for(observation_matrix)
         inner_model = self.inner(
             obstacle_count=obstacle_count,
             observation_matrix=observation_matrix,
             noise=noise,
         )
-        return NumPyClampedNoise(inner=inner_model, floor=self.floor)
+        return NumPyClampedNoise(inner=inner_model, floor=floor, ceiling=ceiling)
+
+    def clamp_for(
+        self, observation_matrix: Float[Array, "D_z D_x"]
+    ) -> tuple[NumPyNoiseCovariances, NumPyNoiseCovariances]:
+        return self.floor_for(observation_matrix), self.ceiling_for(observation_matrix)
+
+    def floor_for(
+        self, observation_matrix: Float[Array, "D_z D_x"]
+    ) -> NumPyNoiseCovariances:
+        D_z, D_x = observation_matrix.shape
+        return (
+            NumPyNoiseCovariances(
+                process_noise_covariance=np.zeros((D_x, D_x)),
+                observation_noise_covariance=np.zeros((D_z, D_z)),
+            )
+            if self.floor is None
+            else self.floor
+        )
+
+    def ceiling_for(
+        self, observation_matrix: Float[Array, "D_z D_x"]
+    ) -> NumPyNoiseCovariances:
+        D_z, D_x = observation_matrix.shape
+        return (
+            NumPyNoiseCovariances(
+                process_noise_covariance=np.full((D_x, D_x), np.inf),
+                observation_noise_covariance=np.full((D_z, D_z), np.inf),
+            )
+            if self.ceiling is None
+            else self.ceiling
+        )
 
 
 class NumPyAdaptiveNoiseState(NamedTuple):
@@ -315,8 +356,13 @@ def enforce_spd(matrix: Float[Array, "... N N"]) -> Float[Array, "... N N"]:
     ) @ eigenvectors.swapaxes(-2, -1)
 
 
-def apply_diagonal_floor(
-    matrix: Float[Array, "N N"], *, floor: Float[Array, "N N"]
+def apply_diagonal_clamp(
+    matrix: Float[Array, "N N"],
+    *,
+    floor: Float[Array, "N N"],
+    ceiling: Float[Array, "N N"],
 ) -> Float[Array, "N N"]:
-    floored = np.maximum(np.diag(matrix), np.diag(floor))
-    return matrix - np.diag(np.diag(matrix)) + np.diag(floored)
+    diagonal = np.diag(matrix)
+    diagonal = np.maximum(diagonal, np.diag(floor))
+    diagonal = np.minimum(diagonal, np.diag(ceiling))
+    return matrix - np.diag(np.diag(matrix)) + np.diag(diagonal)
