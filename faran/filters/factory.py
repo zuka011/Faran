@@ -43,7 +43,7 @@ class noise:
                 ),
             )
 
-        covariance_bounds: Final = NumPyNoiseCovarianceBounds
+        covariance_bounds: Final = NumPyNoiseCovarianceBounds.create
 
     class jax:
         adaptive: Final = JaxAdaptiveNoiseProvider.create
@@ -67,4 +67,4 @@ class noise:
                 ),
             )
 
-        covariance_bounds: Final = JaxNoiseCovarianceBounds
+        covariance_bounds: Final = JaxNoiseCovarianceBounds.create

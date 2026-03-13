@@ -19,6 +19,18 @@ class JaxNoiseCovarianceBounds(NamedTuple):
     process: Scalar
     observation: Scalar
 
+    @staticmethod
+    def create(*, process: float, observation: float) -> "JaxNoiseCovarianceBounds":
+        """Creates isotropic bounds for noise covariances.
+
+        Args:
+            process: Isotropic bound for process noise covariance eigenvalues.
+            observation: Isotropic bound for observation noise covariance eigenvalues.
+        """
+        return JaxNoiseCovarianceBounds(
+            process=jnp.asarray(process), observation=jnp.asarray(observation)
+        )
+
 
 class JaxClampedNoise[StateT](eqx.Module):
     """Decorator that clamps an inner noise model's eigenvalues to a floor and/or ceiling."""

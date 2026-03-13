@@ -17,6 +17,16 @@ class NumPyNoiseCovarianceBounds(NamedTuple):
     process: float
     observation: float
 
+    @staticmethod
+    def create(*, process: float, observation: float) -> "NumPyNoiseCovarianceBounds":
+        """Creates isotropic bounds for noise covariances.
+
+        Args:
+            process: Isotropic bound for process noise covariance eigenvalues.
+            observation: Isotropic bound for observation noise covariance eigenvalues.
+        """
+        return NumPyNoiseCovarianceBounds(process=process, observation=observation)
+
 
 class NumPyClampedNoise[StateT](NamedTuple):
     """Decorator that clamps an inner noise model's eigenvalues to a floor and/or ceiling."""
