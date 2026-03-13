@@ -226,6 +226,21 @@ class Visualizable:
             if self.nominal is not None:
                 return self.nominal.time_step_count
 
+    class ObstacleObservations(Struct):
+        x: Arrays.ObstacleCoordinates
+        y: Arrays.ObstacleCoordinates
+        heading: Arrays.ObstacleCoordinates
+
+        def __post_init__(self) -> None:
+            assert self.x.shape == self.y.shape == self.heading.shape, (
+                f"Obstacle observation x, y, and heading must have the same shape. "
+                f"Got {self.x.shape} (x), {self.y.shape} (y), and {self.heading.shape} (heading)."
+            )
+
+        @property
+        def time_step_count(self) -> int:
+            return self.x.shape[0]
+
     class ObstacleForecast(Struct):
         x: Arrays.ObstacleForecastCoordinates
         y: Arrays.ObstacleForecastCoordinates
@@ -254,6 +269,7 @@ class Visualizable:
         y: Arrays.ObstacleCoordinates
         heading: Arrays.ObstacleCoordinates
         forecast: "Visualizable.ObstacleForecast | None" = None
+        observations: "Visualizable.ObstacleObservations | None" = None
 
         def __post_init__(self) -> None:
             assert self.x.shape == self.y.shape == self.heading.shape, (
@@ -267,6 +283,14 @@ class Visualizable:
             ), (
                 f"Obstacle forecast must have the same number of time steps as obstacles. "
                 f"Got {self.forecast.time_step_count} (forecast) and {self.time_step_count} (obstacles)."
+            )
+
+            assert (
+                self.observations is None
+                or self.observations.time_step_count == self.time_step_count
+            ), (
+                f"Noisy observations must have the same number of time steps as obstacles. "
+                f"Got {self.observations.time_step_count} (noisy) and {self.time_step_count} (obstacles)."
             )
 
         @property

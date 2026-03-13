@@ -22,6 +22,9 @@ class access:
     obstacle_states: Final = SimulationDataAccessor.create(
         ObstacleStates, key="obstacle_states"
     )
+    obstacle_observations: Final = SimulationDataAccessor.create(
+        ObstacleStates, key="obstacle_observations"
+    )
     obstacle_forecasts: Final = SimulationDataAccessor.create(
         Sequence[ObstacleStates], key="obstacle_forecasts"
     )

@@ -2,6 +2,7 @@ import { actualPathUpdater } from "./actual";
 import { boundariesUpdater } from "./boundary";
 import { forecastsUpdater } from "./forecasts";
 import { ghostUpdater } from "./ghost";
+import { observationsUpdater } from "./observations";
 import { obstaclesUpdater } from "./obstacles";
 import { referencePathUpdater } from "./reference";
 import { roadNetworkUpdater } from "./road";
@@ -20,6 +21,7 @@ export namespace updaterCreator {
     export const optimalTrajectory: TraceUpdateCreator = optimalTrajectoryUpdater;
     export const nominalTrajectory: TraceUpdateCreator = nominalTrajectoryUpdater;
     export const obstacles: TraceUpdateCreator = obstaclesUpdater;
+    export const obstacleObservations: TraceUpdateCreator = observationsUpdater;
     export const obstacleForecasts: TraceUpdateCreator = forecastsUpdater;
     export const forecastUncertainties: TraceUpdateCreator = uncertaintiesUpdater;
 }

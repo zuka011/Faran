@@ -104,6 +104,12 @@ export namespace Visualizable {
         nominal?: PlannedTrajectory;
     }
 
+    export interface ObstacleObservations {
+        x: Arrays.ObstacleStates;
+        y: Arrays.ObstacleStates;
+        heading: Arrays.ObstacleStates;
+    }
+
     export interface ObstacleForecast {
         x: Arrays.ForecastStates;
         y: Arrays.ForecastStates;
@@ -116,6 +122,7 @@ export namespace Visualizable {
         y: Arrays.ObstacleStates;
         heading: Arrays.ObstacleStates;
         forecast?: ObstacleForecast;
+        observations?: ObstacleObservations;
     }
 
     export interface Boundary {

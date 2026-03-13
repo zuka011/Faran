@@ -3,6 +3,7 @@ from typing import Final
 from faran.collectors.registry import CollectorRegistry
 from faran.collectors.obstacles import (
     ObstacleStateCollector,
+    ObstacleObservationCollector,
     ObstacleForecastCollector,
 )
 from faran.collectors.risk import RiskCollector
@@ -21,5 +22,6 @@ class collectors:
     trajectories: Final = TrajectoryCollector
     risk: Final = RiskCollector
     obstacle_states: Final = ObstacleStateCollector
+    obstacle_observations: Final = ObstacleObservationCollector
     obstacle_forecasts: Final = ObstacleForecastCollector
     registry: Final = CollectorRegistry.of

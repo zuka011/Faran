@@ -954,15 +954,19 @@ class configure:
             )
         )
 
+        observation_collector = collectors.obstacle_observations.decorating(
+            obstacles_provider,
+            transformer=types.obstacle_2d_poses.of_states,
+        )
         obstacle_collector = collectors.obstacle_states.decorating(
             create_obstacles.observer.noisy(
-                obstacles_provider,
+                observation_collector,
                 to_states=types.obstacle_2d_poses_for_time_step.wrap,
                 sigma=array([0.1, 0.1, 0.05], shape=(3,)),
                 seed=sampling.obstacle_seed,
             )
             if use_observation_noise
-            else obstacles_provider,
+            else observation_collector,
             transformer=types.obstacle_2d_poses.of_states,
         )
 
@@ -995,6 +999,7 @@ class configure:
                     risk_collector,
                     trajectories_collector,
                     obstacle_collector,
+                    observation_collector,
                     forecasts_collector,
                 ),
             ),

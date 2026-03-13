@@ -18,6 +18,7 @@ const DEFAULT_TRACE_UPDATER_CREATORS: TraceUpdateCreator[] = [
     updaterCreator.optimalTrajectory,
     updaterCreator.nominalTrajectory,
     updaterCreator.obstacles,
+    updaterCreator.obstacleObservations,
     updaterCreator.obstacleForecasts,
     updaterCreator.forecastUncertainties,
 ];

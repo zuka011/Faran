@@ -93,6 +93,12 @@ export namespace Visualizable {
         nominal: PlannedTrajectory.optional(),
     });
 
+    export const ObstacleObservations = z.object({
+        x: z.array(z.array(z.number().nullable())),
+        y: z.array(z.array(z.number().nullable())),
+        heading: z.array(z.array(z.number().nullable())),
+    });
+
     export const ObstacleForecast = z.object({
         x: z.array(z.array(z.array(z.number().nullable()))),
         y: z.array(z.array(z.array(z.number().nullable()))),
@@ -105,6 +111,7 @@ export namespace Visualizable {
         y: z.array(z.array(z.number().nullable())),
         heading: z.array(z.array(z.number().nullable())),
         forecast: ObstacleForecast.optional(),
+        observations: ObstacleObservations.optional(),
     });
 
     export const Boundary = z.object({

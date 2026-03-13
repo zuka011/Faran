@@ -223,6 +223,7 @@ class MpccUnicyclePlannerConfiguration[
 )
 @mark.visualize.with_args(visualizer.mpcc, lambda seed: seed)
 @mark.filterwarnings("ignore:.*'obstacle_states'.*not.*data.*")
+@mark.filterwarnings("ignore:.*'obstacle_observations'.*not.*data.*")
 @mark.filterwarnings("error")
 @mark.integration
 def test_that_mpcc_planner_follows_trajectory_without_excessive_deviation[
@@ -484,6 +485,7 @@ def test_that_mpcc_planner_follows_trajectory_without_collision_when_obstacles_a
             max_contouring_error=(max_contouring_error := 5.0),
             max_lag_error=(max_lag_error := 7.5),
             obstacles=registry.data(access.obstacle_states.require()),
+            obstacle_observations=registry.data(access.obstacle_observations),
             obstacle_forecasts=registry.data(access.obstacle_forecasts.require()),
             controls=registry.data(access.controls.require()),
             risks=registry.data(access.risks),

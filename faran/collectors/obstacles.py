@@ -17,7 +17,7 @@ class ObstacleStateCollector[ObstacleStatesForTimeStepT](
     ModificationNotifierMixin,
     ListCollectorMixin,
 ):
-    """Decorator collecting observed obstacle states at each time step."""
+    """Decorator collecting obstacle states at each time step."""
 
     inner: ObstacleStateObserver[ObstacleStatesForTimeStepT]
     transformer: DataTransformer[ObstacleStatesForTimeStepT]
@@ -40,6 +40,38 @@ class ObstacleStateCollector[ObstacleStatesForTimeStepT](
     @property
     def key(self) -> str:
         return access.obstacle_states.key
+
+
+@dataclass(frozen=True)
+class ObstacleObservationCollector[ObstacleStatesForTimeStepT](
+    ObstacleStateObserver[ObstacleStatesForTimeStepT],
+    ModificationNotifierMixin,
+    ListCollectorMixin,
+):
+    """Decorator collecting observed obstacle states at each time step. You can use
+    this to collect post-processed observations (e.g., after adding synthetic noise)."""
+
+    inner: ObstacleStateObserver[ObstacleStatesForTimeStepT]
+    transformer: DataTransformer[ObstacleStatesForTimeStepT]
+    _callbacks: list[OnModifyCallback] = field(default_factory=list)
+    _collected: list[ObstacleStatesForTimeStepT] = field(default_factory=list)
+
+    @staticmethod
+    def decorating[OS](
+        observer: ObstacleStateObserver[OS],
+        *,
+        transformer: DataTransformer[OS] = IdentityTransformer(),
+    ) -> "ObstacleObservationCollector[OS]":
+        return ObstacleObservationCollector(observer, transformer=transformer)
+
+    def observe(self, states: ObstacleStatesForTimeStepT) -> None:
+        self._collected.append(states)
+        self.inner.observe(states)
+        self.notify()
+
+    @property
+    def key(self) -> str:
+        return access.obstacle_observations.key
 
 
 @dataclass(frozen=True)

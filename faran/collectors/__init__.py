@@ -4,6 +4,7 @@ from .registry import (
 )
 from .obstacles import (
     ObstacleStateCollector as ObstacleStateCollector,
+    ObstacleObservationCollector as ObstacleObservationCollector,
     ObstacleForecastCollector as ObstacleForecastCollector,
 )
 from .risk import RiskCollector as RiskCollector

@@ -156,6 +156,7 @@ class TrajectoryCollector[
         )
 
         self._collected.append(self._lazy_trajectories(control, initial_state))
+        self.notify()
 
         return control
 

@@ -74,6 +74,7 @@ class MpccSimulationResult:
     optimal_trajectories: Sequence[AugmentedStateSequence] | None = None
     nominal_trajectories: Sequence[AugmentedStateSequence] | None = None
     obstacles: ObstacleStates | None = None
+    obstacle_observations: ObstacleStates | None = None
     obstacle_forecasts: Sequence[ObstacleStates] | None = None
     controls: Sequence[Control[ControlInputSequence, Weights]] | None = None
     risks: Sequence[Risk] | None = None
@@ -205,6 +206,7 @@ class MpccVisualizer:
             y=result.obstacles.y(),
             heading=result.obstacles.heading(),
             forecast=self.obstacle_forecast_from(result),
+            observations=self.obstacle_observations_from(result),
         )
 
     def obstacle_forecast_from(
@@ -254,6 +256,18 @@ class MpccVisualizer:
     ) -> Array[Dims[T, D[2], D[2], K]]:
         # NOTE: We assume first two dimensions correspond to covariance of (x, y).
         return covariance[:, :2, :2, :]
+
+    def obstacle_observations_from(
+        self, result: MpccSimulationResult
+    ) -> Visualizable.ObstacleObservations | None:
+        if result.obstacle_observations is None:
+            return
+
+        return Visualizable.ObstacleObservations(
+            x=result.obstacle_observations.x(),
+            y=result.obstacle_observations.y(),
+            heading=result.obstacle_observations.heading(),
+        )
 
     def boundaries_from(
         self, result: MpccSimulationResult

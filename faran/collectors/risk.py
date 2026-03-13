@@ -54,6 +54,7 @@ class RiskCollector[
                 sampler=sampler,
             )
         )
+        self.notify()
         return risk
 
     @property
