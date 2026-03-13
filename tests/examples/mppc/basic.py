@@ -845,11 +845,8 @@ class configure:
                                             ),
                                             noise_model=noise.clamped(
                                                 noise.adaptive(window_size=10),
-                                                floor=noise.covariances(
-                                                    process=1e-8,
-                                                    observation=1e-2,
-                                                    process_dimension=6,
-                                                    observation_dimension=3,
+                                                floor=noise.covariance_bounds(
+                                                    process=1e-8, observation=1e-2
                                                 ),
                                             ),
                                         )

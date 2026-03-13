@@ -10,8 +10,10 @@ from faran.filters.kf import numpy_kalman_filter, jax_kalman_filter
 from faran.filters.noise import (
     NumPyAdaptiveNoiseProvider,
     NumPyClampedNoiseProvider,
+    NumPyNoiseCovarianceBounds,
     JaxAdaptiveNoiseProvider,
     JaxClampedNoiseProvider,
+    JaxNoiseCovarianceBounds,
     IdentityNoiseModelProvider,
 )
 
@@ -41,6 +43,8 @@ class noise:
                 ),
             )
 
+        covariance_bounds: Final = NumPyNoiseCovarianceBounds
+
     class jax:
         adaptive: Final = JaxAdaptiveNoiseProvider.create
         clamped: Final = JaxClampedNoiseProvider.decorate
@@ -62,3 +66,5 @@ class noise:
                     observation, dimension=observation_dimension
                 ),
             )
+
+        covariance_bounds: Final = JaxNoiseCovarianceBounds

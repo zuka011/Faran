@@ -5,7 +5,7 @@ from faran import Noise, NoiseModel, NumPyGaussianBelief, JaxGaussianBelief, noi
 import numpy as np
 import jax.numpy as jnp
 
-from tests.dsl import stubs
+from tests.dsl import stubs, check, compute
 from pytest import mark
 
 
@@ -16,21 +16,14 @@ class test_that_clamped_noise_does_not_go_below_floor:
 
         provider = noise.clamped(
             stubs.NoiseModelProvider.returning(
-                noise.covariances(
+                original := noise.covariances(
                     process=1e-10,
                     observation=1e-10,
                     process_dimension=D_x,
                     observation_dimension=D_z,
                 )
             ),
-            floor=(
-                floor := noise.covariances(
-                    process=1e-5,
-                    observation=1e-5,
-                    process_dimension=D_x,
-                    observation_dimension=D_z,
-                )
-            ),
+            floor=(floor := noise.covariance_bounds(process=1e-5, observation=1e-5)),
         )
 
         model = provider(
@@ -50,13 +43,14 @@ class test_that_clamped_noise_does_not_go_below_floor:
                 belief(
                     mean=np.zeros((D_x, K)), covariance=np.eye(D_x)[:, :, np.newaxis]
                 ),
-                observation_matrix,
+                observation := np.zeros((D_z, K)),
+                original,
                 floor,
             )
         ]
 
     @mark.parametrize(
-        ["model", "belief", "observation", "floor"],
+        ["model", "belief", "observation", "original", "floor"],
         [
             *cases(noise=noise.numpy, belief=NumPyGaussianBelief, to_array=np.asarray),
             *cases(noise=noise.jax, belief=JaxGaussianBelief, to_array=jnp.asarray),
@@ -67,15 +61,20 @@ class test_that_clamped_noise_does_not_go_below_floor:
         model: NoiseModel[NoiseT, BeliefT, ObservationT],
         belief: BeliefT,
         observation: ObservationT,
+        original: NoiseT,
         floor: NoiseT,
     ) -> None:
         result, _ = model(
-            noise=floor, prediction=belief, observation=observation, state=model.state
+            noise=original,
+            prediction=belief,
+            observation=observation,
+            state=model.state,
         )
 
-        assert np.all(result.process_noise_covariance >= floor.process_noise_covariance)
-        assert np.all(
-            result.observation_noise_covariance >= floor.observation_noise_covariance
+        assert compute.min_eigenvalue(result.process_noise_covariance) >= floor.process
+        assert (
+            compute.min_eigenvalue(result.observation_noise_covariance)
+            >= floor.observation
         )
 
 
@@ -86,21 +85,14 @@ class test_that_clamped_noise_does_not_go_above_ceiling:
 
         provider = noise.clamped(
             stubs.NoiseModelProvider.returning(
-                noise.covariances(
+                original := noise.covariances(
                     process=10.0,
                     observation=10.0,
                     process_dimension=D_x,
                     observation_dimension=D_z,
                 )
             ),
-            ceiling=(
-                ceiling := noise.covariances(
-                    process=1.0,
-                    observation=1.0,
-                    process_dimension=D_x,
-                    observation_dimension=D_z,
-                )
-            ),
+            ceiling=(ceiling := noise.covariance_bounds(process=1.0, observation=1.0)),
         )
 
         model = provider(
@@ -120,13 +112,14 @@ class test_that_clamped_noise_does_not_go_above_ceiling:
                 belief(
                     mean=np.zeros((D_x, K)), covariance=np.eye(D_x)[:, :, np.newaxis]
                 ),
-                observation_matrix,
+                observation := np.zeros((D_z, K)),
+                original,
                 ceiling,
             )
         ]
 
     @mark.parametrize(
-        ["model", "belief", "observation", "ceiling"],
+        ["model", "belief", "observation", "original", "ceiling"],
         [
             *cases(noise=noise.numpy, belief=NumPyGaussianBelief, to_array=np.asarray),
             *cases(noise=noise.jax, belief=JaxGaussianBelief, to_array=jnp.asarray),
@@ -137,17 +130,22 @@ class test_that_clamped_noise_does_not_go_above_ceiling:
         model: NoiseModel[NoiseT, BeliefT, ObservationT],
         belief: BeliefT,
         observation: ObservationT,
+        original: NoiseT,
         ceiling: NoiseT,
     ) -> None:
         result, _ = model(
-            noise=ceiling, prediction=belief, observation=observation, state=model.state
+            noise=original,
+            prediction=belief,
+            observation=observation,
+            state=model.state,
         )
 
-        assert np.all(
-            result.process_noise_covariance <= ceiling.process_noise_covariance
+        assert (
+            compute.max_eigenvalue(result.process_noise_covariance) <= ceiling.process
         )
-        assert np.all(
-            result.observation_noise_covariance <= ceiling.observation_noise_covariance
+        assert (
+            compute.max_eigenvalue(result.observation_noise_covariance)
+            <= ceiling.observation
         )
 
 
@@ -165,18 +163,8 @@ class test_that_clamped_noise_is_not_changed_when_noise_is_above_floor_and_below
                     observation_dimension=D_z,
                 )
             ),
-            floor=noise.covariances(
-                process=1e-5,
-                observation=1e-5,
-                process_dimension=D_x,
-                observation_dimension=D_z,
-            ),
-            ceiling=noise.covariances(
-                process=2.0,
-                observation=2.0,
-                process_dimension=D_x,
-                observation_dimension=D_z,
-            ),
+            floor=noise.covariance_bounds(process=1e-5, observation=1e-5),
+            ceiling=noise.covariance_bounds(process=2.0, observation=2.0),
         )
 
         model = provider(
@@ -196,7 +184,7 @@ class test_that_clamped_noise_is_not_changed_when_noise_is_above_floor_and_below
                 belief(
                     mean=np.zeros((D_x, K)), covariance=np.eye(D_x)[:, :, np.newaxis]
                 ),
-                observation_matrix,
+                observation := np.zeros((D_z, K)),
                 original,
             )
         ]
@@ -244,22 +232,8 @@ class test_that_noise_is_clamped_to_floor_and_ceiling_when_both_are_provided:
                     observation_dimension=D_z,
                 )
             ),
-            floor=(
-                floor := noise.covariances(
-                    process=1e-5,
-                    observation=1e-5,
-                    process_dimension=D_x,
-                    observation_dimension=D_z,
-                )
-            ),
-            ceiling=(
-                ceiling := noise.covariances(
-                    process=1.0,
-                    observation=1.0,
-                    process_dimension=D_x,
-                    observation_dimension=D_z,
-                )
-            ),
+            floor=(floor := noise.covariance_bounds(process=1e-5, observation=1e-5)),
+            ceiling=(ceiling := noise.covariance_bounds(process=1.0, observation=1.0)),
         )
 
         model = provider(
@@ -279,7 +253,7 @@ class test_that_noise_is_clamped_to_floor_and_ceiling_when_both_are_provided:
                 belief(
                     mean=np.zeros((D_x, K)), covariance=np.eye(D_x)[:, :, np.newaxis]
                 ),
-                observation_matrix,
+                observation := np.zeros((D_z, K)),
                 original,
                 floor,
                 ceiling,
@@ -309,13 +283,94 @@ class test_that_noise_is_clamped_to_floor_and_ceiling_when_both_are_provided:
             state=model.state,
         )
 
-        assert np.all(result.process_noise_covariance >= floor.process_noise_covariance)
-        assert np.all(
-            result.observation_noise_covariance >= floor.observation_noise_covariance
+        assert compute.min_eigenvalue(result.process_noise_covariance) >= floor.process
+        assert (
+            compute.min_eigenvalue(result.observation_noise_covariance)
+            >= floor.observation
         )
-        assert np.all(
-            result.process_noise_covariance <= ceiling.process_noise_covariance
+        assert (
+            compute.max_eigenvalue(result.process_noise_covariance) <= ceiling.process
         )
-        assert np.all(
-            result.observation_noise_covariance <= ceiling.observation_noise_covariance
+        assert (
+            compute.max_eigenvalue(result.observation_noise_covariance)
+            <= ceiling.observation
         )
+
+
+class test_that_clamped_covariance_remains_symmetric_positive_definite:
+    @staticmethod
+    def cases(noise, belief, to_array) -> Sequence[tuple]:
+        D_x, D_z = 6, 3
+        observation_matrix = to_array(np.eye(D_z, D_x))
+
+        def correlated_spd_matrix(
+            *, dimension: int, variance: float, correlation: float
+        ):
+            return correlation * np.ones((dimension, dimension)) + (
+                variance - correlation
+            ) * np.eye(dimension)
+
+        provider = noise.clamped(
+            stubs.NoiseModelProvider.returning(
+                original := noise.covariances(
+                    process=to_array(
+                        correlated_spd_matrix(
+                            dimension=D_x, variance=5.0, correlation=4.0
+                        )
+                    ),
+                    observation=to_array(
+                        correlated_spd_matrix(
+                            dimension=D_z, variance=0.5, correlation=0.1
+                        )
+                    ),
+                )
+            ),
+            floor=noise.covariance_bounds(process=1.0, observation=1.0),
+            ceiling=noise.covariance_bounds(process=2.0, observation=2.0),
+        )
+
+        model = provider(
+            obstacle_count=(K := 1),
+            observation_matrix=observation_matrix,
+            noise=noise.covariances(
+                process=1.0,
+                observation=1.0,
+                process_dimension=D_x,
+                observation_dimension=D_z,
+            ),
+        )
+
+        return [
+            (
+                model,
+                belief(
+                    mean=np.zeros((D_x, K)), covariance=np.eye(D_x)[:, :, np.newaxis]
+                ),
+                observation := np.zeros((D_z, K)),
+                original,
+            )
+        ]
+
+    @mark.parametrize(
+        ["model", "belief", "observation", "original"],
+        [
+            *cases(noise=noise.numpy, belief=NumPyGaussianBelief, to_array=np.asarray),
+            *cases(noise=noise.jax, belief=JaxGaussianBelief, to_array=jnp.asarray),
+        ],
+    )
+    def test[NoiseT: Noise, BeliefT, ObservationT](
+        self,
+        model: NoiseModel[NoiseT, BeliefT, ObservationT],
+        belief: BeliefT,
+        observation: ObservationT,
+        original: NoiseT,
+    ) -> None:
+        result, _ = model(
+            noise=original,
+            prediction=belief,
+            observation=observation,
+            state=model.state,
+        )
+
+        assert check.is_spd(np.asarray(result.process_noise_covariance))
+        assert check.is_spd(np.asarray(result.observation_noise_covariance))

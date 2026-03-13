@@ -23,16 +23,14 @@ estimator = model.bicycle.estimator.ekf(
 
 ## Clamped Noise
 
-The adaptive model may produce very small noise values, causing the filter to become overconfident. The **clamped** decorator enforces a minimum floor on diagonal entries:
+The adaptive model may produce very small noise values, causing the filter to become overconfident. The **clamped** decorator enforces a minimum floor on eigenvalues:
 
 ```python
 clamped = noise.clamped(
     noise.adaptive(window_size=10),
-    floor=noise.covariances(
+    floor=noise.covariance_bounds(
         process=1e-5,
         observation=1e-5,
-        process_dimension=6,
-        observation_dimension=3,
     ),
 )
 ```

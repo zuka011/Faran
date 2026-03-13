@@ -6,6 +6,7 @@ from .basic import (
     NumPyAdaptiveNoiseProvider as NumPyAdaptiveNoiseProvider,
     NumPyClampedNoise as NumPyClampedNoise,
     NumPyClampedNoiseProvider as NumPyClampedNoiseProvider,
+    NumPyNoiseCovarianceBounds as NumPyNoiseCovarianceBounds,
 )
 from .accelerated import (
     JaxAdaptiveNoise as JaxAdaptiveNoise,
@@ -13,4 +14,5 @@ from .accelerated import (
     JaxAdaptiveNoiseState as JaxAdaptiveNoiseState,
     JaxClampedNoise as JaxClampedNoise,
     JaxClampedNoiseProvider as JaxClampedNoiseProvider,
+    JaxNoiseCovarianceBounds as JaxNoiseCovarianceBounds,
 )

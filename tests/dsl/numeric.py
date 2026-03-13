@@ -68,6 +68,16 @@ class estimate:
 
 class compute:
     @staticmethod
+    def min_eigenvalue(matrix: Float[Array, "D D"]) -> float:
+        """Computes the minimum eigenvalue of a symmetric matrix."""
+        return float(np.linalg.eigvalsh(np.asarray(matrix)).min())
+
+    @staticmethod
+    def max_eigenvalue(matrix: Float[Array, "D D"]) -> float:
+        """Computes the maximum eigenvalue of a symmetric matrix."""
+        return float(np.linalg.eigvalsh(np.asarray(matrix)).max())
+
+    @staticmethod
     def condition_number(matrix: Float[Array, "D D"]) -> float:
         """Computes the condition number (ratio of max to min eigenvalue) of a symmetric matrix."""
         eigenvalues = np.linalg.eigvalsh(matrix)

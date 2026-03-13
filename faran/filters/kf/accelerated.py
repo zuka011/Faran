@@ -347,12 +347,15 @@ class jax_kalman_filter:
 
         match covariance.ndim:
             case 2:
-                assert covariance.shape == (dimension, dimension), (
+                assert dimension is None or covariance.shape == (
+                    dimension,
+                    dimension,
+                ), (
                     f"Expected covariance shape ({dimension}, {dimension}), got {covariance.shape}."
                 )
                 return covariance
             case 1:
-                assert covariance.shape == (dimension,), (
+                assert dimension is None or covariance.shape == (dimension,), (
                     f"Expected covariance shape ({dimension},), got {covariance.shape}."
                 )
                 return jnp.diag(covariance)

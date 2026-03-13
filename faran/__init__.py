@@ -111,8 +111,10 @@ from .types import (
 from .filters import (
     NumPyAdaptiveNoiseProvider as NumPyAdaptiveNoiseProvider,
     NumPyClampedNoiseProvider as NumPyClampedNoiseProvider,
+    NumPyNoiseCovarianceBounds as NumPyNoiseCovarianceBounds,
     JaxAdaptiveNoiseProvider as JaxAdaptiveNoiseProvider,
     JaxClampedNoiseProvider as JaxClampedNoiseProvider,
+    JaxNoiseCovarianceBounds as JaxNoiseCovarianceBounds,
     IdentityNoiseModelProvider as IdentityNoiseModelProvider,
 )
 from .namespace import types as types, classes as classes

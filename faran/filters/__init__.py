@@ -17,10 +17,12 @@ from .noise import (
     NumPyAdaptiveNoiseProvider as NumPyAdaptiveNoiseProvider,
     NumPyClampedNoise as NumPyClampedNoise,
     NumPyClampedNoiseProvider as NumPyClampedNoiseProvider,
+    NumPyNoiseCovarianceBounds as NumPyNoiseCovarianceBounds,
     JaxAdaptiveNoise as JaxAdaptiveNoise,
     JaxAdaptiveNoiseProvider as JaxAdaptiveNoiseProvider,
     JaxClampedNoise as JaxClampedNoise,
     JaxClampedNoiseProvider as JaxClampedNoiseProvider,
+    JaxNoiseCovarianceBounds as JaxNoiseCovarianceBounds,
     IdentityNoiseModelProvider as IdentityNoiseModelProvider,
 )
 from .factory import noise as noise

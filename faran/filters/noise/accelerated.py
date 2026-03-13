@@ -8,19 +8,24 @@ from faran.types import (
     JaxNoiseCovariances,
 )
 
-from jaxtyping import Array as JaxArray, Bool, Float, Int
+from jaxtyping import Array as JaxArray, Bool, Float, Int, Scalar
 
 import equinox as eqx
 import jax
 import jax.numpy as jnp
 
 
+class JaxNoiseCovarianceBounds(NamedTuple):
+    process: Scalar
+    observation: Scalar
+
+
 class JaxClampedNoise[StateT](eqx.Module):
-    """Decorator that clamps an inner noise model's output diagonals to a floor and/or ceiling."""
+    """Decorator that clamps an inner noise model's eigenvalues to a floor and/or ceiling."""
 
     inner: JaxNoiseModel[StateT]
-    floor: JaxNoiseCovariances
-    ceiling: JaxNoiseCovariances
+    floor: JaxNoiseCovarianceBounds
+    ceiling: JaxNoiseCovarianceBounds
 
     @eqx.filter_jit
     @jaxtyped
@@ -36,15 +41,15 @@ class JaxClampedNoise[StateT](eqx.Module):
             noise=noise, prediction=prediction, observation=observation, state=state
         )
         return JaxNoiseCovariances(
-            process_noise_covariance=apply_diagonal_clamp(
+            process_noise_covariance=clamp_eigenvalues(
                 result.process_noise_covariance,
-                floor=self.floor.process_noise_covariance,
-                ceiling=self.ceiling.process_noise_covariance,
+                floor=self.floor.process,
+                ceiling=self.ceiling.process,
             ),
-            observation_noise_covariance=apply_diagonal_clamp(
+            observation_noise_covariance=clamp_eigenvalues(
                 result.observation_noise_covariance,
-                floor=self.floor.observation_noise_covariance,
-                ceiling=self.ceiling.observation_noise_covariance,
+                floor=self.floor.observation,
+                ceiling=self.ceiling.observation,
             ),
         ), state
 
@@ -55,27 +60,37 @@ class JaxClampedNoise[StateT](eqx.Module):
 
 class JaxClampedNoiseProvider[StateT](eqx.Module):
     inner: JaxNoiseModelProvider[StateT]
-    floor: JaxNoiseCovariances | None
-    ceiling: JaxNoiseCovariances | None
+    floor: JaxNoiseCovarianceBounds
+    ceiling: JaxNoiseCovarianceBounds
 
     @staticmethod
     def decorate[S](
         inner: JaxNoiseModelProvider[S],
         *,
-        floor: JaxNoiseCovariances | None = None,
-        ceiling: JaxNoiseCovariances | None = None,
+        floor: JaxNoiseCovarianceBounds | None = None,
+        ceiling: JaxNoiseCovarianceBounds | None = None,
     ) -> "JaxClampedNoiseProvider[S]":
-        """Creates a noise model provider that clamps the diagonal of the
+        """Creates a noise model provider that clamps the eigenvalues of the
         noise covariances to the specified floor and/or ceiling.
 
         Args:
             inner: The inner noise model provider to delegate to.
-            floor: Minimum noise covariances. Diagonal entries of the inner model's
+            floor: Isotropic minimum bounds. Eigenvalues of the inner model's
                 output will be clamped to be no smaller than these.
-            ceiling: Maximum noise covariances. Diagonal entries of the inner model's
+            ceiling: Isotropic maximum bounds. Eigenvalues of the inner model's
                 output will be clamped to be no larger than these.
         """
-        return JaxClampedNoiseProvider(inner=inner, floor=floor, ceiling=ceiling)
+        return JaxClampedNoiseProvider(
+            inner=inner,
+            floor=floor
+            or JaxNoiseCovarianceBounds(
+                process=jnp.asarray(0.0), observation=jnp.asarray(0.0)
+            ),
+            ceiling=ceiling
+            or JaxNoiseCovarianceBounds(
+                process=jnp.asarray(jnp.inf), observation=jnp.asarray(jnp.inf)
+            ),
+        )
 
     @eqx.filter_jit
     def __call__(
@@ -85,43 +100,13 @@ class JaxClampedNoiseProvider[StateT](eqx.Module):
         observation_matrix: Float[JaxArray, "D_z D_x"],
         noise: JaxNoiseCovariances,
     ) -> JaxClampedNoise:
-        floor, ceiling = self.clamp_for(observation_matrix)
         inner_model = self.inner(
             obstacle_count=obstacle_count,
             observation_matrix=observation_matrix,
             noise=noise,
         )
-        return JaxClampedNoise(inner=inner_model, floor=floor, ceiling=ceiling)
-
-    def clamp_for(
-        self, observation_matrix: Float[JaxArray, "D_z D_x"]
-    ) -> tuple[JaxNoiseCovariances, JaxNoiseCovariances]:
-        return self.floor_for(observation_matrix), self.ceiling_for(observation_matrix)
-
-    def floor_for(
-        self, observation_matrix: Float[JaxArray, "D_z D_x"]
-    ) -> JaxNoiseCovariances:
-        D_z, D_x = observation_matrix.shape
-        return (
-            JaxNoiseCovariances(
-                process_noise_covariance=jnp.zeros((D_x, D_x)),
-                observation_noise_covariance=jnp.zeros((D_z, D_z)),
-            )
-            if self.floor is None
-            else self.floor
-        )
-
-    def ceiling_for(
-        self, observation_matrix: Float[JaxArray, "D_z D_x"]
-    ) -> JaxNoiseCovariances:
-        D_z, D_x = observation_matrix.shape
-        return (
-            JaxNoiseCovariances(
-                process_noise_covariance=jnp.full((D_x, D_x), jnp.inf),
-                observation_noise_covariance=jnp.full((D_z, D_z), jnp.inf),
-            )
-            if self.ceiling is None
-            else self.ceiling
+        return JaxClampedNoise(
+            inner=inner_model, floor=self.floor, ceiling=self.ceiling
         )
 
 
@@ -404,16 +389,13 @@ def compute_kalman_gain(
 
 @jax.jit
 @jaxtyped
-def apply_diagonal_clamp(
-    matrix: Float[JaxArray, "N N"],
-    *,
-    floor: Float[JaxArray, "N N"],
-    ceiling: Float[JaxArray, "N N"],
+def clamp_eigenvalues(
+    matrix: Float[JaxArray, "N N"], *, floor: Scalar, ceiling: Scalar
 ) -> Float[JaxArray, "N N"]:
-    diagonal = jnp.diag(matrix)
-    diagonal = jnp.maximum(diagonal, jnp.diag(floor))
-    diagonal = jnp.minimum(diagonal, jnp.diag(ceiling))
-    return matrix - jnp.diag(jnp.diag(matrix)) + jnp.diag(diagonal)
+    symmetrised = (matrix + matrix.T) / 2
+    eigenvalues, eigenvectors = jnp.linalg.eigh(symmetrised)
+    clamped = jnp.clip(eigenvalues, floor, ceiling)
+    return (eigenvectors * clamped[jnp.newaxis, :]) @ eigenvectors.T
 
 
 @jax.jit

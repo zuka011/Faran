@@ -189,14 +189,12 @@ identity = noise.identity
 # Adaptive (IAE method)
 adaptive = noise.adaptive(window_size=10)
 
-# Clamped (floor on diagonal entries)
+# Clamped (eigenvalue clamping)
 clamped = noise.clamped(
     noise.adaptive(window_size=10),
-    floor=noise.covariances(
+    floor=noise.covariance_bounds(
         process=1e-5,
         observation=1e-5,
-        process_dimension=6,
-        observation_dimension=3,
     ),
 )
 ```
