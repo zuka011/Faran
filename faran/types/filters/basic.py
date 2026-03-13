@@ -46,6 +46,7 @@ class NumPyNoiseModelProvider[StateT = Any](Protocol):
     def __call__(
         self,
         *,
+        obstacle_count: int,
         observation_matrix: Float[Array, "D_z D_x"],
         noise: NumPyNoiseCovariances,
     ) -> NumPyNoiseModel[StateT]:

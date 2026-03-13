@@ -455,5 +455,7 @@ class NoiseModelProvider[NoiseT](NamedTuple):
     def returning[N](noise: N) -> "NoiseModelProvider[N]":
         return NoiseModelProvider(noise)
 
-    def __call__(self, *, observation_matrix: Any, noise: NoiseT) -> NoiseModel[NoiseT]:
+    def __call__(
+        self, *, obstacle_count: int, observation_matrix: Any, noise: NoiseT
+    ) -> NoiseModel[NoiseT]:
         return NoiseModel(noise)

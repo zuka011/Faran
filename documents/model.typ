@@ -1303,6 +1303,12 @@ Considering the general structure of the KF algorithms, we can integrate this ad
   ]
 ]
 
+=== Variations
+
+The following modifications can be made to the above IAE algorithm, depending on the application:
+1. The innovation matrix can be computed by taking the median instead of the mean over the time window, to be more robust to outliers.
+2. If multiple similar obstacles are being tracked, then the average of the noise covariances adapted for each obstacle can be used. This may give a more stable estimate of the actual process and observation noise covariances.
+
 = Incorporating Uncertainty into Predictions
 
 When using motion prediction models, such as the curvilinear models described in @curvilinear-models, we make assumptions about the future motion of obstacles that we know may not hold exactly. Furthermore, sensor noise and inaccuracies in state estimation can also lead to uncertainty about the current state of obstacles. A simple way to incorporate information on uncertainty into predictions is to use the prediction steps of the KF algorithms.

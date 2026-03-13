@@ -34,6 +34,7 @@ class test_that_clamped_noise_does_not_go_below_floor:
         )
 
         model = provider(
+            obstacle_count=(K := 1),
             observation_matrix=observation_matrix,
             noise=noise.covariances(
                 process=1.0,
@@ -46,7 +47,9 @@ class test_that_clamped_noise_does_not_go_below_floor:
         return [
             (
                 model,
-                belief(mean=np.zeros(D_x), covariance=np.eye(D_x)),
+                belief(
+                    mean=np.zeros((D_x, K)), covariance=np.eye(D_x)[:, :, np.newaxis]
+                ),
                 observation_matrix,
                 floor,
             )
@@ -99,6 +102,7 @@ class test_that_clamped_noise_is_not_changed_when_noise_is_above_floor:
         )
 
         model = provider(
+            obstacle_count=(K := 1),
             observation_matrix=observation_matrix,
             noise=noise.covariances(
                 process=1.0,
@@ -111,7 +115,9 @@ class test_that_clamped_noise_is_not_changed_when_noise_is_above_floor:
         return [
             (
                 model,
-                belief(mean=np.zeros(D_x), covariance=np.eye(D_x)),
+                belief(
+                    mean=np.zeros((D_x, K)), covariance=np.eye(D_x)[:, :, np.newaxis]
+                ),
                 observation_matrix,
                 original,
             )

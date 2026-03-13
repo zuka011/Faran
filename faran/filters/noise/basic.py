@@ -67,21 +67,30 @@ class NumPyClampedNoiseProvider[StateT](NamedTuple):
     def __call__(
         self,
         *,
+        obstacle_count: int,
         observation_matrix: Float[Array, "D_z D_x"],
         noise: NumPyNoiseCovariances,
     ) -> NumPyClampedNoise:
-        inner_model = self.inner(observation_matrix=observation_matrix, noise=noise)
+        inner_model = self.inner(
+            obstacle_count=obstacle_count,
+            observation_matrix=observation_matrix,
+            noise=noise,
+        )
         return NumPyClampedNoise(inner=inner_model, floor=self.floor)
 
 
 class NumPyAdaptiveNoiseState(NamedTuple):
-    buffer: list[Float[Array, " D_z"]]
+    """Circular buffer state for adaptive noise estimation."""
+
+    buffer: Float[Array, "W D_z D_z K"]
+    entry_count: Float[Array, " K"]
 
 
 class NumPyAdaptiveNoise(NamedTuple):
     """Innovation-Based Adaptive Estimation (IAE) for noise covariances."""
 
     observation_matrix: Float[Array, "D_z D_x"]
+    obstacle_count: int
     window_size: int
 
     def __call__(
@@ -92,45 +101,66 @@ class NumPyAdaptiveNoise(NamedTuple):
         observation: Float[Array, "D_z K"],
         state: NumPyAdaptiveNoiseState,
     ) -> tuple[NumPyNoiseCovariances, NumPyAdaptiveNoiseState]:
-        valid = valid_obstacle_mask(prediction)
-
-        if not np.any(valid):
+        if not np.any(valid := valid_obstacle_mask(prediction, observation)):
             return noise, state
 
-        innovation = (
-            observation[:, valid] - self.observation_matrix @ prediction.mean[:, valid]
-        )
-        state.buffer.append(np.mean(innovation, axis=1))
-
-        if len(state.buffer) > self.window_size:
-            state.buffer.pop(0)
-
-        if len(state.buffer) < self.window_size:
-            return noise, state
-
-        innovation_matrix = compute_innovation_matrix(state.buffer)
-        mean_covariance = np.mean(prediction.covariance[:, :, valid], axis=2)
-        kalman_gain = compute_kalman_gain(
-            mean_covariance=mean_covariance,
+        innovation = compute_innovation(
+            prediction=prediction,
+            observation=observation,
             observation_matrix=self.observation_matrix,
+        )
+        new_state = compute_updated_state(
+            state=state, innovation=innovation, valid=valid
+        )
+
+        if not np.any(buffer_full := new_state.entry_count >= self.window_size):
+            return noise, new_state
+
+        innovation_matrices = np.median(new_state.buffer, axis=0)
+        safe_covariance = np.where(
+            np.isnan(prediction.covariance), 0.0, prediction.covariance
+        )
+
+        P = safe_covariance.transpose(2, 0, 1)
+        V = innovation_matrices.transpose(2, 0, 1)
+        H = self.observation_matrix
+
+        kalman_gains = compute_kalman_gain(
+            predicted_covariance=P,
+            observation_matrix=H,
             observation_noise_covariance=noise.observation_noise_covariance,
         )
 
-        adapted_noise = NumPyNoiseCovariances(
-            process_noise_covariance=enforce_spd(
-                kalman_gain @ innovation_matrix @ kalman_gain.T
-            ),
-            observation_noise_covariance=enforce_spd(
-                innovation_matrix
-                - self.observation_matrix @ mean_covariance @ self.observation_matrix.T
-            ),
+        adapted_process = enforce_spd(
+            kalman_gains @ V @ kalman_gains.swapaxes(-2, -1)
+        ).transpose(1, 2, 0)
+
+        adapted_observation = enforce_spd(V - H @ P @ H.T).transpose(1, 2, 0)
+
+        adapted_noise = aggregate_noise_covariances(
+            buffer_full=buffer_full,
+            valid=valid,
+            adapted_process=adapted_process,
+            adapted_observation=adapted_observation,
+            noise=noise,
         )
 
-        return adapted_noise, state
+        return adapted_noise, new_state
 
     @property
     def state(self) -> NumPyAdaptiveNoiseState:
-        return NumPyAdaptiveNoiseState(buffer=[])
+        observation_dimension = self.observation_matrix.shape[0]
+        return NumPyAdaptiveNoiseState(
+            buffer=np.zeros(
+                (
+                    self.window_size,
+                    observation_dimension,
+                    observation_dimension,
+                    self.obstacle_count,
+                )
+            ),
+            entry_count=np.zeros(self.obstacle_count, dtype=np.int32),
+        )
 
 
 class NumPyAdaptiveNoiseProvider(NamedTuple):
@@ -149,43 +179,140 @@ class NumPyAdaptiveNoiseProvider(NamedTuple):
     def __call__(
         self,
         *,
+        obstacle_count: int,
         observation_matrix: Float[Array, "D_z D_x"],
         noise: NumPyNoiseCovariances,
     ) -> NumPyAdaptiveNoise:
         return NumPyAdaptiveNoise(
-            observation_matrix=observation_matrix, window_size=self.window_size
+            observation_matrix=observation_matrix,
+            obstacle_count=obstacle_count,
+            window_size=self.window_size,
         )
 
 
 def valid_obstacle_mask(
-    prediction: NumPyGaussianBelief,
+    prediction: NumPyGaussianBelief, observation: Float[Array, "D_z K"]
 ) -> Bool[Array, " K"]:
     mean_valid = ~np.any(np.isnan(prediction.mean), axis=0)
     covariance_valid = ~np.any(
         np.isnan(prediction.covariance.reshape(-1, prediction.covariance.shape[2])),
         axis=0,
     )
-    return mean_valid & covariance_valid
+    observation_valid = ~np.any(np.isnan(observation), axis=0)
+    return mean_valid & covariance_valid & observation_valid
 
 
-def compute_innovation_matrix(
-    buffer: list[Float[Array, " D_z"]],
-) -> Float[Array, "D_z D_z"]:
-    innovations = np.stack(buffer)
-    return (innovations.T @ innovations) / len(buffer)
+def compute_innovation(
+    prediction: NumPyGaussianBelief,
+    observation: Float[Array, "D_z K"],
+    *,
+    observation_matrix: Float[Array, "D_z D_x"],
+) -> Float[Array, "D_z D_z K"]:
+    safe_mean = np.where(np.isnan(prediction.mean), 0.0, prediction.mean)
+    safe_observation = np.where(np.isnan(observation), 0.0, observation)
+    innovation = safe_observation - observation_matrix @ safe_mean
+
+    return innovation[:, np.newaxis, :] * innovation[np.newaxis, :, :]
+
+
+def compute_updated_state(
+    state: NumPyAdaptiveNoiseState,
+    *,
+    innovation: Float[Array, "D_z D_z K"],
+    valid: Bool[Array, " K"],
+) -> NumPyAdaptiveNoiseState:
+    window_size = state.buffer.shape[0]
+    obstacle_count = valid.shape[0]
+
+    indices = state.entry_count % window_size
+    updated_buffer = state.buffer.copy()
+    updated_buffer[indices, :, :, np.arange(obstacle_count)] = innovation.transpose(
+        2, 0, 1
+    )
+
+    return NumPyAdaptiveNoiseState(
+        buffer=np.where(
+            valid[np.newaxis, np.newaxis, np.newaxis, :],
+            updated_buffer,
+            state.buffer,
+        ),
+        entry_count=state.entry_count + valid.astype(np.int32),
+    )
+
+
+def aggregate_noise_covariances(
+    *,
+    buffer_full: Bool[Array, " K"],
+    valid: Bool[Array, " K"],
+    adapted_process: Float[Array, "D_x D_x K"],
+    adapted_observation: Float[Array, "D_z D_z K"],
+    noise: NumPyNoiseCovariances,
+) -> NumPyNoiseCovariances:
+    use_adapted = buffer_full & valid
+    valid_adapted_count = max(np.sum(use_adapted), 1)
+
+    mean_process = (
+        np.sum(
+            np.where(
+                use_adapted[np.newaxis, np.newaxis, :],
+                adapted_process,
+                0.0,
+            ),
+            axis=2,
+        )
+        / valid_adapted_count
+    )
+
+    mean_observation = (
+        np.sum(
+            np.where(
+                use_adapted[np.newaxis, np.newaxis, :],
+                adapted_observation,
+                0.0,
+            ),
+            axis=2,
+        )
+        / valid_adapted_count
+    )
+
+    has_valid_adapted = np.any(use_adapted)
+
+    return NumPyNoiseCovariances(
+        process_noise_covariance=np.where(
+            has_valid_adapted,
+            mean_process,
+            noise.process_noise_covariance,
+        ),
+        observation_noise_covariance=np.where(
+            has_valid_adapted,
+            mean_observation,
+            noise.observation_noise_covariance,
+        ),
+    )
 
 
 def compute_kalman_gain(
     *,
-    mean_covariance: Float[Array, "D_x D_x"],
+    predicted_covariance: Float[Array, "... D_x D_x"],
     observation_matrix: Float[Array, "D_z D_x"],
     observation_noise_covariance: Float[Array, "D_z D_z"],
-) -> Float[Array, "D_x D_z"]:
+) -> Float[Array, "... D_x D_z"]:
     S = (
-        observation_matrix @ mean_covariance @ observation_matrix.T
+        observation_matrix @ predicted_covariance @ observation_matrix.T
         + observation_noise_covariance
     )
-    return mean_covariance @ observation_matrix.T @ np.linalg.inv(S)
+    return np.linalg.solve(S, observation_matrix @ predicted_covariance).swapaxes(
+        -2, -1
+    )
+
+
+def enforce_spd(matrix: Float[Array, "... N N"]) -> Float[Array, "... N N"]:
+    eps = 1e-8
+    symmetrised = (matrix + matrix.swapaxes(-2, -1)) / 2
+    eigenvalues, eigenvectors = np.linalg.eigh(symmetrised)
+    return (
+        eigenvectors * np.maximum(eigenvalues, eps)[..., np.newaxis, :]
+    ) @ eigenvectors.swapaxes(-2, -1)
 
 
 def apply_diagonal_floor(
@@ -193,9 +320,3 @@ def apply_diagonal_floor(
 ) -> Float[Array, "N N"]:
     floored = np.maximum(np.diag(matrix), np.diag(floor))
     return matrix - np.diag(np.diag(matrix)) + np.diag(floored)
-
-
-def enforce_spd(matrix: Float[Array, "N N"]) -> Float[Array, "N N"]:
-    symmetrised = (matrix + matrix.T) / 2
-    eigenvalues, eigenvectors = np.linalg.eigh(symmetrised)
-    return eigenvectors @ np.diag(np.maximum(eigenvalues, 0.0)) @ eigenvectors.T

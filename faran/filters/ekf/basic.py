@@ -68,7 +68,11 @@ class NumPyExtendedKalmanFilter:
         noise = NumPyNoiseCovariances(
             process_noise_covariance, observation_noise_covariance
         )
-        adapt = self.noise_model(observation_matrix=observation_matrix, noise=noise)
+        adapt = self.noise_model(
+            obstacle_count=observations.shape[2],
+            observation_matrix=observation_matrix,
+            noise=noise,
+        )
         noise_state = adapt.state
 
         for observation in observations:

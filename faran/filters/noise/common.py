@@ -13,5 +13,7 @@ class IdentityNoiseModel(NamedTuple):
 
 
 class IdentityNoiseModelProvider(NamedTuple):
-    def __call__(self, *, observation_matrix: Any, noise: Any) -> IdentityNoiseModel:
+    def __call__(
+        self, *, obstacle_count: int, observation_matrix: Any, noise: Any
+    ) -> IdentityNoiseModel:
         return IdentityNoiseModel()

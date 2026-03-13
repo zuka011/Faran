@@ -122,6 +122,10 @@ class check:
             f"Matrices are not positive semi-definite within tolerance {atol}."
         )
 
+        assert np.all(np.diag(covariance) > 0 for covariance in flat), (
+            "Matrices have values that are not positive."
+        )
+
         return True
 
     @staticmethod

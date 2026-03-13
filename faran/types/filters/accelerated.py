@@ -48,6 +48,7 @@ class JaxNoiseModelProvider[StateT = Any](Protocol):
     def __call__(
         self,
         *,
+        obstacle_count: int,
         observation_matrix: Float[JaxArray, "D_z D_x"],
         noise: JaxNoiseCovariances,
     ) -> JaxNoiseModel[StateT]:
