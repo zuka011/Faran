@@ -4,6 +4,7 @@ import type { Theme } from "@/core/defaults.js";
 import type { Plot, Visualizable } from "../../core/types.js";
 import type { VisualizationState } from "../state.js";
 import type { UpdateManager } from "../update.js";
+import { useResizeAfterLayoutChange } from "../hooks.js";
 import { createAdditionalPlot, groupPlots, type PlotGroup } from "./additional-plot.js";
 
 interface PlotContainerProps {
@@ -92,8 +93,10 @@ export const AdditionalPlotsContainer: FunctionalComponent<PlotContainerProps> =
 
     const groups = groupPlots(plots);
     const [activeTabIndex, setActiveTabIndex] = useState(0);
-    const showTabs = groups.length > 2;
-    const visibleGroups = showTabs ? [groups[activeTabIndex]] : groups;
+
+    const showTabs = groups.length > 1;
+
+    useResizeAfterLayoutChange(activeTabIndex);
 
     return (
         <div class="additional-plots-container">
@@ -105,8 +108,12 @@ export const AdditionalPlotsContainer: FunctionalComponent<PlotContainerProps> =
                 />
             )}
             <div class={`additional-plots-content ${showTabs ? "tabbed" : ""}`}>
-                {visibleGroups.map((group) => (
-                    <div key={group.id} class="plot-container">
+                {groups.map((group, index) => (
+                    <div
+                        key={group.id}
+                        class="plot-container"
+                        style={showTabs && index !== activeTabIndex ? "display:none" : undefined}
+                    >
                         <SinglePlotPanel
                             group={group}
                             data={data}

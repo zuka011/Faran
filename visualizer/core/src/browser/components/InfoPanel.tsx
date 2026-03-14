@@ -1,5 +1,7 @@
 import type { FunctionalComponent } from "preact";
+import { useState } from "preact/hooks";
 import type { Visualizable } from "../../core/types.js";
+import { useResizeAfterLayoutChange } from "../hooks.js";
 import { radiansToDegrees } from "../../utils/math.js";
 
 interface InfoPanelProps {
@@ -8,6 +10,10 @@ interface InfoPanelProps {
 }
 
 export const InfoPanel: FunctionalComponent<InfoPanelProps> = ({ currentTimestep, data }) => {
+    const [collapsed, setCollapsed] = useState(false);
+
+    useResizeAfterLayoutChange(collapsed);
+
     const t = currentTimestep;
     const time = (t * data.info.timeStep).toFixed(2);
     const posX = data.ego.x[t].toFixed(2);
@@ -18,34 +24,39 @@ export const InfoPanel: FunctionalComponent<InfoPanelProps> = ({ currentTimestep
     const progress = ((100 * data.ego.pathParameter[t]) / data.info.pathLength).toFixed(1);
 
     return (
-        <div class="info-panel" id="info-panel">
-            <h3>Simulation State</h3>
-            <table class="info-table">
-                <tr>
-                    <td>Time</td>
-                    <td>{time} s</td>
-                </tr>
-                <tr>
-                    <td>Position</td>
-                    <td>
-                        ({posX}, {posY}) m
-                    </td>
-                </tr>
-                <tr>
-                    <td>Heading</td>
-                    <td>{heading}°</td>
-                </tr>
-                <tr>
-                    <td>Path Parameter</td>
-                    <td>
-                        {pathParam} / {pathLength} m
-                    </td>
-                </tr>
-                <tr>
-                    <td>Progress</td>
-                    <td>{progress}%</td>
-                </tr>
-            </table>
+        <div class={`info-panel ${collapsed ? "collapsed" : ""}`} id="info-panel">
+            <h3 class="info-panel-header" onClick={() => setCollapsed(!collapsed)}>
+                <span class="info-panel-chevron">{collapsed ? "▸" : "▾"}</span>
+                Simulation State
+            </h3>
+            {!collapsed && (
+                <table class="info-table">
+                    <tr>
+                        <td>Time</td>
+                        <td>{time} s</td>
+                    </tr>
+                    <tr>
+                        <td>Position</td>
+                        <td>
+                            ({posX}, {posY}) m
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Heading</td>
+                        <td>{heading}°</td>
+                    </tr>
+                    <tr>
+                        <td>Path Parameter</td>
+                        <td>
+                            {pathParam} / {pathLength} m
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Progress</td>
+                        <td>{progress}%</td>
+                    </tr>
+                </table>
+            )}
         </div>
     );
 };

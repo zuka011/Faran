@@ -96,6 +96,27 @@ body {
     min-height: 0;
 }
 
+#right-panel-tabs-root {
+    display: contents;
+}
+
+.info-panel-header {
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.info-panel-chevron {
+    font-size: 11px;
+    color: #7f8c8d;
+}
+
+.info-panel.collapsed {
+    padding: 8px 12px;
+}
+
 .plot-container {
     flex: 1;
     min-height: 0;

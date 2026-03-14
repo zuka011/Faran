@@ -114,3 +114,50 @@
 .amber {
   color: #ff9800;
 }
+
+/* ── Reading time badge ────────────────────────────────────── */
+.reading-time {
+  display: flex;
+  align-items: center;
+  gap: 0.3em;
+  margin-top: -0.4em;
+  margin-bottom: 1.2em;
+  color: var(--md-default-fg-color--light);
+  font-size: 0.7rem;
+  font-weight: 400;
+  opacity: 0.6;
+  cursor: default;
+  transition: opacity 0.25s ease, color 0.25s ease;
+}
+
+.reading-time:hover {
+  opacity: 1;
+  color: var(--md-accent-fg-color);
+}
+
+.reading-time-icon {
+  width: 0.85em;
+  height: 0.85em;
+  flex-shrink: 0;
+  background-color: currentColor;
+  mask-image: url("../assets/reading-time.svg");
+  mask-size: contain;
+  mask-repeat: no-repeat;
+}
+
+/* ── Draft status icon ──────────────────────────────────────── */
+.md-status--draft::after {
+  mask-image: url("../assets/draft.svg");
+}
+
+/* ── Draft banner ──────────────────────────────────────────── */
+.draft-banner {
+  margin-bottom: 1.2em;
+  padding: 0.6em 1em;
+  border-left: 4px solid var(--md-accent-fg-color);
+  background-color: color-mix(in srgb, var(--md-accent-fg-color) 8%, transparent);
+  color: var(--md-default-fg-color--light);
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 0 0.2rem 0.2rem 0;
+}
