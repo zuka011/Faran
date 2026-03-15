@@ -21,7 +21,12 @@ import numpy as np
 @jaxtyped
 @dataclass(kw_only=True, frozen=True)
 class CollisionMetricResult:
-    """Results of the collision metric, including distances and collision flags."""
+    """Results of the collision metric, including distances and collision flags.
+
+    Attributes:
+        distances: Distance between the ego vehicle and each obstacle at each time step.
+        distance_threshold: Distance at or below which a collision is registered.
+    """
 
     distances: Float[Array, "T V"]
     distance_threshold: float

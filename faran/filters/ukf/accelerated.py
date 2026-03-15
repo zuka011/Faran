@@ -40,7 +40,7 @@ class JaxUnscentedKalmanFilter(eqx.Module):
         """Create an Unscented Kalman Filter.
 
         Args:
-            alpha: Controls spread of sigma points - λ = (α² - 1)n.
+            alpha: Controls the spread of sigma points around the mean.
             beta: Incorporates prior knowledge (2 is used for Gaussian).
             noise_model: An optional noise model provider for adaptive noise estimation.
         """
@@ -262,7 +262,7 @@ class JaxUnscentedKalmanFilter(eqx.Module):
         )
 
     def scaling_parameter_for(self, state_dimension: int) -> float:
-        """Returns the scaling parameter λ = (α² - 1)n for the given state dimension."""
+        """Returns the scaling parameter for the given state dimension."""
         return (self.alpha**2 - 1) * state_dimension
 
     def _compute_weights(self, state_dimension: int) -> tuple[JaxArray, JaxArray]:

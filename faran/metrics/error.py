@@ -21,7 +21,12 @@ import numpy as np
 @jaxtyped
 @dataclass(kw_only=True, frozen=True)
 class MpccErrorMetricResult:
-    """Results of the MPCC error metric, including contouring and lag errors."""
+    """Results of the MPCC error metric, including contouring and lag errors.
+
+    Attributes:
+        contouring: Contouring error at each time step.
+        lag: Lag error at each time step.
+    """
 
     contouring: Float[Array, " T"]
     lag: Float[Array, " T"]

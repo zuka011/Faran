@@ -1,4 +1,5 @@
 import warnings
+from typing import Sequence
 from dataclasses import dataclass
 from functools import cached_property
 
@@ -23,6 +24,16 @@ import numpy as np
 
 
 type PointArray = Float[Array, "N 2"]
+type PointsDescription = PointArray | Sequence[tuple[float, float]]
+
+
+class standardize:
+    @staticmethod
+    def points(points: PointsDescription) -> PointArray:
+        if isinstance(points, Sequence):
+            return np.asarray(points, dtype=np.float64)
+
+        return points
 
 
 @jaxtyped
@@ -51,26 +62,32 @@ class NumPyWaypointsTrajectory(
     @staticmethod
     def create(
         *,
-        points: PointArray,
-        path_length: float,
-        kd_tree_samples: int = 200,
+        points: PointsDescription,
+        path_length: float | None = None,
+        coarse_search_samples: int = 200,
         refining_iterations: int = 3,
     ) -> "NumPyWaypointsTrajectory":
         """Creates a waypoints trajectory from a set of 2D points.
 
         Args:
             points: Array of shape (N, 2) containing N waypoints with (x, y) coordinates.
-            path_length: Total length of the trajectory.
-            kd_tree_samples: Number of samples to use for building the KD-tree for closest point search.
+            path_length: Total length of the trajectory. If omitted, it will be set to the natural length
+                of the path defined by the waypoints.
+            coarse_search_samples: Number of samples to use for the initial coarse nearest-point search.
             refining_iterations: Number of iterations for local refinement of closest points.
 
-        Returns:
-            A waypoints trajectory using cubic spline interpolation.
+        Note:
+            This uses a KD-tree for efficient nearest-point queries under the hood. The `coarse_search_samples`
+            parameter controls the number of samples along the spline used to build the KD-tree for the initial guess
+            of the closest point. The `refining_iterations` parameter controls how many iterations of Newton's method
+            are used to refine the closest point after the initial guess from the KD-tree.
         """
+        points = standardize.points(points)
         x, y = points.T
 
         path_parameters = compute_path_parameters(x=x, y=y)
         natural_length = path_parameters[-1]
+        path_length = float(natural_length) if path_length is None else path_length
         normalized_lengths = path_parameters * (path_length / natural_length)
 
         spline_x = CubicSpline(normalized_lengths, x, bc_type="natural")
@@ -80,7 +97,7 @@ class NumPyWaypointsTrajectory(
             reference_points=normalized_lengths,
             spline_x=spline_x,
             spline_y=spline_y,
-            kd_tree_samples=kd_tree_samples,
+            kd_tree_samples=coarse_search_samples,
             refining_iterations=refining_iterations,
             _path_length=path_length,
             _natural_length=natural_length,

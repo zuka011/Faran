@@ -25,7 +25,14 @@ import numpy as np
 @jaxtyped
 @dataclass(kw_only=True, frozen=True)
 class ConstraintViolationMetricResult:
-    """Results of the constraint violation metric, including boundary distances."""
+    """Results of the constraint violation metric, including boundary distances.
+
+    Attributes:
+        lateral_deviations: Lateral deviation from the reference trajectory at each time step.
+        boundary_distances: Signed distance to the nearest boundary at each time step.
+            Positive values indicate the vehicle is within bounds; zero or negative
+            values indicate a violation.
+    """
 
     lateral_deviations: Float[Array, " T"]
     boundary_distances: Float[Array, " T"]

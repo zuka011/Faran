@@ -44,15 +44,25 @@ class NumPyLineTrajectory(
 
     @staticmethod
     def create(
-        *, start: tuple[float, float], end: tuple[float, float], path_length: float
+        *,
+        start: tuple[float, float],
+        end: tuple[float, float],
+        path_length: float | None = None,
     ) -> "NumPyLineTrajectory":
-        """Generates a straight line trajectory from start to end."""
+        """Generates a straight line trajectory from start to end.
+
+        Args:
+            start: The starting point of the trajectory.
+            end: The ending point of the trajectory.
+            path_length: Total length of the trajectory. If omitted, it will be set to the natural length
+                of the line segment between start and end.
+        """
         return NumPyLineTrajectory(
             start=(start_array := np.array(start)),
             direction=(direction := np.array(end) - start_array),
             heading=np.arctan2(direction[1], direction[0]),
             _end=end,
-            _path_length=path_length,
+            _path_length=length_of(direction) if path_length is None else path_length,
         )
 
     def query(self, parameters: NumPyPathParameters) -> NumPyReferencePoints:
@@ -114,4 +124,8 @@ class NumPyLineTrajectory(
 
     @cached_property
     def line_length(self) -> float:
-        return float(np.linalg.norm(self.direction))
+        return length_of(self.direction)
+
+
+def length_of(line: Vector) -> float:
+    return float(np.linalg.norm(line))

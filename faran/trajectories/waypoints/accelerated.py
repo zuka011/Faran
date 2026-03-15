@@ -1,4 +1,4 @@
-from typing import overload, Literal, NamedTuple
+from typing import Literal, NamedTuple, Sequence
 from dataclasses import dataclass
 
 from faran.types import (
@@ -26,6 +26,7 @@ import numpy as np
 type PointArray = Float[Array, "N 2"]
 type JaxPointArray = Float[JaxArray, "N 2"]
 type Int = JaxInt[JaxArray, ""]
+type PointsDescription = PointArray | JaxPointArray | Sequence[tuple[float, float]]
 
 
 class GuessSamples(NamedTuple):
@@ -58,39 +59,31 @@ class JaxWaypointsTrajectory(
     _path_length: Scalar
     _inner: NumPyWaypointsTrajectory
 
-    @overload
     @staticmethod
     def create(
         *,
-        points: PointArray,
-        path_length: float,
-        coarse_samples: int = 200,
+        points: PointsDescription,
+        path_length: float | None = None,
+        coarse_search_samples: int = 200,
         refining_iterations: int = 3,
     ) -> "JaxWaypointsTrajectory":
-        """Creates a waypoints trajectory from a set of 2D points."""
-        ...
+        """Creates a waypoints trajectory from a set of 2D points.
 
-    @overload
-    @staticmethod
-    def create(
-        *,
-        points: JaxPointArray,
-        path_length: float,
-        coarse_samples: int = 200,
-        refining_iterations: int = 3,
-    ) -> "JaxWaypointsTrajectory":
-        """Creates a waypoints trajectory from a set of 2D points."""
-        ...
+        Args:
+            points: Array of shape (N, 2) containing N waypoints with (x, y) coordinates.
+            path_length: Total length of the trajectory. If omitted, it will be set to the natural length
+                of the path defined by the waypoints.
+            coarse_search_samples: Number of samples to use for the initial coarse nearest-point search.
+            refining_iterations: Number of iterations for local refinement of closest points.
 
-    @staticmethod
-    def create(
-        *,
-        points: PointArray | JaxPointArray,
-        path_length: float,
-        coarse_samples: int = 200,
-        refining_iterations: int = 3,
-    ) -> "JaxWaypointsTrajectory":
-        """Creates a waypoints trajectory from a set of 2D points."""
+        Note:
+            Since a KD-tree is not JAX-compatible, this implementation precomputes
+            `coarse_search_samples` evenly-spaced points along the spline and finds the
+            nearest one via brute-force distance computation. This is less efficient than
+            a KD-tree for scalar queries, but GPU-friendly since it vectorizes across all
+            query points. The `refining_iterations` parameter controls how many Newton
+            steps are used to refine each initial guess.
+        """
         trajectory = NumPyWaypointsTrajectory.create(
             points=np.asarray(points), path_length=path_length
         )
@@ -100,10 +93,10 @@ class JaxWaypointsTrajectory(
             coefficients_x=coefficients_from(trajectory.spline_x),
             coefficients_y=coefficients_from(trajectory.spline_y),
             guess_samples=compute_guess_samples(
-                trajectory=trajectory, sample_count=coarse_samples
+                trajectory=trajectory, sample_count=coarse_search_samples
             ),
             refining_iterations=refining_iterations,
-            _path_length=jnp.asarray(path_length),
+            _path_length=jnp.asarray(trajectory.path_length),
             _inner=trajectory,
         )
 

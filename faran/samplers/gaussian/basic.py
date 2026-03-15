@@ -8,6 +8,7 @@ from faran.types import (
     NumPyControlInputBatch,
     NumPySampler,
 )
+from faran.samplers.basic import StandardDeviationDescription, standardize
 
 from jaxtyping import Float
 
@@ -29,7 +30,7 @@ class NumPyGaussianSampler[
     @staticmethod
     def create[B: NumPyControlInputBatch](
         *,
-        standard_deviation: Float[Array, " D_u"],
+        standard_deviation: StandardDeviationDescription,
         rollout_count: int,
         to_batch: NumPyControlInputBatchCreator,
         seed: int,
@@ -38,7 +39,7 @@ class NumPyGaussianSampler[
         sequence.
         """
         return NumPyGaussianSampler(
-            standard_deviation=standard_deviation,
+            standard_deviation=standardize.std(standard_deviation),
             to_batch=to_batch,
             rng=np.random.default_rng(seed),
             _rollout_count=rollout_count,

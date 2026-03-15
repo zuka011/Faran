@@ -94,6 +94,39 @@ class test_that_trajectory_returns_natural_length_of_trajectory:
         assert np.allclose(trajectory.natural_length, expected, rtol=0.05)
 
 
+class test_that_trajectory_returns_natural_length_as_path_length_when_path_length_is_not_specified:
+    @staticmethod
+    def cases(trajectory) -> Sequence[tuple]:
+        return [
+            (
+                trajectory.line(start=(-1.0, -2.0), end=(2.0, 2.0)),
+                expected := 5.0,
+            ),
+            (
+                trajectory.waypoints(
+                    points=array([[0.0, 0.0], [3.0, 4.0], [6.0, 8.0]], shape=(3, 2))
+                ),
+                expected := 10.0,
+            ),
+            (
+                trajectory.waypoints(
+                    points=array([[0.0, -2.0], [0.0, 4.0], [3.0, 4.0]], shape=(3, 2))
+                ),
+                expected := 9.0,
+            ),
+        ]
+
+    @mark.parametrize(
+        ["trajectory", "expected"],
+        [
+            *cases(trajectory=trajectory.numpy),
+            *cases(trajectory=trajectory.jax),
+        ],
+    )
+    def test(self, trajectory: Trajectory, expected: float) -> None:
+        assert np.allclose(trajectory.natural_length, expected)
+
+
 class test_that_batch_query_returns_correct_positions_and_headings:
     @staticmethod
     def cases(trajectory, types, types_common) -> Sequence[tuple]:
@@ -978,3 +1011,46 @@ class test_that_normal_changes_direction_when_trajectory_is_curved:
         assert np.allclose(start_normal.y(), expected_start_normal[1], atol=0.2)
         assert np.allclose(end_normal.x(), expected_end_normal[0], atol=0.2)
         assert np.allclose(end_normal.y(), expected_end_normal[1], atol=0.2)
+
+
+class test_that_waypoint_trajectory_is_created_correctly_when_alternative_api_is_used:
+    @staticmethod
+    def cases(trajectory, types) -> Sequence[tuple]:
+        return [
+            (
+                reference := trajectory.waypoints(
+                    points=array([[0.0, 0.0], [5.0, 5.0], [10.0, 10.0]], shape=(3, 2)),
+                    path_length=10.0,
+                ),
+                alternative := trajectory.waypoints(
+                    points=[(0.0, 0.0), (5.0, 5.0), (10.0, 10.0)],
+                    path_length=10.0,
+                ),
+                path_parameters := types.path_parameters(
+                    array([[0.0], [5.0], [10.0]], shape=(T := 3, M := 1))
+                ),
+            )
+        ]
+
+    @mark.parametrize(
+        ["reference", "alternative", "path_parameters"],
+        [
+            *cases(trajectory=trajectory.numpy, types=types.numpy),
+            *cases(trajectory=trajectory.jax, types=types.jax),
+        ],
+    )
+    def test[PathParametersT: PathParameters](
+        self,
+        reference: Trajectory[PathParametersT, ReferencePoints],
+        alternative: Trajectory[PathParametersT, ReferencePoints],
+        path_parameters: PathParametersT,
+    ) -> None:
+        reference_points = reference.query(path_parameters)
+        alternative_points = alternative.query(path_parameters)
+
+        assert np.allclose(reference_points.x(), alternative_points.x(), atol=1e-6), (
+            f"X coordinates do not match. Reference: {reference_points.x()}, Alternative: {alternative_points.x()}"
+        )
+        assert np.allclose(reference_points.y(), alternative_points.y(), atol=1e-6), (
+            f"Y coordinates do not match. Reference: {reference_points.y()}, Alternative: {alternative_points.y()}"
+        )

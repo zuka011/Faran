@@ -46,15 +46,27 @@ class JaxLineTrajectory(
 
     @staticmethod
     def create(
-        *, start: tuple[float, float], end: tuple[float, float], path_length: float
+        *,
+        start: tuple[float, float],
+        end: tuple[float, float],
+        path_length: float | None = None,
     ) -> "JaxLineTrajectory":
-        """Generates a straight line trajectory from start to end."""
+        """Generates a straight line trajectory from start to end.
+
+        Args:
+            start: The starting point of the trajectory.
+            end: The ending point of the trajectory.
+            path_length: Total length of the trajectory. If omitted, it will be set to the natural length
+                of the line segment between start and end.
+        """
         return JaxLineTrajectory(
             start=(start_array := jnp.array(start)),
             direction=(direction := jnp.array(end) - start_array),
             heading=jnp.arctan2(direction[1], direction[0]),
             _end=end,
-            _path_length=jnp.array(path_length),
+            _path_length=length_of(direction)
+            if path_length is None
+            else jnp.asarray(path_length),
         )
 
     def query(
@@ -122,7 +134,7 @@ class JaxLineTrajectory(
 
     @cached_property
     def line_length(self) -> Scalar:
-        return jnp.linalg.norm(self.direction)
+        return length_of(self.direction)
 
     @cached_property
     def _path_length_float(self) -> float:
@@ -131,6 +143,10 @@ class JaxLineTrajectory(
     @cached_property
     def _line_length_float(self) -> float:
         return float(self.line_length)
+
+
+def length_of(line: Vector) -> Scalar:
+    return jnp.linalg.norm(line)
 
 
 @jax.jit

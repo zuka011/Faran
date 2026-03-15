@@ -1,14 +1,14 @@
-from typing import Final, overload
+from typing import Final
 from dataclasses import dataclass
 
 from faran.types import (
     jaxtyped,
-    Array,
     JaxControlInputBatchCreator,
     JaxControlInputSequence,
     JaxControlInputBatch,
     JaxSampler,
 )
+from faran.samplers.accelerated import StandardDeviationDescription, standardize
 
 from jaxtyping import Array as JaxArray, Float, Int, Scalar
 
@@ -61,65 +61,35 @@ class JaxHaltonSplineSampler[
     knot_count: Final[int]
     halton_start_index: IntScalar
 
-    _control_dimension: Final[int]
     _rollout_count: Final[int]
 
-    @overload
     @staticmethod
     def create[B: JaxControlInputBatch](
         *,
-        standard_deviation: Float[Array, " D_u"],
-        rollout_count: int,
-        knot_count: int,
-        to_batch: JaxControlInputBatchCreator,
-        seed: int,
-    ) -> "JaxHaltonSplineSampler": ...
-
-    @overload
-    @staticmethod
-    def create[B: JaxControlInputBatch](
-        *,
-        standard_deviation: Float[JaxArray, " D_u"],
-        control_dimension: int | None = None,
-        rollout_count: int,
-        knot_count: int,
-        to_batch: JaxControlInputBatchCreator,
-        seed: int,
-    ) -> "JaxHaltonSplineSampler": ...
-
-    @staticmethod
-    def create[B: JaxControlInputBatch](
-        *,
-        standard_deviation: Float[Array, " D_u"] | Float[JaxArray, " D_u"],
-        control_dimension: int | None = None,
+        standard_deviation: StandardDeviationDescription,
         rollout_count: int,
         knot_count: int,
         to_batch: JaxControlInputBatchCreator,
         seed: int,
     ) -> "JaxHaltonSplineSampler":
         return JaxHaltonSplineSampler(
-            standard_deviation=jnp.asarray(standard_deviation),
+            standard_deviation=standardize.std(standard_deviation),
             to_batch=to_batch,
             knot_count=knot_count,
             halton_start_index=jnp.array(seed),
-            _control_dimension=(
-                control_dimension
-                if control_dimension is not None
-                else standard_deviation.shape[0]
-            ),
             _rollout_count=rollout_count,
         )
 
     def __post_init__(self) -> None:
         assert self.knot_count >= 2, "Knot count must be at least 2."
-        assert self.standard_deviation.shape[0] == self.control_dimension
         assert (
             halton_dimensions_for(
-                control_dimension=self.control_dimension, knot_count=self.knot_count
+                control_dimension=self.dimension, knot_count=self.knot_count
             )
             <= MAX_HALTON_DIMENSION
         ), (
-            f"Halton sequence dimensions (control_dimension * knot_count) cannot exceed {MAX_HALTON_DIMENSION}."
+            f"Halton sequence dimensions (control_dimension * knot_count) cannot exceed {MAX_HALTON_DIMENSION}. "
+            f"Got control_dimension={self.dimension} and knot_count={self.knot_count}."
         )
 
     def sample(self, *, around: JaxControlInputSequence) -> BatchT:
@@ -138,8 +108,8 @@ class JaxHaltonSplineSampler[
         return self.to_batch(array=samples)
 
     @property
-    def control_dimension(self) -> int:
-        return self._control_dimension
+    def dimension(self) -> int:
+        return self.standard_deviation.shape[0]
 
     @property
     def rollout_count(self) -> int:

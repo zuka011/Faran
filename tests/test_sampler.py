@@ -326,6 +326,70 @@ class test_that_sampled_control_inputs_have_correct_marginal_statistics:
         assert np.allclose(std_samples, expected_std, rtol=0.15)
 
 
+class test_that_sampler_is_created_correctly_when_alternative_api_is_used:
+    @staticmethod
+    def cases(sampler, data, types) -> Sequence[tuple]:
+        return [
+            (
+                reference := sampler.gaussian(
+                    standard_deviation=array([0.5, 0.3], shape=(D_u := 2,)),
+                    rollout_count=(M := 256),
+                    to_batch=types.simple.control_input_batch.create,
+                    seed=42,
+                ),
+                alternative := sampler.gaussian(
+                    standard_deviation=[0.5, 0.3],
+                    rollout_count=M,
+                    to_batch=types.simple.control_input_batch.create,
+                    seed=42,
+                ),
+                data.control_input_sequence(
+                    array([[1.0, 2.0], [0.5, -0.5], [0.0, 1.0]], shape=(3, D_u))
+                ),
+            ),
+            (
+                reference := sampler.halton(
+                    standard_deviation=array([0.5, 0.3], shape=(D_u := 2,)),
+                    rollout_count=(M := 256),
+                    knot_count=4,
+                    to_batch=types.simple.control_input_batch.create,
+                    seed=42,
+                ),
+                alternative := sampler.halton(
+                    standard_deviation=[0.5, 0.3],
+                    rollout_count=M,
+                    knot_count=4,
+                    to_batch=types.simple.control_input_batch.create,
+                    seed=42,
+                ),
+                data.control_input_sequence(
+                    array(
+                        [[1.0, 2.0], [0.5, -0.5], [0.0, 1.0], [0.5, 0.25]],
+                        shape=(4, D_u),
+                    )
+                ),
+            ),
+        ]
+
+    @mark.parametrize(
+        ["reference", "alternative", "input_sequence"],
+        [
+            *cases(sampler=sampler.numpy, data=data.numpy, types=types.numpy),
+            *cases(sampler=sampler.jax, data=data.jax, types=types.jax),
+        ],
+    )
+    def test[InputSequenceT](
+        self,
+        reference: Sampler[InputSequenceT, ControlInputBatch],
+        alternative: Sampler[InputSequenceT, ControlInputBatch],
+        input_sequence: InputSequenceT,
+    ) -> None:
+        assert np.array_equal(
+            reference.sample(around=input_sequence),
+            alternative.sample(around=input_sequence),
+        )
+
+
 class test_that_halton_spline_samples_are_temporally_smooth:
     @staticmethod
     def cases(sampler, data, types) -> Sequence[tuple]:

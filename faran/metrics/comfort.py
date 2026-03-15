@@ -22,7 +22,12 @@ import numpy as np
 @jaxtyped
 @dataclass(kw_only=True, frozen=True)
 class ComfortMetricResult:
-    """Results of the comfort metric, including lateral acceleration and jerk."""
+    """Results of the comfort metric, including lateral acceleration and jerk.
+
+    Attributes:
+        lateral_acceleration: Lateral acceleration at each time step.
+        lateral_jerk: Lateral jerk at each time step.
+    """
 
     lateral_acceleration: Float[Array, " T"]
     lateral_jerk: Float[Array, " T"]

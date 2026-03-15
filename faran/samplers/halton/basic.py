@@ -9,6 +9,7 @@ from faran.types import (
     NumPyControlInputBatch,
     NumPySampler,
 )
+from faran.samplers.basic import StandardDeviationDescription, standardize
 
 from jaxtyping import Float
 
@@ -36,7 +37,7 @@ class NumPyHaltonSplineSampler[
     @staticmethod
     def create[B: NumPyControlInputBatch](
         *,
-        standard_deviation: Float[Array, " D_u"],
+        standard_deviation: StandardDeviationDescription,
         rollout_count: int,
         knot_count: int,
         to_batch: NumPyControlInputBatchCreator,
@@ -46,7 +47,7 @@ class NumPyHaltonSplineSampler[
         sequences and cubic splines around the specified control input sequence.
         """
         return NumPyHaltonSplineSampler(
-            standard_deviation=standard_deviation,
+            standard_deviation=standardize.std(standard_deviation),
             to_batch=to_batch,
             knot_count=knot_count,
             seed=seed,
