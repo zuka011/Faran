@@ -53,15 +53,16 @@ REFERENCE = trajectory.waypoints(
         [
             [0.0, 0.0],
             [10.0, 0.0],
+            [20.0, 0.0],
             [20.0, 5.0],
-            [25.0, 15.0],
-            [20.0, 25.0],
+            [15.0, 10.0],
+            [15.0, 15.0],
+            [10.0, 20.0],
         ],
-        shape=(5, 2),
+        shape=(7, 2),
     ),
     path_length=50.0,
 )
-
 
 # ── Result ────────────────────────────────────────────────────────────────── #
 
@@ -94,8 +95,8 @@ def create():
     corridor = boundary.fixed_width(
         reference=REFERENCE,
         position_extractor=position_extractor,
-        left=2.5,
-        right=2.5,
+        left=1.5,
+        right=1.5,
     )
 
     planner, augmented_model, contouring_cost, lag_cost = mppi.mpcc(
@@ -118,7 +119,7 @@ def create():
             ),
             costs.safety.boundary(
                 distance=corridor,
-                distance_threshold=0.25,
+                distance_threshold=1.0,
                 weight=1000.0,
             ),
         ),

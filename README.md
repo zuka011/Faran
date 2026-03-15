@@ -6,7 +6,7 @@
 
 [![Pipeline Status](https://gitlab.com/risk-metrics/faran/badges/main/pipeline.svg)](https://gitlab.com/risk-metrics/faran/-/pipelines) [![Coverage](https://codecov.io/gl/risk-metrics/faran/graph/badge.svg?token=7O08BEVTAA)](https://codecov.io/gl/risk-metrics/faran) [![Benchmarks](https://img.shields.io/badge/benchmarks-bencher.dev-blue)](https://bencher.dev/perf/faran) [![PyPI](https://img.shields.io/pypi/v/faran)](https://pypi.org/project/faran/) [![Python](https://img.shields.io/pypi/pyversions/faran)](https://pypi.org/project/faran/) [![License](https://img.shields.io/pypi/l/faran)](https://gitlab.com/risk-metrics/faran/-/blob/main/LICENSE)
 
-> The [GitHub mirror](https://github.com/zuka011/faran) of Faran exists for discoverability. The primary repo is on [GitLab](https://gitlab.com/risk-metrics/faran).
+> The [GitHub mirror](https://github.com/zurabmu/faran) of Faran exists for discoverability. The primary repo is on [GitLab](https://gitlab.com/risk-metrics/faran).
 
 # Faran: A Composable Trajectory Planning Library
 
@@ -25,11 +25,6 @@ Faran also provides an optional visualization package, [`faran-visualizer`](http
 ## Why Faran?
 
 The Python ecosystem has plenty of individual MPPI implementations [1](https://github.com/UM-ARM-Lab/pytorch_mppi), [2](https://github.com/jlehtomaa/jax-mppi), [3](https://github.com/MizuhoAOKI/python_simple_mppi), state estimation libraries [4](https://github.com/rlabbe/filterpy), [5](https://github.com/rlabbe/Kalman-and-Bayesian-Filters-in-Python), and distance computation tools [6](https://github.com/MattiaMontanari/openGJK), but getting them to work together still requires a lot of glue code, plus reimplementing smaller components like cost functions, obstacle tracking, and motion prediction. Faran provides all of these under one roof, with a consistent API across backends.
-
-- **Comprehensive** — Includes all the components needed for a working planner: dynamics models, samplers, state estimation, cost functions, obstacle tracking, and more.
-- **Composable** — Swap out a cost function or sampler without reimplementing everything else.
-- **Tested** — Extensive test suite covering every component.
-- **Backend-agnostic** — Set up your planner with NumPy, then switch to JAX by changing only the imports. No code rewrite needed.
 
 ## Installation
 
@@ -66,9 +61,8 @@ planner, augmented_model, contouring_cost, lag_cost = mppi.mpcc(
         acceleration_limits=(-3.0, 3.0),
     ),
     sampler=sampler.gaussian(
-        standard_deviation=np.array([0.5, 0.05]),
-        rollout_count=256,
-        to_batch=types.bicycle.control_input_batch.create, seed=42,
+        standard_deviation=[0.5, 0.05], rollout_count=256, seed=42,
+        to_batch=types.bicycle.control_input_batch.create
     ),
     reference=reference,
     # Components do not implicitly assume any semantic meaning for state dimensions.
@@ -81,7 +75,7 @@ planner, augmented_model, contouring_cost, lag_cost = mppi.mpcc(
 )
 ```
 
-Switching `from faran.numpy` to `from faran.jax` uses the JAX backend — same API, no other changes needed.
+Switching `from faran.numpy` to `from faran.jax` uses the JAX backend. Since both backends have a compatible API, you don't need to make any other changes.
 
 <details>
 <summary><strong>Full example: simulation loop + visualization</strong></summary>
@@ -95,6 +89,9 @@ from faran import access, collectors, metrics
 
 planner = collectors.states.decorating(
     planner,
+    # A tradeoff of the flexibility is that you need to tell the library
+    # how things are wired a bit more explicitly. This aspect of the API
+    # is still being iterated on, so expect some changes.
     transformer=types.augmented.state_sequence.of_states(
         physical=types.bicycle.state_sequence.of_states,
         virtual=types.simple.state_sequence.of_states,
@@ -156,12 +153,12 @@ See the [feature overview](https://risk-metrics.gitlab.io/faran/guide/features/)
 
 ## Documentation
 
-|                                                                                |                                                                                        |
-|--------------------------------------------------------------------------------|----------------------------------------------------------------------------------------|
-| [Getting Started](https://risk-metrics.gitlab.io/faran/guide/getting-started/) | Installation, first planner, simulation loop                                           |
-| [User Guide](https://risk-metrics.gitlab.io/faran/guide/concepts/)             | Core concepts, models, samplers, costs, obstacles, estimation, risk metrics, and more  |
-| [Examples](https://risk-metrics.gitlab.io/faran/guide/examples/)               | End-to-end scenarios with interactive visualizations                                   |
-| [API Reference](https://risk-metrics.gitlab.io/faran/api/)                     | Factory functions, protocols, and type documentation                                   |
+|                                                                                |                                                                                |
+|--------------------------------------------------------------------------------|--------------------------------------------------------------------------------|
+| [Getting Started](https://risk-metrics.gitlab.io/faran/guide/getting-started/) | Installation, first planner, simulation loop                                   |
+| [User Guide](https://risk-metrics.gitlab.io/faran/guide/concepts/)             | See the math behind the algorithms and understand how components work together |
+| [Examples](https://risk-metrics.gitlab.io/faran/guide/examples/)               | End-to-end scenarios with interactive visualizations                           |
+| [API Reference](https://risk-metrics.gitlab.io/faran/api/)                     | Detailed usage instructions for every component                                |
 
 ## Contributing
 

@@ -145,6 +145,9 @@ extend-select = ["RUF018"]
 "tests/conftest.py" = [
     "E402", # Ignore module level import not at top of file
 ]
+"docs/examples/**" = [
+    "E402", # Ignore module level import not at top of file
+]
 "**/*.py" = [
     "F722", # Ignore syntax error in forward references for jaxtyping types
 ]

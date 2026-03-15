@@ -40,13 +40,13 @@ hide:
 
     ---
 
-    Set up your planner with NumPy, then switch to JAX by changing one import line. Same API, no code rewrite. The shared interface makes it possible to add new backends in the future.
+    Set up your planner with NumPy, then switch to JAX by changing one import line. Same API, no code changes. The shared interface makes it possible to add new backends in the future.
 
 -   :material-test-tube: **Tested**
 
     ---
 
-    Extensive test suite on both backends. Shape errors are caught early via `jaxtyping` + `beartype` — misconfigured pipelines fail fast with clear messages, not silent wrong results.
+    Extensive test suite for both backends. Full static type checking + runtime shape checking with `jaxtyping` + `beartype`. Misconfigured pipelines fail fast with clear messages.
 
 </div>
 
@@ -54,14 +54,13 @@ hide:
 
 ## Quick Start
 
-An [MPCC](guide/concepts/mpcc.md) planner tracking a reference path with a [kinematic bicycle model](guide/models/bicycle.md):
+An [MPCC](guide/concepts/mpcc.md) planner tracking a reference path with a [kinematic bicycle model](api/model/bicycle.md):
 
 ```python
 from faran.numpy import mppi, model, sampler, trajectory, types, extract
-import numpy as np
 
 reference = trajectory.waypoints(
-    points=np.array([[0, 0], [10, 0], [20, 5], [30, 0], [40, -5], [50, 0]]),
+    points=[(0, 0), (10, 0), (20, 5), (30, 0), (40, -5), (50, 0)],
     path_length=35.0,
 )
 
@@ -72,9 +71,8 @@ planner, augmented_model, contouring_cost, lag_cost = mppi.mpcc(
         acceleration_limits=(-3.0, 3.0),
     ),
     sampler=sampler.gaussian(
-        standard_deviation=np.array([0.5, 0.05]),
-        rollout_count=256,
-        to_batch=types.bicycle.control_input_batch.create, seed=42,
+        standard_deviation=[0.5, 0.05], rollout_count=256, seed=42,
+        to_batch=types.bicycle.control_input_batch.create
     ),
     reference=reference,
     position_extractor=extract.from_physical(lambda states: states.positions),
@@ -83,10 +81,9 @@ planner, augmented_model, contouring_cost, lag_cost = mppi.mpcc(
         "virtual": {"velocity_limits": (0.0, 15.0)},
     },
 )
-# contouring_cost and lag_cost are used for error metrics — see the full example.
 ```
 
-To use JAX, change `from faran.numpy` to `from faran.jax`. Everything else stays the same.
+To use JAX, change `from faran.numpy` to `from faran.jax`. Everything else can stay the same.
 
 [Full walkthrough :octicons-arrow-right-24:](guide/getting-started.md){ .md-button }
 
@@ -108,7 +105,7 @@ To use JAX, change `from faran.numpy` to `from faran.jax`. Everything else stays
 
     ---
 
-    Core concepts, cost design, obstacle handling, state estimation, risk metrics, and more.
+    See the math behind the algorithms and understand how the components work together.
 
     [:octicons-arrow-right-24: User guide](guide/concepts/index.md)
 
@@ -124,7 +121,7 @@ To use JAX, change `from faran.numpy` to `from faran.jax`. Everything else stays
 
     ---
 
-    Factory functions, protocols, and type documentation for every component.
+    Detailed usage instructions for every component.
 
     [:octicons-arrow-right-24: Reference](api/index.md)
 
@@ -142,25 +139,25 @@ To use JAX, change `from faran.numpy` to `from faran.jax`. Everything else stays
 
 ## Backends
 
-Write your planner once. Switch between NumPy and JAX by changing a single import — no code rewrite needed.
+Faran is designed to let you focus on your research and worry less about performance optimizations. All current and future backends are guaranteed to share the same API, so you can prototype with any backend now and switch to a faster one later (see [Backend Architecture](guide/backends.md) for details). Currently the following backends are available:
 
 | Backend   | Import                        | Best for                                                |
 |-----------|-------------------------------|---------------------------------------------------------|
-| **NumPy** | `from faran.numpy import ...` | Prototyping, debugging, environments without GPU        |
-| **JAX**   | `from faran.jax import ...`   | GPU acceleration, JIT compilation, large rollout counts |
+| **NumPy** | `from faran.numpy import ...` | Prototyping, debugging, parameter sweeps                |
+| **JAX**   | `from faran.jax import ...`   | Performance, GPU acceleration, large-scale computations |
 
-Both backends expose the same API. The shared interface is designed to support additional backends — see [Backend Architecture](guide/backends.md) for details.
+Of course, if you implement your own custom components, they might be tied to a specific backend, so there's unfortunately no magic there. 
 
 ---
 
 !!! info "Under Active Development"
 
-    Faran is being actively developed — expect missing features, [some gotchas](guide/concepts/gotchas.md), and possible API changes. See the [feature overview](guide/features.md) for what's available and what's coming.
+    Faran is being actively developed. That means some features may be missing, there are [some gotchas](guide/concepts/gotchas.md), and some of the API might change. See the [feature overview](guide/features.md) for what's available and what's coming.
 
 ---
 
 <div class="acknowledgements" markdown>
 
-**Acknowledgements** · Logo developed with input from Ilia Valian.
+**Acknowledgements** · Logo designed with input from Ilia Valian.
 
 </div>

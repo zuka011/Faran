@@ -1,10 +1,10 @@
 # Feature Overview
 
-Everything listed below is implemented, tested, and available in both the NumPy and JAX backends unless noted otherwise.
+Everything listed below is implemented, tested, and available for both the NumPy and JAX backends, unless noted otherwise.
 
 ---
 
-## :material-robot: Planning
+## :material-robot: Planners
 
 <div class="grid cards" markdown>
 
@@ -12,11 +12,11 @@ Everything listed below is implemented, tested, and available in both the NumPy 
 
     ---
 
-    Sampling-based trajectory optimizer. Configurable temperature, rollout count, horizon, and filtering.
+    An MPC algorithm that uses sampling and importance weighting to find optimal control sequences. Highly parallelizable and can solve many different MPC formulations, since it does not require gradients or convexity.
 
-    Three factory levels: [`mppi.base`](../api/mppi.md) (custom MPC), [`mppi.augmented`](../api/mppi.md) (physical + virtual states), [`mppi.mpcc`](../api/mppi.md) (MPCC path following).
+    Three configuration levels: [`mppi.base`](../api/mppi/index.md) (for any MPC problem), [`mppi.augmented`](../api/mppi/index.md) (If additional virtual states are needed), [`mppi.mpcc`](../api/mppi/index.md) (An extensible MPCC configuration).
 
-    [:octicons-arrow-right-24: MPPI guide](planners/mppi.md)
+    [:octicons-arrow-right-24: MPPI guide](../api/mppi/index.md#mppi)
 
 </div>
 
@@ -32,7 +32,7 @@ Everything listed below is implemented, tested, and available in both the NumPy 
 
     MPC formulation that decomposes tracking error into contouring (lateral) and lag (longitudinal) components, with a virtual path parameter driving progress.
 
-    [:octicons-arrow-right-24: Cost design](costs/index.md) ·
+    [:octicons-arrow-right-24: Cost design](../api/costs/index.md) ·
     [:octicons-arrow-right-24: Concepts](concepts/mpcc.md)
 
 </div>
@@ -47,9 +47,9 @@ Everything listed below is implemented, tested, and available in both the NumPy 
 
     ---
 
-    4-state model ($x, y, \theta, v$) with acceleration and steering inputs. Configurable wheelbase, rear axle distance, and input limits.
+    4-state model ($x, y, \theta, v$) with acceleration and steering inputs.
 
-    [:octicons-arrow-right-24: API](../api/model.md)
+    [:octicons-arrow-right-24: Bicycle Model](../api/model/bicycle.md)
 
 -   **Unicycle**
 
@@ -57,15 +57,15 @@ Everything listed below is implemented, tested, and available in both the NumPy 
 
     3-state model ($x, y, \theta$) with speed and angular velocity inputs.
 
-    [:octicons-arrow-right-24: API](../api/model.md)
+    [:octicons-arrow-right-24: Unicycle Model](../api/model/unicycle.md)
 
 -   **Integrator**
 
     ---
 
-    Generic $n$-dimensional single or double integrator. Used for virtual states in MPCC and for obstacle motion prediction.
+    Generic $n$-dimensional single integrator.
 
-    [:octicons-arrow-right-24: API](../api/model.md)
+    [:octicons-arrow-right-24: Single Integrator](../api/model/integrator.md)
 
 </div>
 
@@ -79,17 +79,17 @@ Everything listed below is implemented, tested, and available in both the NumPy 
 
     ---
 
-    Zero-mean Gaussian perturbations around a nominal control sequence. Per-dimension standard deviation.
+    Zero-mean Gaussian perturbations around a nominal control sequence.
 
-    [:octicons-arrow-right-24: API](../api/sampler.md)
+    [:octicons-arrow-right-24: Gaussian Sampler](../api/sampler/gaussian.md)
 
 -   **Halton + Spline**
 
     ---
 
-    Halton quasi-random sequences mapped through an inverse normal CDF and interpolated with cubic splines. Temporally smooth, low-discrepancy perturbations.
+    Halton quasi-random sequences mapped to a Gaussian distribution and interpolated with cubic splines. Temporally smooth, low-discrepancy perturbations.
 
-    [:octicons-arrow-right-24: API](../api/sampler.md)
+    [:octicons-arrow-right-24: Halton Spline Sampler](../api/sampler/halton.md)
 
 </div>
 
@@ -107,7 +107,7 @@ Everything listed below is implemented, tested, and available in both the NumPy 
     - **Lag** — longitudinal deviation from the reference point
     - **Progress** — rewards forward motion along the path
 
-    [:octicons-arrow-right-24: Tracking costs](costs/tracking.md)
+    [:octicons-arrow-right-24: Tracking costs](../api/costs/tracking.md)
 
 -   **Safety**
 
@@ -116,7 +116,7 @@ Everything listed below is implemented, tested, and available in both the NumPy 
     - **Collision** — proximity to obstacles via signed distance
     - **Boundary** — states approaching corridor edges
 
-    [:octicons-arrow-right-24: Safety costs](costs/safety.md)
+    [:octicons-arrow-right-24: Safety costs](../api/costs/safety.md)
 
 -   **Comfort**
 
@@ -125,43 +125,57 @@ Everything listed below is implemented, tested, and available in both the NumPy 
     - **Control smoothing** — rate of change between consecutive inputs
     - **Control effort** — input magnitude
 
-    [:octicons-arrow-right-24: Comfort costs](costs/comfort.md)
-
--   **Composition**
-
-    ---
-
-    `costs.combined(...)` sums any number of cost components. Custom cost functions can be any callable with the matching signature.
-
-    [:octicons-arrow-right-24: Cost design](costs/index.md)
+    [:octicons-arrow-right-24: Comfort costs](../api/costs/comfort.md)
 
 </div>
 
 ---
 
-## :material-shield-alert: Collision Avoidance
+## :material-shield-alert: Obstacle Avoidance
 
 <div class="grid cards" markdown>
 
--   **Distance Computation**
+-   **State Estimation**
 
     ---
 
-    - **Circle-to-circle** — fast distance between circular representations
-    - **SAT** — exact signed distance between convex polygons
+    - **Finite Difference Estimators** - for noise-free state estimation
+    - **Kalman Filters** - for linear and nonlinear observation models
+    - **Adaptive Noise Estimators** - for automatic process and observation noise tuning
+  
+    [:octicons-arrow-right-24: State Estimation](../api/estimation/index.md)
 
-    [:octicons-arrow-right-24: API](../api/obstacles.md)
-
--   **Obstacle Handling**
+-   **Motion Prediction**
 
     ---
 
-    - Hungarian algorithm for obstacle ID assignment across frames
-    - Running history with ID-based tracking
-    - State prediction with model assumptions (e.g. constant velocity)
-    - Gaussian sampling of predicted obstacle states for risk-aware planning
+    All possible curvilinear prediction models for available system dynamics assumptions:
 
-    [:octicons-arrow-right-24: Obstacle guide](obstacles/index.md)
+    - **Kinematic bicycle model** - e.g. for predicting traffic motion
+    - **Kinematic unicycle model** - e.g. for mobile robots
+    - **Single integrator model** - e.g. for pedestrians
+
+    [:octicons-arrow-right-24: Motion Prediction](../api/predictor/index.md)
+
+-   **Distance Computation & Collision Detection**
+
+    ---
+
+    - **Circle-to-circle** — distance between multi-circle approximations
+    - **SAT** — distance between convex polygons approximation
+
+    [:octicons-arrow-right-24: Distance Computation](../api/obstacles/index.md#distance-computation)
+
+-   **Miscellaneous**
+
+    ---
+
+    - Running history for collecting observations with ID tracking
+    - Hungarian algorithm for obstacle ID assignment
+    - Synthetic noise for simulating noisy observations
+    - Obstacle state sampling, e.g. for risk-aware motion planning
+
+    [:octicons-arrow-right-24: Obstacle Avoidance](../api/obstacles/index.md)
 
 </div>
 
@@ -169,7 +183,7 @@ Everything listed below is implemented, tested, and available in both the NumPy 
 
 ## :material-chart-bell-curve: Risk Metrics
 
-Risk-aware collision costs via the [riskit](https://gitlab.com/risk-metrics/riskit) library. The risk metric defines how a stochastic cost distribution is aggregated into a scalar cost for optimization. 
+Risk-aware collision costs via the [riskit](https://gitlab.com/risk-metrics/riskit) library. The risk metric defines how a stochastic cost distribution is aggregated into a scalar cost for optimization. See [Risk Metrics](../api/costs/risk.md) for details.
 
 | Metric             | Description                                      |
 |--------------------|--------------------------------------------------|
@@ -192,7 +206,7 @@ Risk-aware collision costs via the [riskit](https://gitlab.com/risk-metrics/risk
     - **Waypoints** — a B-spline path defined by a sequence of waypoints
     - **Line** — straight path between two endpoints
 
-    [:octicons-arrow-right-24: API](../api/trajectory.md)
+    [:octicons-arrow-right-24: Trajectories](../api/trajectory/index.md)
 
 -   **Boundaries**
 
@@ -201,7 +215,7 @@ Risk-aware collision costs via the [riskit](https://gitlab.com/risk-metrics/risk
     - **Fixed-width corridor** — symmetric or asymmetric constant width
     - **Piecewise fixed-width** — segment-varying widths at arc-length breakpoints
 
-    [:octicons-arrow-right-24: API](../api/boundary.md)
+    [:octicons-arrow-right-24: Boundaries](../api/boundary/index.md)
 
 </div>
 
@@ -219,15 +233,18 @@ Post-simulation evaluation for benchmarking and analysis.
 | **Constraint violation** | Boundary and limit violations                                   |
 | **Comfort**              | Jerk, lateral acceleration, smoothness                          |
 
-[:octicons-arrow-right-24: Metrics guide](metrics/index.md) ·
-[:octicons-arrow-right-24: API](../api/metrics.md)
+[:octicons-arrow-right-24: Metrics guide](../api/metrics/index.md) ·
+[:octicons-arrow-right-24: API](../api/metrics/index.md)
 
 ---
 
 ## :material-map-marker-path: Roadmap
 
-| Feature                               | Status  |
-|---------------------------------------|---------|
-| Additional planning algorithms (iLQR) | Planned |
-| Waypoint formulation of MPC           | Planned |
-| Multi-agent / human environments      | Partial |
+| Feature                                                   | Status  |
+|-----------------------------------------------------------|---------|
+| Additional planning algorithms (e.g. iLQR)                | Planned |
+| Additional MPC formulations (e.g. Waypoint tracking)      | Planned |
+| Components and application examples beyond mobile robots  | Planned |
+| Plug-in system for the visualizer                         | Planned |
+| More magic 🪄 in planner configuration (less boilerplate) | Planned |
+| JIT friendlier architecture for data collection           | Planned |

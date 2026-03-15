@@ -1,37 +1,13 @@
+---
+reading_time: true
+---
+
 # Computational Framework
 
-All computations operate on 3D tensors with a consistent layout.
+To keep Faran performant, all components are designed to perform computations in batches. Keeping in mind that the underlying numerical libraries (Numpy, JAX) automatically vectorize/parallelize batched operations, this makes performance optimizations easier, but it also means there are a lot of high-dimensional arrays floating around. If you're implementing custom components, the following conventions used in Faran could be helpful to follow:
 
-## Tensor Shapes
+- Arrays are always typed using [jaxtyping](https://github.com/patrick-kidger/jaxtyping) for readability, even if the shapes are not strictly enforced at runtime. In critical code paths, [beartype](https://beartype.readthedocs.io/en/latest/) is used for runtime type checking.
+- If a time dimension exists, it is always the first dimension. This makes it easier to implement cost functions that operate on states and inputs from different time steps (e.g. you would write `inputs[t] - inputs[t-1]` to get the input difference between two consecutive time steps.)
+- If a state/control dimension exists, it is always the second dimension. The batching dimensions (e.g. rollout, samples, obstacles) are placed at the end, since these are least likely to be accessed individually.
 
-| Shape | Meaning |
-|-------|---------|
-| $(T, D_x, M)$ | State batch — $T$ time steps, $D_x$ state dimensions, $M$ rollouts |
-| $(T, D_u, M)$ | Control batch — same layout for control inputs |
-| $(T, M)$ | Cost array — one scalar per rollout per time step |
-
-MPPI sums costs over $T$ to get a total cost per rollout, then computes softmax weights to combine all $M$ samples.
-
-## Extractors
-
-Extractors decouple cost functions from specific state representations. A cost function never accesses state arrays directly — it asks an extractor for the values it needs.
-
-This lets the same cost function work with different models:
-
-```python
-from faran.numpy import extract
-
-# For augmented states: extract position from the physical sub-state
-position = extract.from_physical(lambda states: states.positions)
-
-# For augmented states: extract path parameter from the virtual sub-state
-path_param = extract.from_virtual(lambda states: states.array[:, 0, :])
-```
-
-## Processing Pipeline
-
-```
-Sampler → Perturbations → Model.step (×T) → State batch → Cost function → Costs → Softmax → Optimal control
-```
-
-Each component is independent: you can swap any model, cost function, or sampler without changing the others.
+For example, MPPI expects a cost function to accept `Float[Array, "T D_x M"]` states and `Float[Array, "T D_u M"]` inputs, where `T` is the time dimension, `D_x` and `D_u` are the state and control dimensions, and `M` is the number of rollouts/samples. The returned costs should have shape `Float[Array, "T M"]` (i.e. a cost for each time step and rollout).

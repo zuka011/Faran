@@ -1,8 +1,8 @@
 import type { FunctionalComponent } from "preact";
 import { useState } from "preact/hooks";
 import type { Visualizable } from "../../core/types.js";
-import { useResizeAfterLayoutChange } from "../hooks.js";
 import { radiansToDegrees } from "../../utils/math.js";
+import { useResizeAfterLayoutChange } from "../hooks.js";
 
 interface InfoPanelProps {
     currentTimestep: number;
@@ -25,10 +25,14 @@ export const InfoPanel: FunctionalComponent<InfoPanelProps> = ({ currentTimestep
 
     return (
         <div class={`info-panel ${collapsed ? "collapsed" : ""}`} id="info-panel">
-            <h3 class="info-panel-header" onClick={() => setCollapsed(!collapsed)}>
+            <button
+                type="button"
+                class="info-panel-header"
+                onClick={() => setCollapsed(!collapsed)}
+            >
                 <span class="info-panel-chevron">{collapsed ? "▸" : "▾"}</span>
                 Simulation State
-            </h3>
+            </button>
             {!collapsed && (
                 <table class="info-table">
                     <tr>

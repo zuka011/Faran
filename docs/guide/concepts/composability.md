@@ -1,6 +1,10 @@
+---
+status: draft
+---
+
 # Composability
 
-Faran is designed so that components can be freely combined. Two key principles enable this: **decoupled semantic meaning** and **data encapsulation**.
+Components can be freely combined because of **decoupled semantic meaning** and **data encapsulation**.
 
 ## Decoupled Components
 
@@ -24,8 +28,6 @@ position = extract.from_physical(lambda states: states.positions)
 heading = extract.from_physical(lambda states: states.headings)
 ```
 
-See [Computational Framework](framework.md#extractors) for details.
-
 ## Data Encapsulation
 
 State and control types wrap raw arrays with semantic meaning. Instead of accessing `array[:, 0, :]` directly, use named properties:
@@ -37,14 +39,4 @@ states.speeds      # (T, M) — speed (bicycle only)
 ```
 
 This prevents indexing errors and makes code self-documenting. Type constructors validate shapes at creation time.
-
-## Backend Swapping
-
-NumPy and JAX backends expose identical APIs:
-
-```python
-from faran.numpy import mppi, model, costs  # prototyping
-from faran.jax import mppi, model, costs     # production
-```
-
-All components in a pipeline must use the same backend. See [Backends](../backends.md).
+ 

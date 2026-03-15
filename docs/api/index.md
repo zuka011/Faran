@@ -1,51 +1,46 @@
+---
+status: draft
+---
+
 # API Reference
 
-This section documents the factory functions, protocols, and types for every Faran component.
+Factory functions, protocols, and types for every Faran component.
 
-!!! warning "Work in Progress"
-    This page is under active development and may be incomplete or subject to change.
-
-## Module Overview
+## Modules
 
 | Module | Purpose |
 |--------|---------|
-| [`mppi`](mppi.md) | [MPPI](../guide/planners/mppi.md) planner factories |
-| [`model`](model.md) | Dynamical models (bicycle, unicycle, integrator) |
-| [`costs`](costs.md) | Cost functions (tracking, safety, comfort) |
-| [`sampler`](sampler.md) | Control input samplers |
-| [`trajectory`](trajectory.md) | Reference path definitions |
-| [`boundary`](boundary.md) | Drivable corridor constraints |
-| [`obstacles`](obstacles.md) | Obstacle state handling and sampling |
-| [`predictor`](predictor.md) | Motion prediction and covariance propagation |
-| [`collectors`](collectors.md) | Simulation data collection |
-| [`metrics`](metrics.md) | Evaluation metrics |
-| [`types`](types.md) | Protocols and type definitions |
-| [`visualizer`](visualizer.md) | Interactive HTML visualizations |
+| [`mppi`](mppi/index.md) | MPPI planner configuration and execution |
+| [`model`](model/index.md) | Dynamical models (bicycle, unicycle, integrator) |
+| [`estimation`](estimation/index.md) | State estimation filters (KF, EKF, UKF, finite difference) |
+| [`costs`](costs/index.md) | Cost functions (tracking, safety, comfort, risk) |
+| [`sampler`](sampler/index.md) | Control input samplers (Gaussian, Halton) |
+| [`trajectory`](trajectory/index.md) | Reference path definitions (line, waypoints) |
+| [`boundary`](boundary/index.md) | Drivable corridor constraints |
+| [`obstacles`](obstacles/index.md) | Obstacle state handling, distance, and sampling |
+| [`predictor`](predictor/index.md) | Obstacle motion prediction |
+| [`collectors`](collectors/index.md) | Simulation data collection |
+| [`metrics`](metrics/index.md) | Post-simulation evaluation metrics |
+| [`types`](types/index.md) | Protocols and type definitions |
+| [`visualizer`](visualizer/index.md) | Interactive HTML visualizations |
 
 ## Backend Namespaces
 
 All factory functions are accessed through backend namespaces:
 
 ```python
-# NumPy backend
 from faran.numpy import mppi, model, sampler, costs, trajectory, boundary, types
-
-# JAX backend
 from faran.jax import mppi, model, sampler, costs, trajectory, boundary, types
 ```
 
-Both namespaces expose identical APIs. See [Backends](../guide/backends.md) for details.
+Both namespaces expose identical APIs. See [Backends](../guide/backends.md).
 
 ## Conventions
 
-### Signed Distances
-
-| Distance | Meaning |
-|----------|---------|
+| Signed Distance | Meaning |
+|-----------------|---------|
 | Positive | Inside valid region |
 | Zero | On boundary |
 | Negative | Violation |
 
-### State Batch Shape
-
-State batches have shape $(T, D_x, M)$ where $T$ is the time horizon, $D_x$ the state dimension, and $M$ the number of rollouts. See [Conventions](../guide/concepts/conventions.md) for the complete reference.
+State batches have shape $(T, D_x, M)$ where $T$ is the time horizon, $D_x$ the state dimension, and $M$ the number of rollouts. See [Conventions](../guide/concepts/conventions.md).

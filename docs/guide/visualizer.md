@@ -1,6 +1,10 @@
+---
+status: draft
+---
+
 # Visualizer
 
-`faran-visualizer` generates standalone HTML files with interactive Plotly charts from simulation results. Each visualization includes an animated vehicle replay and configurable time-series plots.
+`faran-visualizer` generates standalone HTML files with interactive Plotly charts from simulation results. Each visualization includes an animated ego replay and configurable time-series plots.
 
 ## Installation
 
@@ -12,9 +16,9 @@ Requires **Node.js 18+** at runtime.
 
 ## How It Works
 
-1. You build a result object (`MpccSimulationResult` or `Visualizable.SimulationResult`) from your simulation data.
-2. You call a visualizer factory (`visualizer.mpcc()` or `visualizer.simulation()`) to create a renderer.
-3. The renderer serializes the result to JSON and invokes the TypeScript core to produce a self-contained HTML file.
+1. You build a result object (e.g. `MpccSimulationResult` or `Visualizable.SimulationResult`) from your simulation data.
+2. You call a visualizer factory (e.g. `visualizer.mpcc()` or `visualizer.simulation()`) to create a renderer.
+3. The renderer serializes the result to JSON and invokes a bundled JavaScript CLI application to generate the self-contained HTML file.
 
 Output goes to the configured directory (default: current working directory). Each call produces `<key>.json` and `<key>.html`.
 
@@ -25,7 +29,7 @@ configure(output_directory="./results")
 
 ## MPCC Visualization
 
-For planners created with `mppi.mpcc()`, use `MpccSimulationResult`:
+For planners created with `mppi.mpcc()`, use `MpccSimulationResult` for convenience:
 
 ```python
 import asyncio
@@ -109,8 +113,4 @@ speed_plot = Plot.Additional(
 
 Pass additional plots to the `MpccSimulationResult` or `Visualizable.SimulationResult` via the `additional_plots` field.
 
-## What the Output Shows
-
-The HTML file contains an interactive dashboard with a visualization of the vehicle's trajectory, the reference path, and any obstacles. Time-series plots show contouring and lag errors, control inputs, risk metrics, or any custom data you provide. All plots are interactive (Plotly): pan, zoom, and hover for exact values.
-
-For API signatures and detailed options, see the [Visualizer API reference](../api/visualizer.md).
+For API signatures and detailed options, see the [Visualizer API reference](../api/visualizer/index.md).

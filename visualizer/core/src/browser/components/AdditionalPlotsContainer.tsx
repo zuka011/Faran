@@ -2,9 +2,9 @@ import type { FunctionalComponent } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import type { Theme } from "@/core/defaults.js";
 import type { Plot, Visualizable } from "../../core/types.js";
+import { useResizeAfterLayoutChange } from "../hooks.js";
 import type { VisualizationState } from "../state.js";
 import type { UpdateManager } from "../update.js";
-import { useResizeAfterLayoutChange } from "../hooks.js";
 import { createAdditionalPlot, groupPlots, type PlotGroup } from "./additional-plot.js";
 
 interface PlotContainerProps {

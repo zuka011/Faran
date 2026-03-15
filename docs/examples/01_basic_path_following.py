@@ -4,111 +4,73 @@ The planner tracks an S-curve reference trajectory using contouring, lag,
 and progress costs with a Savitzky-Golay filter for control smoothing.
 """
 
-from dataclasses import dataclass
-
-from numtypes import array
-from tqdm.auto import tqdm
-
-from faran import MpccErrorMetricResult, access, collectors, metrics
-from faran.numpy import (
-    costs,
-    extract,
-    filters,
-    model,
-    mppi,
-    sampler,
-    trajectory,
-    types,
-)
-from faran_visualizer import MpccSimulationResult
-
-# ── Type aliases ──────────────────────────────────────────────────────────── #
-
-type BicycleState = types.bicycle.State
-type BicycleStateBatch = types.bicycle.StateBatch
-type AugmentedState = types.augmented.State[BicycleState, types.simple.State]
-type AugmentedInputSequence = types.augmented.ControlInputSequence[
-    types.bicycle.ControlInputSequence, types.simple.ControlInputSequence
-]
 
 # ── Constants ─────────────────────────────────────────────────────────────── #
 
+# --8<-- [start:reference]
+from faran.numpy import trajectory
+
+REFERENCE = trajectory.waypoints(
+    points=[
+        (0.0, 0.0),
+        (10.0, 0.0),
+        (20.0, 10.0),
+        (10.0, 20.0),
+        (0.0, 20.0),
+        (-10.0, 20.0),
+        (-20.0, 30.0),
+        (-10.0, 40.0),
+        (0.0, 40.0),
+    ],
+    path_length=50.0,
+)
+# --8<-- [end:reference]
+
+# --8<-- [start:constants]
+
 HORIZON = 30
-DT = 0.1
+TIME_STEP = 0.1
 WHEELBASE = 2.5
 VEHICLE_WIDTH = 1.2
 TEMPERATURE = 50.0
 ROLLOUT_COUNT = 256
 STEP_LIMIT = 150
 
+# --8<-- [end:constants]
+
 # ── Extractors ────────────────────────────────────────────────────────────── #
 
+from faran.numpy import types
 
-def heading(states: BicycleStateBatch) -> types.Headings:
+
+def heading(states: types.bicycle.StateBatch) -> types.Headings:
     return types.headings(heading=states.heading())
 
 
-# --8<-- [start:reference]
-REFERENCE = trajectory.waypoints(
-    points=array(
-        [
-            [0.0, 0.0],
-            [10.0, 0.0],
-            [20.0, 5.0],
-            [25.0, 15.0],
-            [20.0, 25.0],
-        ],
-        shape=(5, 2),
-    ),
-    path_length=50.0,
-)
-# --8<-- [end:reference]
-
-
-# ── Result ────────────────────────────────────────────────────────────────── #
-
-
-@dataclass(frozen=True)
-class Result:
-    """Outcome of a planning simulation."""
-
-    final_state: AugmentedState
-    visualization: MpccSimulationResult
-    tracking_errors: MpccErrorMetricResult
-    collision_detected: bool
-
-    @property
-    def progress(self) -> float:
-        return float(self.final_state.virtual.array[0])
-
-    @property
-    def reached_goal(self) -> bool:
-        return self.progress >= REFERENCE.path_length * 0.9
-
-
-# ── Setup & run ───────────────────────────────────────────────────────────── #
+# ── Setup ─────────────────────────────────────────────────────────────────── #
 
 
 # --8<-- [start:setup]
+
+from faran import collectors, metrics
+from faran.numpy import extract, filters, model, mppi, sampler, types
+from tqdm.auto import tqdm
+
+
 def create():
     planner, augmented_model, contouring_cost, lag_cost = mppi.mpcc(
         model=model.bicycle.dynamical(
-            time_step_size=DT,
+            time_step_size=TIME_STEP,
             wheelbase=WHEELBASE,
             speed_limits=(0.0, 15.0),
             steering_limits=(-0.5, 0.5),
             acceleration_limits=(-3.0, 3.0),
         ),
         sampler=sampler.gaussian(
-            standard_deviation=array([0.5, 0.2], shape=(2,)),
+            standard_deviation=[0.5, 0.2],
             rollout_count=ROLLOUT_COUNT,
             to_batch=types.bicycle.control_input_batch.create,
             seed=42,
-        ),
-        costs=(
-            costs.comfort.control_smoothing(
-                weights=array([5.0, 20.0, 5.0], shape=(3,)),
-            ),
         ),
         reference=REFERENCE,
         position_extractor=extract.from_physical(lambda states: states.positions),
@@ -118,7 +80,6 @@ def create():
         },
         filter_function=filters.savgol(window_length=11, polynomial_order=3),
     )
-    # --8<-- [end:setup]
 
     planner = (
         trajectories_collector := collectors.trajectories.decorating(
@@ -141,8 +102,78 @@ def create():
     return planner, augmented_model, registry, error_metric
 
 
+# --8<-- [end:setup]
+
+# ── Result ────────────────────────────────────────────────────────────────── #
+
+# --8<-- [start:result]
+
+from dataclasses import dataclass
+
+from faran import MpccErrorMetricResult, access
+from faran_visualizer import MpccSimulationResult
+
+type AugmentedState = types.augmented.State[
+    types.bicycle.State,
+    types.simple.State,
+]
+
+
+@dataclass(frozen=True)
+class Result:
+    """Outcome of a planning simulation."""
+
+    final_state: AugmentedState
+    visualization: MpccSimulationResult
+    tracking_errors: MpccErrorMetricResult
+
+    # --8<-- [end:result]
+
+    @property
+    def progress(self) -> float:
+        return float(self.final_state.virtual.array[0])
+
+    @property
+    def reached_goal(self) -> bool:
+        return self.progress >= REFERENCE.path_length * 0.9
+
+    @property
+    def collision_detected(self) -> bool:
+        # This example doesn't have any obstacles, so we'll just return False here.
+        return False
+
+
+# --8<-- [start:extract]
+def extract_simulation_results(current_state, registry, error_metric):
+    trajectories = registry.data(access.trajectories.require())
+    errors = registry.get(error_metric)
+
+    visualization = MpccSimulationResult(
+        reference=REFERENCE,
+        states=registry.data(access.states.require()),
+        optimal_trajectories=[it.optimal for it in trajectories],
+        nominal_trajectories=[it.nominal for it in trajectories],
+        contouring_errors=errors.contouring,
+        lag_errors=errors.lag,
+        time_step_size=TIME_STEP,
+        wheelbase=WHEELBASE,
+        vehicle_width=VEHICLE_WIDTH,
+        max_contouring_error=2.5,
+        max_lag_error=5.0,
+    )
+
+    return Result(
+        final_state=current_state, visualization=visualization, tracking_errors=errors
+    )
+
+
+# --8<-- [end:extract]
+
+# ── Simulation loop ───────────────────────────────────────────────────────── #
+
+
 # --8<-- [start:loop]
-def run(planner, augmented_model, registry, error_metric) -> Result:
+def run(planner, augmented_model, registry, error_metric):
     current_state = types.augmented.state.of(
         physical=types.bicycle.state.create(x=0.0, y=0.0, heading=0.0, speed=0.0),
         virtual=types.simple.state.zeroes(dimension=1),
@@ -171,29 +202,11 @@ def run(planner, augmented_model, registry, error_metric) -> Result:
             break
 
         bar.set_postfix(progress=f"{current_state.virtual.array[0]:.2f}%")
-    # --8<-- [end:loop]
 
-    trajectories = registry.data(access.trajectories.require())
-    errors = registry.get(error_metric)
+    return extract_simulation_results(current_state, registry, error_metric)
 
-    return Result(
-        final_state=current_state,
-        visualization=MpccSimulationResult(
-            reference=REFERENCE,
-            states=registry.data(access.states.require()),
-            optimal_trajectories=[it.optimal for it in trajectories],
-            nominal_trajectories=[it.nominal for it in trajectories],
-            contouring_errors=errors.contouring,
-            lag_errors=errors.lag,
-            time_step_size=DT,
-            wheelbase=WHEELBASE,
-            vehicle_width=VEHICLE_WIDTH,
-            max_contouring_error=2.5,
-            max_lag_error=5.0,
-        ),
-        tracking_errors=errors,
-        collision_detected=False,
-    )
+
+# --8<-- [end:loop]
 
 
 SEED = "doc-basic-path-following"
@@ -205,9 +218,10 @@ MAX_LAG_ERROR = 5.0
 
 
 # --8<-- [start:visualize]
-async def visualize(result: Result) -> None:
-    from faran_visualizer import configure, visualizer
+from faran_visualizer import configure, visualizer
 
+
+async def visualize(result: Result) -> None:
     configure(output_directory=".")
     await visualizer.mpcc()(result.visualization, key="visualization")
 
