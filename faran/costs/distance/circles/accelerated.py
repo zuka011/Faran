@@ -125,16 +125,67 @@ def compute_circle_distances(
         local_origins=obstacle_origins,
     )
 
-    pairwise = pairwise_distances(
-        ego_x=ego_global_x,
-        ego_y=ego_global_y,
-        ego_radii=ego_radii,
+    obstacle_x, obstacle_y, obstacle_radii = flatten_obstacle_circles(
         obstacle_x=obstacle_global_x,
         obstacle_y=obstacle_global_y,
         obstacle_radii=obstacle_radii,
     )
 
-    return jnp.min(pairwise, axis=(1, 4)).transpose((1, 0, 2, 3))
+    pairwise = pairwise_distances(
+        ego_x=ego_global_x,
+        ego_y=ego_global_y,
+        ego_radii=ego_radii,
+        obstacle_x=obstacle_x,
+        obstacle_y=obstacle_y,
+        obstacle_radii=obstacle_radii,
+    )
+
+    return jnp.min(pairwise, axis=1).transpose(1, 0, 2, 3)
+
+
+@jaxtyped
+def flatten_obstacle_circles(
+    *,
+    obstacle_x: Float[JaxArray, "C T K N"],
+    obstacle_y: Float[JaxArray, "C T K N"],
+    obstacle_radii: Float[JaxArray, " C"],
+) -> tuple[
+    Float[JaxArray, "CK T N"],
+    Float[JaxArray, "CK T N"],
+    Float[JaxArray, " CK"],
+]:
+    # NOTE: Workaround for XLA's inefficient compilation of reductions over non-leading axes.
+    #
+    # Merges the obstacle circle (C) and obstacle sample (K) dimensions into a single
+    # leading axis. This ensures the subsequent reduction is over a single contiguous
+    # axis, which XLA manages to compile efficiently.
+    T, N = obstacle_x.shape[1], obstacle_x.shape[3]
+    K = obstacle_x.shape[2]
+    flat_x = obstacle_x.transpose(0, 2, 1, 3).reshape(-1, T, N)
+    flat_y = obstacle_y.transpose(0, 2, 1, 3).reshape(-1, T, N)
+    flat_radii = jnp.repeat(obstacle_radii, K)
+    return flat_x, flat_y, flat_radii
+
+
+@jaxtyped
+def pairwise_distances(
+    *,
+    ego_x: Float[JaxArray, "V T M"],
+    ego_y: Float[JaxArray, "V T M"],
+    ego_radii: Float[JaxArray, " V"],
+    obstacle_x: Float[JaxArray, "CK T N"],
+    obstacle_y: Float[JaxArray, "CK T N"],
+    obstacle_radii: Float[JaxArray, " CK"],
+) -> Float[JaxArray, "V CK T M N"]:
+    dx = ego_x[:, None, :, :, None] - obstacle_x[None, :, :, None, :]
+    dy = ego_y[:, None, :, :, None] - obstacle_y[None, :, :, None, :]
+
+    center_dist = jnp.sqrt(dx**2 + dy**2)
+    radii_sum = (
+        ego_radii[:, None, None, None, None] + obstacle_radii[None, :, None, None, None]
+    )
+
+    return center_dist - radii_sum
 
 
 @jax.jit
@@ -158,26 +209,3 @@ def to_global_positions(
         x + local_x * cos_h - local_y * sin_h,
         y + local_x * sin_h + local_y * cos_h,
     )
-
-
-@jax.jit
-@jaxtyped
-def pairwise_distances(
-    *,
-    ego_x: Float[JaxArray, "V T M"],
-    ego_y: Float[JaxArray, "V T M"],
-    ego_radii: Float[JaxArray, " V"],
-    obstacle_x: Float[JaxArray, "C T K N"],
-    obstacle_y: Float[JaxArray, "C T K N"],
-    obstacle_radii: Float[JaxArray, " C"],
-) -> Float[JaxArray, "V C T M K N"]:
-    dx = ego_x[:, None, :, :, None, None] - obstacle_x[None, :, :, None, :, :]
-    dy = ego_y[:, None, :, :, None, None] - obstacle_y[None, :, :, None, :, :]
-
-    center_dist = jnp.sqrt(dx**2 + dy**2)
-    radii_sum = (
-        ego_radii[:, None, None, None, None, None]
-        + obstacle_radii[None, :, None, None, None, None]
-    )
-
-    return center_dist - radii_sum

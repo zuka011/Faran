@@ -12,8 +12,8 @@ bench-baseline:
     uv run pytest -m benchmark --benchmark-autosave -v
 
 # Run risk metric benchmarks and save to JSON
-bench-risk:
-    uv run pytest -m risk_benchmark --benchmark-json=benchmark_risk.json -v
+bench-risk *args:
+    uv run pytest -m risk_benchmark --benchmark-json=benchmark_risk.json -v -s {{ args }}
 
 # Generate report for benchmark results
 bench-report *args:
@@ -28,7 +28,8 @@ bench-and-report *args: bench
     uv run python -m tests.benchmarks.report show benchmark.json {{ args }}
 
 # Run risk metric benchmarks then generate report
-bench-risk-and-report *args: bench-risk
+bench-risk-and-report bench_flags="" *args:
+    just bench-risk {{ bench_flags }}
     uv run python -m tests.benchmarks.report show benchmark_risk.json {{ args }}
 
 # Generate Jupyter notebooks from documentation examples
