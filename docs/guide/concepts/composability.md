@@ -8,35 +8,7 @@ Components can be freely combined because of **decoupled semantic meaning** and 
 
 ## Decoupled Components
 
-Cost functions, samplers, and models are independent of each other. A collision cost does not know whether the ego uses a bicycle or unicycle model — it only asks an extractor for positions and headings.
+All components in Faran are designed to be as decoupled as possible. For example, cost functions don't assume any particular state representation, and instead ask for extractors or other components to retrieve the necessary information. Sure, you could use structural subtyping for the same purpose, but with so many components and possible combinations, passing explicit "glue" components is cleaner.
 
-This means:
-
-- The same collision cost works with any dynamics model
-- Samplers are unaware of what model the perturbations will drive
-- Cost functions compose via `costs.combined(...)` without knowing about each other
-
-## Extractors
-
-Extractors bridge the gap between generic cost functions and specific state representations:
-
-```python
-from faran.numpy import extract
-
-# Works regardless of which model produces the states
-position = extract.from_physical(lambda states: states.positions)
-heading = extract.from_physical(lambda states: states.headings)
-```
-
-## Data Encapsulation
-
-State and control types wrap raw arrays with semantic meaning. Instead of accessing `array[:, 0, :]` directly, use named properties:
-
-```python
-states.positions   # (T, 2, M) — x and y
-states.headings    # (T, M) — heading angle
-states.speeds      # (T, M) — speed (bicycle only)
-```
-
-This prevents indexing errors and makes code self-documenting. Type constructors validate shapes at creation time.
+Despite the flexibility, the library is statically typed in a way that ensures incompatible components will produce type errors. For example, you'll get a type error if you try to directly use a unicycle model state estimator together with a bicycle model for motion prediction (since some necessary state information would be missing for motion prediction).
  

@@ -30,4 +30,4 @@ import numpy as np
 numpy_array = np.asarray(jax_control.optimal)
 ```
 
-This is convenient if you want to serialize data or debug with print statements.
+This is convenient if you want to serialize data, perform computations that are not performance-sensitive, or whatever else you might use NumPy for.

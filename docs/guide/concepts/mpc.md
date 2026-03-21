@@ -6,7 +6,7 @@ reading_time: true
 
 Model Predictive Control (MPC) is a popular optimization-based control strategy[@Camacho2004]. Instead of solving the entire control problem once (e.g. deciding in advance how to drive to the supermarket), MPC solves a series of smaller optimization problems at each time step (e.g. deciding how to take the next turn without crashing into the neighbor's fence). The idea is to find an optimal sequence of control inputs over a finite time horizon, execute a part of that sequence, then replan at the next step using updated information on the system's state and environment.
 
-Formally, given the current state $x_0$, MPC solves the following constrained optimization problem over a horizon of $T$ steps:
+Given the current state $x_0$, MPC solves the following constrained optimization problem over a horizon of $T$ steps:
 
 $$
 \min_{u_0, \dots, u_{T-1}} \; \sum_{t=0}^{T-1} \ell(x_t, u_t) + V(x_T) \\

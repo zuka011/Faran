@@ -84,7 +84,7 @@ The weighted average of sampled control trajectories in MPPI can produce noisy c
 
 The SG filter smooths a discrete sequence by fitting a low-degree polynomial to successive windows of adjacent data points using least squares, then taking the fitted polynomial's value at the center of each window as the smoothed output.
 
-#definition(title: [Savitzky-Golay Filter @Savitzky1964])[
+#definition(title: [Savitzky-Golay Filter @Savitzky1964 @Williams2018])[
   Let $y = {y_0, y_1, ..., y_(#horizon -1)}$ be a discrete sequence (e.g. one component of the optimal control sequence). Given a half-window size $w$ and a polynomial degree $p$ (with $p < 2w + 1$), the smoothed value at time step $t$ is:
 
   $
@@ -501,7 +501,7 @@ If we find an axis that separates the two rectangles, we can compute the minimum
   where $"gap"(I_A, I_B) = max(min I_B - max I_A, min I_A - max I_B)$. If the gap is negative, the rectangles intersect and the numerical value represents the penetration depth.
 ]
 
-You can see the idea in the below figure#footnote[This approach is not limited to rectangles and can be applied to any convex polygon.].
+You can see the idea in the below figure#footnote[This approach is not limited to rectangles and can be applied to any convex polygon.]. Although the collision check and penetration depth computations are exact for convex polygons, a caveat is that the minimum distance computed by the SAT method is a lower bound on the true minimum distance between the rectangles. The closest points may not lie along the separating axes. In the worst case, the true minimum distance can be up to a factor of $sqrt(2)$ larger than the SAT distance for rectangles.
 
 #figure(
   sat-diagram(),

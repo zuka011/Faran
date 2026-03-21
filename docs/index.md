@@ -7,7 +7,7 @@ hide:
 <div class="hero" markdown="1">
 <img src="assets/logo.svg" alt="Faran Logo">
 <h1>Composable Trajectory Planning for Python</h1>
-<p>Build trajectory planners from modular, interchangeable components. Set up a working pipeline in minutes, then customize as needed.</p>
+<p>Build trajectory planners from modular components. Set up a working pipeline in minutes, then customize as needed.</p>
 
 <div class="hero-buttons" markdown="1">
 <a href="guide/getting-started/" class="md-button md-button--primary">Get Started</a>
@@ -158,6 +158,6 @@ Of course, if you implement your own custom components, they might be tied to a 
 
 <div class="acknowledgements" markdown>
 
-**Acknowledgements** · Logo designed with input from Ilia Valian.
+**Acknowledgements** · Logo designed with input from [Ilia Valian](https://www.linkedin.com/in/ilia-valian/).
 
 </div>

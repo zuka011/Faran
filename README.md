@@ -20,7 +20,7 @@ Faran also provides an optional visualization package, [`faran-visualizer`](http
     <img src="./assets/readme-example.gif" width="700" alt="Animated visualization of a trajectory planner navigating through traffic">
 </p>
 
-> Faran is being actively developed — expect missing features, [some gotchas](https://risk-metrics.gitlab.io/faran/guide/gotchas/) and possible API changes. See the [roadmap](https://risk-metrics.gitlab.io/faran/guide/features/) for what's available and what's coming. You can help by [reporting issues](https://gitlab.com/risk-metrics/faran/-/issues) or contributing fixes and features.
+> Faran is being actively developed. That means some features may be missing, there are [some gotchas](https://risk-metrics.gitlab.io/faran/guide/gotchas/), and some of the API might change. See the [roadmap](https://risk-metrics.gitlab.io/faran/guide/features/) for what's available and what's coming. You can help by [reporting issues](https://gitlab.com/risk-metrics/faran/-/issues) or contributing fixes and features.
 
 ## Why Faran?
 
@@ -50,7 +50,7 @@ from faran.numpy import mppi, model, sampler, trajectory, types, extract
 import numpy as np
 
 reference = trajectory.waypoints(
-    points=np.array([[0, 0], [10, 0], [20, 5], [30, 0], [40, -5], [50, 0]]),
+    points=[(0, 0), (10, 0), (20, 5), (30, 0), (40, -5), (50, 0)],
     path_length=35.0,
 )
 
@@ -170,4 +170,4 @@ See [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT, see [LICENSE](LICENSE).

@@ -8,7 +8,7 @@ Filters post-process the weighted-average optimal control sequence produced by t
 
 ## Savitzky-Golay Filter
 
-Fits a low-degree polynomial to successive windows of the optimal control sequence via least squares[@Savitzky1964], then takes the fitted value at each window center as the smoothed output. Applied independently to each control dimension.
+Fits a low-degree polynomial to successive windows of the optimal control sequence via least squares[@Savitzky1964][@Williams2018], then takes the fitted value at each window center as the smoothed output. Applied independently to each control dimension.
 
 Given a half-window size $w$ and polynomial degree $p$ (with $p < 2w + 1$), the smoothed value at time step $t$ is:
 
