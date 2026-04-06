@@ -367,7 +367,7 @@ class JaxIntegratorObstacleModel(
         JaxIntegratorObstacleStatesHistory,
         JaxIntegratorObstacleStates,
         JaxIntegratorObstacleInputs,
-        JaxIntegratorObstacleCovariances,
+        JaxIntegratorObstacleCovariances | None,
         JaxIntegratorObstacleStateSequences,
     ]
 ):

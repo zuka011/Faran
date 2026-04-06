@@ -786,7 +786,7 @@ class NumPyBicycleObstacleModel(
         NumPyBicycleObstacleStatesHistory,
         NumPyBicycleObstacleStates,
         NumPyBicycleObstacleInputs,
-        NumPyBicycleObstacleCovariances,
+        NumPyBicycleObstacleCovariances | None,
         NumPyBicycleObstacleStateSequences,
     ]
 ):

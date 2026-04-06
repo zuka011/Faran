@@ -713,7 +713,7 @@ class NumPyUnicycleObstacleModel(
         NumPyUnicycleObstacleStatesHistory,
         NumPyUnicycleObstacleStates,
         NumPyUnicycleObstacleInputs,
-        NumPyUnicycleObstacleCovariances,
+        NumPyUnicycleObstacleCovariances | None,
         NumPyUnicycleObstacleStateSequences,
     ]
 ):

@@ -788,7 +788,7 @@ class JaxUnicycleObstacleModel(
         JaxUnicycleObstacleStatesHistory,
         JaxUnicycleObstacleStates,
         JaxUnicycleObstacleInputs,
-        JaxUnicycleObstacleCovariances,
+        JaxUnicycleObstacleCovariances | None,
         JaxUnicycleObstacleStateSequences,
     ]
 ):

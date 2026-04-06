@@ -357,7 +357,7 @@ class NumPyIntegratorObstacleModel(
         NumPyIntegratorObstacleStatesHistory,
         NumPyIntegratorObstacleStates,
         NumPyIntegratorObstacleInputs,
-        NumPyIntegratorObstacleCovariances,
+        NumPyIntegratorObstacleCovariances | None,
         NumPyIntegratorObstacleStateSequences,
     ]
 ):

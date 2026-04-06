@@ -830,7 +830,7 @@ class JaxBicycleObstacleModel(
         JaxBicycleObstacleStatesHistory,
         JaxBicycleObstacleStates,
         JaxBicycleObstacleInputs,
-        JaxBicycleObstacleCovariances,
+        JaxBicycleObstacleCovariances | None,
         JaxBicycleObstacleStateSequences,
     ]
 ):
