@@ -11,7 +11,9 @@ from faran.types import (
     ContouringCost,
     LagCost,
     Error,
+    Preference,
     Trajectory,
+    TrajectoryPreferenceProvider,
     NumPyControlInputBatch,
     NumPyCosts,
     NumPyPathParameters,
@@ -36,6 +38,29 @@ class NumPyError(Error):
 
     def __array__(self, dtype: DataType | None = None) -> Float[Array, "T M"]:
         return self.array
+
+
+@jaxtyped
+@dataclass(frozen=True)
+class NumPyPreference(Preference):
+    """Preference score for each trajectory in the batch."""
+
+    _array: Float[Array, "M"]
+
+    @staticmethod
+    def create(array: Float[Array, "M"]) -> "NumPyPreference":
+        return NumPyPreference(array)
+
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "M"]:
+        return self.array
+
+    @property
+    def rollout_count(self) -> int:
+        return self.array.shape[0]
+
+    @property
+    def array(self) -> Float[Array, "M"]:
+        return self._array
 
 
 @dataclass(kw_only=True, frozen=True)
@@ -222,3 +247,39 @@ class NumPyControlEffortCost(CostFunction[NumPyControlInputBatch, Any, NumPyCost
 
     def __call__(self, *, inputs: NumPyControlInputBatch, states: Any) -> NumPyCosts:
         return NumPySimpleCosts(np.einsum("u,tum->tm", self.weights, inputs.array**2))
+
+
+@dataclass(kw_only=True, frozen=True)
+class NumPyPreferenceCost[StateBatchT: StateBatch](
+    CostFunction[ControlInputBatch, StateBatchT, NumPyCosts]
+):
+    """Converts trajectory preferences into costs. Higher preferences yield lower costs."""
+
+    preference: TrajectoryPreferenceProvider[StateBatchT, NumPyPreference]
+    weight: float
+
+    @staticmethod
+    def create[S: StateBatch](
+        *,
+        preference: TrajectoryPreferenceProvider[S, NumPyPreference],
+        weight: float,
+    ) -> "NumPyPreferenceCost[S]":
+        """Creates a preference cost implemented with NumPy.
+
+        Args:
+            preference: Provides a preference score for each state sequence in the batch, where higher
+                scores indicate more preferred trajectories.
+            weight: The weight of the preference cost.
+        """
+        return NumPyPreferenceCost(preference=preference, weight=weight)
+
+    def __call__(self, *, inputs: ControlInputBatch, states: StateBatchT) -> NumPyCosts:
+        preferences = self.preference(states)
+        horizon = states.horizon
+        cost_per_timestep = -self.weight * preferences.array / horizon
+
+        return NumPySimpleCosts(
+            np.broadcast_to(
+                cost_per_timestep[np.newaxis, :], (horizon, preferences.rollout_count)
+            )
+        )

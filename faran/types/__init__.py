@@ -141,7 +141,9 @@ from .states import (
 )
 from .costs import (
     Error as Error,
+    Preference as Preference,
     PositionExtractor as PositionExtractor,
+    TrajectoryPreferenceProvider as TrajectoryPreferenceProvider,
     ContouringCost as ContouringCost,
     LagCost as LagCost,
     CostSumFunction as CostSumFunction,

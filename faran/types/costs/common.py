@@ -1,4 +1,4 @@
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 
 from faran.types.array import Array, DataType
 
@@ -11,9 +11,23 @@ class Error(Protocol):
         ...
 
 
+class Preference(Protocol):
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "M"]:
+        """Returns the preference as a NumPy array."""
+        ...
+
+
 class PositionExtractor[StateBatchT, PositionsT](Protocol):
     def __call__(self, states: StateBatchT, /) -> PositionsT:
         """Extracts (x, y) positions from a batch of states."""
+        ...
+
+
+@runtime_checkable
+class TrajectoryPreferenceProvider[StateBatchT, PreferenceT](Protocol):
+    def __call__(self, states: StateBatchT, /) -> PreferenceT:
+        """Provides a preference score for each state sequence in the batch, where higher
+        scores indicate more preferred trajectories."""
         ...
 
 

@@ -554,6 +554,16 @@ class test_that_cost_increases_with_weight:
                 )
                 for i in range(2)
             ],
+            (
+                inputs := data.control_input_batch(
+                    np.zeros((T := 3, D_u := 2, M := 2))
+                ),
+                states := data.state_batch(np.zeros((T, D_x := 2, M))),
+                create_cost := lambda weight: costs.preference(
+                    preference=lambda states: types.preference(np.array([0.2, 0.8])),
+                    weight=weight,
+                ),
+            ),
         ]
 
     @mark.parametrize(
@@ -1713,4 +1723,85 @@ class test_that_boundary_cost_increases_with_decreasing_distance:
             ]
         ), (
             f"Boundary cost should increase with decreasing distance to boundary. Got costs: {J}"
+        )
+
+
+class test_that_preference_cost_is_lower_for_rollouts_with_higher_preference:
+    @staticmethod
+    def cases(data, costs, types) -> Sequence[tuple]:
+        return [
+            (
+                cost := costs.preference(
+                    preference=lambda states: types.preference(
+                        np.array([0.1, 0.5, 0.9])
+                    ),
+                    weight=1.0,
+                ),
+                inputs := data.control_input_batch(
+                    np.zeros((T := 4, D_u := 2, M := 3))
+                ),
+                states := data.state_batch(np.zeros((T, D_x := 2, M))),
+                rollout_order := [0, 1, 2],
+            ),
+        ]
+
+    @mark.parametrize(
+        ["cost", "inputs", "states", "rollout_order"],
+        [
+            *cases(data=data.numpy, costs=costs.numpy, types=types.numpy),
+            *cases(data=data.jax, costs=costs.jax, types=types.jax),
+        ],
+    )
+    def test[ControlInputBatchT, StateBatchT, CostsT: Costs](
+        self,
+        cost: CostFunction[ControlInputBatchT, StateBatchT, CostsT],
+        inputs: ControlInputBatchT,
+        states: StateBatchT,
+        rollout_order: list[int],
+    ) -> None:
+        J = np.asarray(cost(inputs=inputs, states=states))
+        rollout_costs = J.sum(axis=0)
+
+        assert all(
+            rollout_costs[i] > rollout_costs[j]
+            for i, j in zip(rollout_order, rollout_order[1:])
+        ), (
+            f"Higher-rated rollouts should have lower total cost. Got per-rollout costs: {rollout_costs}"
+        )
+
+
+class test_that_preference_cost_is_uniform_across_timesteps:
+    @staticmethod
+    def cases(data, costs, types) -> Sequence[tuple]:
+        return [
+            (
+                cost := costs.preference(
+                    preference=lambda states: types.preference(np.array([0.2, 0.8])),
+                    weight=1.0,
+                ),
+                inputs := data.control_input_batch(
+                    np.zeros((T := 5, D_u := 2, M := 2))
+                ),
+                states := data.state_batch(np.zeros((T, D_x := 2, M))),
+            ),
+        ]
+
+    @mark.parametrize(
+        ["cost", "inputs", "states"],
+        [
+            *cases(data=data.numpy, costs=costs.numpy, types=types.numpy),
+            *cases(data=data.jax, costs=costs.jax, types=types.jax),
+        ],
+    )
+    def test[ControlInputBatchT, StateBatchT, CostsT: Costs](
+        self,
+        cost: CostFunction[ControlInputBatchT, StateBatchT, CostsT],
+        inputs: ControlInputBatchT,
+        states: StateBatchT,
+    ) -> None:
+        J = np.asarray(cost(inputs=inputs, states=states))
+        T, M = J.shape
+
+        assert all(np.allclose(J[:, m], J[0, m], rtol=1e-6) for m in range(M)), (
+            f"Cost should be uniform across timesteps. Got: {J}"
         )

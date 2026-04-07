@@ -1,16 +1,20 @@
 from .basic import (
+    NumPyPreference as NumPyPreference,
     NumPyContouringCost as NumPyContouringCost,
     NumPyLagCost as NumPyLagCost,
     NumPyProgressCost as NumPyProgressCost,
     NumPyControlSmoothingCost as NumPyControlSmoothingCost,
     NumPyControlEffortCost as NumPyControlEffortCost,
+    NumPyPreferenceCost as NumPyPreferenceCost,
 )
 from .accelerated import (
+    JaxPreference as JaxPreference,
     JaxContouringCost as JaxContouringCost,
     JaxLagCost as JaxLagCost,
     JaxProgressCost as JaxProgressCost,
     JaxControlSmoothingCost as JaxControlSmoothingCost,
     JaxControlEffortCost as JaxControlEffortCost,
+    JaxPreferenceCost as JaxPreferenceCost,
 )
 from .combined import (
     CombinedCost as CombinedCost,

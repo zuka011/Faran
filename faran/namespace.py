@@ -145,6 +145,8 @@ from faran.models import (
     JaxUnicycleObstacleStateSequences,
 )
 from faran.costs import (
+    NumPyPreference,
+    JaxPreference,
     NumPyContouringCost,
     JaxContouringCost,
     NumPyDistance,
@@ -321,6 +323,7 @@ class types:
         type Distance = NumPyDistance
         type BoundaryDistance = NumPyBoundaryDistance
         type Risk = NumPyRisk
+        type Preference = NumPyPreference
 
         type CostFunction = NumPyCostFunction
         type PathParameterExtractor[StateBatchT] = NumPyPathParameterExtractor[
@@ -353,6 +356,7 @@ class types:
         normals: Final = NumPyNormals.create
         distance: Final = NumPyDistance
         boundary_distance: Final = NumPyBoundaryDistance
+        preference: Final = NumPyPreference.create
         obstacle_ids: Final = NumPyObstacleIds
         obstacle_2d_poses: Final = NumPyObstacle2dPoses
         obstacle_2d_poses_for_time_step: Final = NumPyObstacle2dPosesForTimeStep
@@ -500,6 +504,7 @@ class types:
         type Distance = JaxDistance
         type BoundaryDistance = JaxBoundaryDistance
         type Risk = JaxRisk
+        type Preference = JaxPreference
 
         type CostFunction = JaxCostFunction
         type PathParameterExtractor[StateBatchT] = JaxPathParameterExtractor[
@@ -530,6 +535,7 @@ class types:
         normals: Final = JaxNormals.create
         distance: Final = JaxDistance
         boundary_distance: Final = JaxBoundaryDistance
+        preference: Final = JaxPreference.create
         obstacle_ids: Final = JaxObstacleIds
         obstacle_2d_poses: Final = JaxObstacle2dPoses
         obstacle_2d_poses_for_time_step: Final = JaxObstacle2dPosesForTimeStep

@@ -73,6 +73,7 @@ from .types import (
     DistanceExtractor as DistanceExtractor,
     Error as Error,
     PositionExtractor as PositionExtractor,
+    TrajectoryPreferenceProvider as TrajectoryPreferenceProvider,
     ContouringCost as ContouringCost,
     LagCost as LagCost,
     EstimatedObstacleStates as EstimatedObstacleStates,

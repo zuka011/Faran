@@ -13,6 +13,7 @@ from faran.costs.basic import (
     NumPyProgressCost,
     NumPyControlSmoothingCost,
     NumPyControlEffortCost,
+    NumPyPreferenceCost,
 )
 from faran.costs.accelerated import (
     JaxContouringCost,
@@ -20,6 +21,7 @@ from faran.costs.accelerated import (
     JaxProgressCost,
     JaxControlSmoothingCost,
     JaxControlEffortCost,
+    JaxPreferenceCost,
 )
 from faran.costs.combined import CombinedCost, NumPyCostSumFunction, JaxCostSumFunction
 from faran.costs.collision import NumPyCollisionCost, JaxCollisionCost
@@ -65,6 +67,8 @@ class costs:
             collision: Final = NumPyCollisionCost.create
             boundary: Final = NumPyBoundaryCost.create
 
+        preference: Final = NumPyPreferenceCost.create
+
     class jax:
         @staticmethod
         def combined[
@@ -89,6 +93,8 @@ class costs:
         class safety:
             collision: Final = JaxCollisionCost.create
             boundary: Final = JaxBoundaryCost.create
+
+        preference: Final = JaxPreferenceCost.create
 
 
 class distance:

@@ -1,6 +1,8 @@
 from .common import (
     Error as Error,
+    Preference as Preference,
     PositionExtractor as PositionExtractor,
+    TrajectoryPreferenceProvider as TrajectoryPreferenceProvider,
     ContouringCost as ContouringCost,
     LagCost as LagCost,
 )

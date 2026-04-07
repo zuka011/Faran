@@ -11,7 +11,9 @@ from faran.types import (
     ContouringCost,
     LagCost,
     Error,
+    Preference,
     Trajectory,
+    TrajectoryPreferenceProvider,
     JaxControlInputBatch,
     JaxCosts,
     JaxPathParameters,
@@ -39,6 +41,30 @@ class JaxError(Error):
 
     def __array__(self, dtype: DataType | None = None) -> Float[Array, "T M"]:
         return np.asarray(self.array)
+
+
+@jaxtyped
+@dataclass(frozen=True)
+class JaxPreference(Preference):
+    """Preference score for each trajectory in the batch."""
+
+    _array: Float[JaxArray, "M"]
+
+    @staticmethod
+    def create(array: Float[Array, "M"] | Float[JaxArray, "M"]) -> "JaxPreference":
+        """Creates a JaxPreference from a NumPy array or a JAX array."""
+        return JaxPreference(jnp.asarray(array))
+
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, "M"]:
+        return np.asarray(self.array)
+
+    @property
+    def rollout_count(self) -> int:
+        return self.array.shape[0]
+
+    @property
+    def array(self) -> Float[JaxArray, "M"]:
+        return self._array
 
 
 @dataclass(kw_only=True, frozen=True)
@@ -270,6 +296,40 @@ class JaxControlEffortCost(CostFunction[JaxControlInputBatch, Any, JaxCosts]):
         )
 
 
+@dataclass(kw_only=True, frozen=True)
+class JaxPreferenceCost[StateBatchT: StateBatch](
+    CostFunction[ControlInputBatch, StateBatchT, JaxCosts]
+):
+    preference: TrajectoryPreferenceProvider[StateBatchT, JaxPreference]
+    weight: Scalar
+
+    @staticmethod
+    def create[S: StateBatch](
+        *,
+        preference: TrajectoryPreferenceProvider[S, JaxPreference],
+        weight: float,
+    ) -> "JaxPreferenceCost[S]":
+        """Creates a preference cost implemented with JAX.
+
+        Args:
+            preference: Provides a preference score for each state sequence in the batch, where higher
+                scores indicate more preferred trajectories.
+            weight: The weight of the preference cost.
+        """
+        return JaxPreferenceCost(preference=preference, weight=jnp.asarray(weight))
+
+    def __call__(self, *, inputs: ControlInputBatch, states: StateBatchT) -> JaxCosts:
+        preferences = self.preference(states)
+        return JaxSimpleCosts(
+            preference_cost(
+                preferences=preferences.array,
+                weight=self.weight,
+                horizon=states.horizon,
+                rollout_count=preferences.rollout_count,
+            )
+        )
+
+
 @jax.jit
 @jaxtyped
 def contour_error(
@@ -352,3 +412,17 @@ def control_effort_cost(
     *, inputs: Float[JaxArray, "T D_u M"], weights: Float[JaxArray, " D_u"]
 ) -> Float[JaxArray, "T M"]:
     return jnp.einsum("u,tum->tm", weights, inputs**2)
+
+
+@jax.jit(static_argnames=["horizon", "rollout_count"])
+@jaxtyped
+def preference_cost(
+    *,
+    preferences: Float[JaxArray, " M"],
+    weight: Scalar,
+    horizon: int,
+    rollout_count: int,
+) -> Float[JaxArray, "T M"]:
+    cost_per_timestep = -weight * preferences / horizon
+
+    return jnp.broadcast_to(cost_per_timestep[jnp.newaxis, :], (horizon, rollout_count))
