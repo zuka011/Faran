@@ -1,3 +1,5 @@
+from typing import Sequence
+
 from faran import ObstacleIdAssignment, ObstacleIds, types, obstacles
 
 from numtypes import array
@@ -63,7 +65,10 @@ class JaxObstacleHeadingExtractor:
 
 
 class test_that_ids_are_assigned_to_obstacles:
-    def cases(id_assignment, position_extractor, heading_extractor, data) -> None:
+    @staticmethod
+    def cases(
+        id_assignment, position_extractor, heading_extractor, data
+    ) -> Sequence[tuple]:
         return [
             (  # All new obstacles (no history)
                 assignment := id_assignment.hungarian(
@@ -404,6 +409,25 @@ class test_that_ids_are_assigned_to_obstacles:
                 ),
                 ids := data.obstacle_ids([5, 6]),
                 expected := data.obstacle_ids([5, 20]),
+            ),
+            (  # NaN in current state of one obstacle must not crash and must allocate a new id.
+                assignment := id_assignment.hungarian(
+                    position_extractor=position_extractor(),
+                    cutoff=0.5,
+                    start_id=1,
+                ),
+                states := data.obstacle_2d_poses_for_time_step(
+                    x=array([0.2, np.nan], shape=(K := 2,)),
+                    y=array([0.0, np.nan], shape=(K,)),
+                    heading=array([0.0, np.nan], shape=(K,)),
+                ),
+                history := data.obstacle_2d_poses(
+                    x=array([[0.2]], shape=(1, 1)),
+                    y=array([[0.0]], shape=(1, 1)),
+                    heading=array([[0.0]], shape=(1, 1)),
+                ),
+                ids := data.obstacle_ids([7]),
+                expected := data.obstacle_ids([7, 1]),
             ),
         ]
 

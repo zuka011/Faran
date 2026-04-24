@@ -253,6 +253,10 @@ class JaxBicycleStateBatch(BicycleStateBatch, JaxStateBatch):
     def heading_array(self) -> Float[JaxArray, "T M"]:
         return self.array[:, 2, :]
 
+    @property
+    def speed_array(self) -> Float[JaxArray, "T M"]:
+        return self.array[:, 3, :]
+
 
 @jaxtyped
 @dataclass(frozen=True)

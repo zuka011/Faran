@@ -211,9 +211,11 @@ class NumPyHungarianObstacleIdAssignment[
 
         # NOTE: We set a large value for distances beyond the cutoff
         # to prevent them from being matched.
+        # NOTE: We do an inverse mask here to account for missing values
+        # in the history or current states.
         distances = position_distances
-        distances[position_distances > self.positions.cutoff] = large_value
-        distances[orientation_distances > self.orientations.cutoff] = large_value
+        distances[~(position_distances <= self.positions.cutoff)] = large_value
+        distances[~(orientation_distances <= self.orientations.cutoff)] = large_value
 
         current_indices, history_indices = linear_sum_assignment(distances)
         matched = distances[current_indices, history_indices] < large_value
