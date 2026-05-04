@@ -16,7 +16,11 @@ def add_notebook_option(parser: pytest.Parser) -> None:
 
 
 def is_notebook_generation_enabled(session: pytest.Session) -> bool:
-    return session.config.getoption("--notebooks")
+    enabled = session.config.getoption("--notebooks")
+
+    assert isinstance(enabled, bool), "Expected --notebooks option to be a boolean"
+
+    return enabled
 
 
 def generate_notebooks() -> str:

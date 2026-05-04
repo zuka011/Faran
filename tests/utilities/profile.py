@@ -82,4 +82,8 @@ def add_compilation_tracker_option(parser: pytest.Parser) -> None:
 
 
 def is_compilation_tracker_enabled(session: pytest.Session) -> bool:
-    return session.config.getoption("--jax-profile")
+    enabled = session.config.getoption("--jax-profile")
+
+    assert isinstance(enabled, bool), "Expected --jax-profile option to be a boolean"
+
+    return enabled
