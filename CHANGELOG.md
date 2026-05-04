@@ -7,18 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- A preference cost component that can be used to incorporate arbitrary heuristics for trajectory selection.
+- Design guidelines for developers to provide more details on the testing philosophy.
+
+### Fixed
+
+- Overly strict typing for obstacle state covariances.
+- Hungarian obstacle assignment unable to handle NaN values in the obstacles states for the current time step.
+
 ## [0.3.1] — 2026-03-21
 
 ### Changed
 
 - Minor readability improvements in the documentation.
-- A preference cost component that can be used to incorporate arbitrary heuristics for trajectory selection.
 
 ### Fixed
 
 - Fixed reduction on non-aligned axes causing XLA compilation to be very long.
-- Overly strict typing for obstacle state covariances.
-- Hungarian obstacle assignment unable to handle NaN values in the obstacles states for the current time step.
 
 ## [0.3.0] — 2026-03-15
 
