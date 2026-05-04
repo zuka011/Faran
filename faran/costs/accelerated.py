@@ -48,14 +48,14 @@ class JaxError(Error):
 class JaxPreference(Preference):
     """Preference score for each trajectory in the batch."""
 
-    _array: Float[JaxArray, "M"]
+    _array: Float[JaxArray, " M"]
 
     @staticmethod
-    def create(array: Float[Array, "M"] | Float[JaxArray, "M"]) -> "JaxPreference":
+    def create(array: Float[Array, " M"] | Float[JaxArray, " M"]) -> "JaxPreference":
         """Creates a JaxPreference from a NumPy array or a JAX array."""
         return JaxPreference(jnp.asarray(array))
 
-    def __array__(self, dtype: DataType | None = None) -> Float[Array, "M"]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, " M"]:
         return np.asarray(self.array)
 
     @property
@@ -63,7 +63,7 @@ class JaxPreference(Preference):
         return self.array.shape[0]
 
     @property
-    def array(self) -> Float[JaxArray, "M"]:
+    def array(self) -> Float[JaxArray, " M"]:
         return self._array
 
 

@@ -46,9 +46,10 @@ check modules=default_modules:
         ruff format && \
         pyright && \
         pytest && \
+        doctoc --github --notitle --update-only && \
         popd; \
     done
 
 [windows]
 check modules=default_modules:
-    for %d in ({{modules}}) do @echo === Checking %d === && pushd %d && .venv\Scripts\activate.bat && ruff check --fix && ruff format && pyright && pytest && popd
+    for %d in ({{modules}}) do @echo === Checking %d === && pushd %d && .venv\Scripts\activate.bat && ruff check --fix && ruff format && pyright && pytest && doctoc --github --notitle --update-only && popd

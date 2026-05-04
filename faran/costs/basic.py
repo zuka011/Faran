@@ -45,13 +45,13 @@ class NumPyError(Error):
 class NumPyPreference(Preference):
     """Preference score for each trajectory in the batch."""
 
-    _array: Float[Array, "M"]
+    _array: Float[Array, " M"]
 
     @staticmethod
-    def create(array: Float[Array, "M"]) -> "NumPyPreference":
+    def create(array: Float[Array, " M"]) -> "NumPyPreference":
         return NumPyPreference(array)
 
-    def __array__(self, dtype: DataType | None = None) -> Float[Array, "M"]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, " M"]:
         return self.array
 
     @property
@@ -59,7 +59,7 @@ class NumPyPreference(Preference):
         return self.array.shape[0]
 
     @property
-    def array(self) -> Float[Array, "M"]:
+    def array(self) -> Float[Array, " M"]:
         return self._array
 
 

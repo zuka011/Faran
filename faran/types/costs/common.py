@@ -12,7 +12,7 @@ class Error(Protocol):
 
 
 class Preference(Protocol):
-    def __array__(self, dtype: DataType | None = None) -> Float[Array, "M"]:
+    def __array__(self, dtype: DataType | None = None) -> Float[Array, " M"]:
         """Returns the preference as a NumPy array."""
         ...
 

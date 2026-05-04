@@ -5,4 +5,8 @@ repos:
       - id: ruff-check
         args: ["--fix"]
       - id: ruff-format 
-      
+  - repo: https://github.com/thlorenz/doctoc
+    rev: v2.2.0
+    hooks:
+      - id: doctoc
+        args: ["--github", "--notitle", "--update-only"]

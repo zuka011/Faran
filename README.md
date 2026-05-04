@@ -49,11 +49,13 @@ Here's how you can configure an MPPI planner for the [MPCC](https://risk-metrics
 from faran.numpy import mppi, model, sampler, trajectory, types, extract
 import numpy as np
 
+# The reference path to follow.
 reference = trajectory.waypoints(
     points=[(0, 0), (10, 0), (20, 5), (30, 0), (40, -5), (50, 0)],
     path_length=35.0,
 )
 
+# The planner setup.
 planner, augmented_model, contouring_cost, lag_cost = mppi.mpcc(
     model=model.bicycle.dynamical(
         time_step_size=0.1, wheelbase=2.5,

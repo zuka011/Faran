@@ -335,6 +335,19 @@ wheels = [
 ]
 
 [[package]]
+name = "doctoc"
+version = "1.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "click" },
+    { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/50/d4/b01028d8c033fbe009cb5c7765ddfa722adfe4ae1ca2f39fdc15fa0ebf57/doctoc-1.0.0.tar.gz", hash = "sha256:0a13183b10a2942b3d4e6f5cc6c250bd7f1729695315e78182be3d21d4886511", size = 7648, upload-time = "2024-06-22T17:26:19.027Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2f/17/b498cc174485d8ca4aeaa6893c2d912bdaa81738926da1f2da558ba17b2b/doctoc-1.0.0-py3-none-any.whl", hash = "sha256:c916a965e2075774f540079374a262111dadfa9d7d3d0adbbe34d16c6669cfad", size = 8225, upload-time = "2024-06-22T17:26:17.36Z" },
+]
+
+[[package]]
 name = "equinox"
 version = "0.13.6"
 source = { registry = "https://pypi.org/simple" }
@@ -391,6 +404,7 @@ benchmark-cuda = [
 ]
 dev = [
     { name = "beartype" },
+    { name = "doctoc" },
     { name = "pre-commit" },
     { name = "pyright" },
     { name = "ruff" },
@@ -438,6 +452,7 @@ benchmark = [
 benchmark-cuda = [{ name = "jax", extras = ["cuda"], specifier = ">=0.9.1" }]
 dev = [
     { name = "beartype", specifier = ">=0.22.9" },
+    { name = "doctoc", specifier = ">=1.0.0" },
     { name = "pre-commit", specifier = ">=4.5.1" },
     { name = "pyright", specifier = ">=1.1.408" },
     { name = "ruff", specifier = ">=0.15.4" },
@@ -519,6 +534,7 @@ wheels = [
 name = "griffelib"
 version = "2.0.0"
 source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/ad/06/eccbd311c9e2b3ca45dbc063b93134c57a1ccc7607c5e545264ad092c4a9/griffelib-2.0.0.tar.gz", hash = "sha256:e504d637a089f5cab9b5daf18f7645970509bf4f53eda8d79ed71cce8bd97934", size = 166312, upload-time = "2026-03-23T21:06:55.954Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/4d/51/c936033e16d12b627ea334aaaaf42229c37620d0f15593456ab69ab48161/griffelib-2.0.0-py3-none-any.whl", hash = "sha256:01284878c966508b6d6f1dbff9b6fa607bc062d8261c5c7253cb285b06422a7f", size = 142004, upload-time = "2026-02-09T19:09:40.561Z" },
 ]
